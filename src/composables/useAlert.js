@@ -1,7 +1,15 @@
-import { inject } from 'vue'
+import { ref } from 'vue'
+
+const alertRef = ref(null)
+
+export function registerAlert(instance) {
+  alertRef.value = instance || null
+}
 
 export function useAlert() {
-  const alert = inject('alert')
-  if (!alert) throw new Error('Alert provider not found')
-  return alert
+  return {
+    show: (message, type = 'info') => {
+      alertRef.value?.show(message, type)
+    },
+  }
 }

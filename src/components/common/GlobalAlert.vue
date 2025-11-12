@@ -1,51 +1,73 @@
 <template>
   <transition name="fade">
-    <div v-if="visible" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 z-max">
-      <q-card
-        class="q-px-md q-py-sm text-white text-center"
-        :class="typeClass"
-        style="min-width: 280px; border-radius: 10px"
-      >
-        {{ message }}
-      </q-card>
+    <div v-if="visible" class="ga-wrap">
+      <div class="ga-card" :class="type">{{ message }}</div>
     </div>
   </transition>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 
 const visible = ref(false)
 const message = ref('')
 const type = ref('info')
+let timer
 
-function show(msg, msgType = 'info', duration = 2000) {
+function show(msg, t = 'info', duration = 2000) {
   message.value = msg
-  type.value = msgType
+  type.value = t
   visible.value = true
-  setTimeout(() => (visible.value = false), duration)
+  clearTimeout(timer)
+  timer = setTimeout(() => (visible.value = false), duration)
 }
-
-const typeClass = computed(() => {
-  switch (type.value) {
-    case 'success':
-      return 'bg-positive'
-    case 'error':
-      return 'bg-negative'
-    case 'warning':
-      return 'bg-warning text-dark'
-    default:
-      return 'bg-primary'
-  }
-})
 
 defineExpose({ show })
 </script>
 
 <style scoped>
+/* 화면 중앙 고정 */
+.ga-wrap {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center; /* 가로 중앙 */
+  align-items: center; /* 세로 중앙 */
+  z-index: 2147483647;
+  pointer-events: none; /* 클릭 통과 */
+}
+
+/* 카드: 살짝 투명 */
+.ga-card {
+  pointer-events: auto;
+  min-width: 260px;
+  max-width: 90vw;
+  padding: 10px 16px;
+  border-radius: 12px;
+  color: #fff;
+  background: #3b82f6; /* info 기본 */
+  opacity: 0.8; /* 👈 투명도 */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  text-align: center;
+  font-weight: 600;
+}
+
+/* 타입 색상만 유지 */
+.ga-card.success {
+  background: #22c55e;
+}
+.ga-card.error {
+  background: #ef4444;
+}
+.ga-card.warning {
+  background: #f59e0b;
+  color: #1f2937;
+}
+
+/* 페이드 트랜지션 */
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.4s;
+  transition: opacity 0.2s ease;
 }
 .fade-enter-from,
 .fade-leave-to {

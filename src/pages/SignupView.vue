@@ -5,7 +5,6 @@
 
       <q-card-section class="q-gutter-md">
         <q-input v-model="nickname" label="닉네임" filled color="primary" />
-        <q-input v-model="id" label="아이디" type="id" filled color="primary" />
         <q-input v-model="password" label="비밀번호" type="password" filled color="primary" />
         <q-input v-model="confirm" label="비밀번호 확인" type="password" filled color="primary" />
       </q-card-section>
@@ -21,20 +20,43 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from 'stores/auth'
+import { useAlert } from 'src/composables/useAlert'
 
 const router = useRouter()
 const nickname = ref('')
-const id = ref('')
 const password = ref('')
 const confirm = ref('')
+const loading = ref(false)
+const auth = useAuthStore()
+const alert = useAlert()
 
-function onSignup() {
-  if (password.value !== confirm.value) {
-    alert('비밀번호가 일치하지 않습니다.')
+const onSignup = async () => {
+  if (!nickname.value || !password.value) {
+    alert.show('닉네임과 비밀번호를 입력하세요.', 'warning')
     return
   }
-  alert(`${nickname.value}님, 회원가입 완료!`)
-  router.push('/login')
+  if (password.value !== confirm.value) {
+    alert.show('비밀번호가 일치하지 않습니다.', 'error')
+    return
+  }
+
+  loading.value = true
+  try {
+    // ✅ 회원가입은 nickname + password
+    await auth.register({
+      nickname: nickname.value.trim(),
+      password: password.value,
+    })
+
+    alert.show('회원가입 완료! 환영합니다 👋', 'success')
+    router.replace('/login')
+  } catch (e) {
+    const msg = e?.response?.data?.message || '회원가입 중 오류가 발생했습니다.'
+    alert.show(msg, 'error')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
