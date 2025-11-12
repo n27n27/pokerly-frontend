@@ -1,1 +1,9 @@
-// app global css in SCSS form
+/* 숫자 입력 필드의 위/아래 스핀 버튼 제거 (모든 브라우저) */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield; /* Firefox */
+}
