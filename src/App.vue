@@ -1,16 +1,16 @@
 <template>
   <router-view />
-  <GlobalAlert ref="alertRef" />
+  <GlobalAlert ref="alert" />
 </template>
 
 <script setup>
-import GlobalAlert from 'components/common/GlobalAlert.vue'
-import { provide, ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import GlobalAlert from 'src/components/common/GlobalAlert.vue'
+import { registerAlert } from 'src/composables/useAlert'
 
-const alertRef = ref(null)
+const alert = ref(null)
 
-// 전역으로 provide
-provide('alert', {
-  show: (msg, type, duration) => alertRef.value?.show(msg, type, duration),
+onMounted(() => {
+  registerAlert(alert.value)
 })
 </script>

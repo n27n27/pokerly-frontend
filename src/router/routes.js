@@ -22,6 +22,11 @@ const routes = [
         component: () => import('pages/LedgerView.vue'),
         meta: { requiresAuth: true },
       },
+      {
+        path: 'venues/add',
+        component: () => import('pages/VenueAddPage.vue'),
+        meta: { requiresAuth: true },
+      },
     ],
   },
 
