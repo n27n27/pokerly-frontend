@@ -6,7 +6,7 @@
         <!-- 로고 + 타이틀 -->
         <div class="row items-center no-wrap">
           <q-img
-            src="src/assets/logo.png"
+            src="~assets/logo.png"
             alt="Pokerly Logo"
             class="pokerly-logo"
             spinner-color="white"

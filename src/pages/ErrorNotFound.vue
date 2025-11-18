@@ -5,7 +5,7 @@
         <div class="column items-center q-pa-lg">
           <!-- Pokerly 로고 -->
           <q-img
-            src="src/assets/logo.png"
+            src="~assets/logo.png"
             alt="Pokerly Logo"
             class="error-logo q-mb-md"
             spinner-color="primary"

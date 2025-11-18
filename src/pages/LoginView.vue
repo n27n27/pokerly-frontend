@@ -4,7 +4,7 @@
       <!-- 상단 로고 + 타이틀 -->
       <q-card-section class="column items-center q-mb-md">
         <q-img
-          src="src/assets/logo.png"
+          src="~assets/logo.png"
           alt="Pokerly Logo"
           class="login-logo q-mb-sm"
           spinner-color="primary"
