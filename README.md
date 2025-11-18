@@ -1,43 +1,35 @@
-# Pokerly (pokerly-frontend)
+# Pokerly Frontend
 
-Pokerly frontend for web bankroll and handy management
+- Vue 3 + Quasar
+- Axios
+- Build: Vite
 
-## Install the dependencies
+## Dev
 
-```bash
-yarn
-# or
-npm install
-```
+1. `npm install`
+2. `quasar dev`
+3. `.env.development`:
+   - `VITE_API_BASE_URL=http://localhost:8080/api`
+   - `VITE_API_TIMEOUT=10000`
 
-### Start the app in development mode (hot-code reloading, error reporting, etc.)
+## Build
 
-```bash
-quasar dev
-```
+1. `quasar build`
+2. 결과물: `dist/spa/`
 
-### Lint the files
+## Production (EC2)
 
-```bash
-yarn lint
-# or
-npm run lint
-```
+프런트는 정적 파일만 업로드하면 반영됨.
 
-### Format the files
+### 배포 절차
 
-```bash
-yarn format
-# or
-npm run format
-```
+1. 기존 파일 삭제
+   - `ssh ubuntu@pokerly.kr "rm -rf /srv/pokerly/frontend/*"`
+2. 새 빌드 업로드
+   - `scp -r dist/spa/* ubuntu@pokerly.kr:/srv/pokerly/frontend/`
 
-### Build the app for production
+## Nginx (요약)
 
-```bash
-quasar build
-```
-
-### Customize the configuration
-
-See [Configuring quasar.config.js](https://v2.quasar.dev/quasar-cli-vite/quasar-config-js).
+- `root /srv/pokerly/frontend;`
+- SPA 라우팅: `try_files $uri $uri/ /index.html;`
+- API 프록시: `/api → http://127.0.0.1:9000`
