@@ -42,7 +42,7 @@ export default route(function () {
 
     // 3) 이미 로그인했는데 /login 또는 /signup 접근 → /ledger로 보냄
     if ((to.path === '/login' || to.path === '/signup') && auth.user) {
-      return next('/ledger')
+      return next('/app')
     }
 
     // 4) 역할 가드: meta.role 이 있고 불일치하면 홈으로

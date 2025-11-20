@@ -11,6 +11,8 @@ const routes = [
     children: [{ path: '', component: () => import('pages/SignupView.vue') }],
   },
 
+  { path: '', redirect: '/login' },
+
   // 🔹 인증 필요한 페이지 (MainLayout 사용)
   {
     path: '/app',
