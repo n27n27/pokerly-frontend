@@ -1,17 +1,50 @@
 <template>
   <q-page padding class="ledger-page">
     <!-- ====================== 상단 영역 ====================== -->
-    <div class="row items-center justify-between q-mb-md">
-      <!-- 좌측: 제목 + (나중에 월 선택 자리) -->
-      <div class="column">
-        <div class="text-h6 text-weight-bold">가계부</div>
-        <div class="text-caption text-grey-7">
-          게임 세션의 바인 / 상금 / 수익을 기록하고 관리합니다.
-        </div>
+    <div class="row items-center justify-between q-mb-md kpi-header">
+      <!-- 좌측: 월 선택 -->
+      <div class="row items-center">
+        <q-btn flat round dense icon="chevron_left" @click="shiftMonth(-1)" />
+        <div class="text-h6 text-weight-bold q-mx-sm">{{ year }}년 {{ month }}월</div>
+        <q-btn
+          flat
+          round
+          dense
+          icon="chevron_right"
+          @click="shiftMonth(1)"
+          :disable="isAtMaxMonth"
+        />
+      </div>
+
+      <!-- 중앙: KPI 요약 -->
+      <div class="row items-center q-gutter-sm kpi-container">
+        <q-card class="kpi-card">
+          <div class="kpi-label">총 바인</div>
+          <div class="kpi-value">{{ money(summary.totalBuyIn) }}</div>
+        </q-card>
+
+        <q-card class="kpi-card">
+          <div class="kpi-label">총 상금</div>
+          <div class="kpi-value">{{ money(summary.totalPrize) }}</div>
+        </q-card>
+
+        <q-card class="kpi-card">
+          <div class="kpi-label">월 순수익</div>
+          <div class="kpi-value" :class="profitColor(summary.totalProfit)">
+            {{ signedMoney(summary.totalProfit) }}
+          </div>
+        </q-card>
       </div>
 
       <!-- 우측: 세션 추가 버튼 -->
-      <q-btn color="primary" unelevated icon="add" label="세션 추가" @click="openCreateDialog" />
+      <q-btn
+        color="primary"
+        unelevated
+        icon="add"
+        label="세션 추가"
+        @click="openCreateDialog"
+        class="kpi-add-btn"
+      />
     </div>
 
     <q-separator spaced />
@@ -36,7 +69,7 @@
                   </q-badge>
                 </div>
                 <div class="text-caption text-grey-7 q-mt-xs">
-                  {{ s.date }} · 바인 {{ money(s.totalBuyIn) }} · 상금 {{ money(s.prize) }}
+                  {{ s.playDate }} · 바인 {{ money(s.totalBuyIn) }} · 상금 {{ money(s.prize) }}
                 </div>
               </div>
 
@@ -129,11 +162,11 @@
               </div>
 
               <!-- 날짜 -->
-              <q-input v-model="form.date" label="날짜" filled dense color="primary" readonly>
+              <q-input v-model="form.playDate" label="날짜" filled dense color="primary" readonly>
                 <template #append>
                   <q-icon name="event" class="cursor-pointer">
                     <q-popup-proxy cover transition-show="scale" transition-hide="scale">
-                      <q-date v-model="form.date" mask="YYYY-MM-DD">
+                      <q-date v-model="form.playDate" mask="YYYY-MM-DD">
                         <div class="row items-center justify-end q-pa-sm">
                           <q-btn flat label="닫기" color="primary" v-close-popup />
                         </div>
@@ -235,7 +268,7 @@
               <!-- D. 메모 -->
               <div class="text-caption text-grey-7">메모</div>
               <q-input
-                v-model="form.memo"
+                v-model="form.notes"
                 type="textarea"
                 filled
                 color="primary"
@@ -249,6 +282,15 @@
         <!-- 하단 버튼 -->
         <q-card-actions align="right">
           <q-btn flat label="취소" color="grey-7" @click="closeDialog" />
+          <q-btn
+            v-if="dialog.mode === 'edit'"
+            flat
+            label="삭제"
+            color="negative"
+            :loading="deleting"
+            :disable="saving || deleting"
+            @click="onDelete"
+          />
           <q-btn
             unelevated
             color="primary"
@@ -312,29 +354,53 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useAlert } from 'src/composables/useAlert'
 import { useVenueStore } from 'stores/venue'
+import { useGameSessionStore } from 'src/stores/gameSession'
+import { useQuasar } from 'quasar'
 
+const $q = useQuasar()
 const alert = useAlert()
-
 const venueStore = useVenueStore()
+const gameSessionStore = useGameSessionStore()
+const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
+
+const currentYear = Number(today.slice(0, 4))
+const currentMonth = Number(today.slice(5, 7))
+
+const year = ref(currentYear)
+const month = ref(currentMonth)
+
+const isAtMaxMonth = computed(() => year.value === currentYear && month.value === currentMonth)
+
+onMounted(async () => {
+  await venueStore.loadVenues()
+  await gameSessionStore.loadMonthly(year.value, month.value)
+})
 
 // ----------------------- 상태 -----------------------
-const sessions = ref([
-  // TODO: 임시 목업 데이터. 실제 연동 후 제거 예정
-  {
-    id: 1,
-    venueId: 1,
-    venueName: '샘플 매장 A',
-    date: '2025-11-18',
-    gameType: '데일리',
-    buyInPerEntry: 50000,
-    entries: 2,
-    discount: 0,
-    totalBuyIn: 100000,
-    prize: 180000,
-    netProfit: 80000,
-  },
-])
+const sessions = computed(() =>
+  gameSessionStore.sessions.map((s) => ({
+    ...s,
+    venueName: venueOptions.value.find((v) => v.id === s.venueId)?.name || '',
+  })),
+)
 
+const summary = computed(() => {
+  let totalBuyIn = 0
+  let totalPrize = 0
+  let totalProfit = 0
+
+  sessions.value.forEach((s) => {
+    totalBuyIn += s.totalBuyIn || 0
+    totalPrize += s.prize || 0
+    totalProfit += s.netProfit || 0
+  })
+
+  return {
+    totalBuyIn,
+    totalPrize,
+    totalProfit,
+  }
+})
 const venueOptions = computed(() => venueStore.venues)
 
 const gameTypeOptions = [
@@ -349,20 +415,19 @@ const dialog = reactive({
   editingId: null,
 })
 
-const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
-
 const form = reactive({
   venueId: null,
-  date: today,
+  playDate: today,
   gameType: 'GTD',
   buyInPerEntry: null,
   entries: 1,
   discount: 0,
   prize: 0,
-  memo: '',
+  notes: '',
 })
 
 const saving = ref(false)
+const deleting = ref(false)
 
 // ----------------------- 매장 다이얼로그 상태 -----------------------
 const venueDialog = reactive({
@@ -412,13 +477,13 @@ const profitColor = (v) => {
 // ----------------------- 다이얼로그 제어 -----------------------
 const resetForm = () => {
   form.venueId = null
-  form.date = today
+  form.playDate = today
   form.gameType = 'GTD'
   form.buyInPerEntry = null
   form.entries = 1
   form.discount = 0
   form.prize = 0
-  form.memo = ''
+  form.notes = ''
 }
 
 const openCreateDialog = () => {
@@ -432,13 +497,13 @@ const openEditDialog = (session) => {
   dialog.mode = 'edit'
   dialog.editingId = session.id
   form.venueId = session.venueId
-  form.date = session.date
+  form.playDate = session.playDate
   form.gameType = session.gameType
   form.buyInPerEntry = session.buyInPerEntry
   form.entries = session.entries
   form.discount = session.discount
   form.prize = session.prize
-  form.memo = session.memo || ''
+  form.notes = session.notes || ''
   dialog.open = true
 }
 
@@ -518,54 +583,77 @@ const onSubmit = async () => {
   try {
     const payload = {
       venueId: form.venueId,
-      date: form.date,
+      playDate: form.playDate,
       gameType: form.gameType,
       buyInPerEntry: Number(form.buyInPerEntry),
       entries: Number(form.entries),
       discount: Number(form.discount),
-      totalBuyIn: totalBuyIn.value,
       prize: Number(form.prize),
-      netProfit: netProfit.value,
-      memo: form.memo,
+      notes: form.notes,
     }
 
     if (dialog.mode === 'create') {
-      // TODO: 실제 API 연동으로 교체
-      const newId = (sessions.value[sessions.value.length - 1]?.id || 0) + 1
-      sessions.value.push({
-        id: newId,
-        venueName: venueOptions.value.find((v) => v.id === form.venueId)?.name || '',
-        ...payload,
-      })
+      await gameSessionStore.addSession(payload)
+      alert.show('세션이 추가되었습니다.', 'success')
     } else {
-      const idx = sessions.value.findIndex((s) => s.id === dialog.editingId)
-      if (idx !== -1) {
-        sessions.value[idx] = {
-          ...sessions.value[idx],
-          venueId: payload.venueId,
-          venueName: venueOptions.value.find((v) => v.id === form.venueId)?.name || '',
-          date: payload.date,
-          gameType: payload.gameType,
-          buyInPerEntry: payload.buyInPerEntry,
-          entries: payload.entries,
-          discount: payload.discount,
-          totalBuyIn: payload.totalBuyIn,
-          prize: payload.prize,
-          netProfit: payload.netProfit,
-          memo: payload.memo,
-        }
-      }
+      await gameSessionStore.editSession(dialog.editingId, payload)
+      alert.show('세션이 수정되었습니다.', 'success')
     }
 
     closeDialog()
+  } catch (e) {
+    console.error(e)
+    alert.show('세션 저장 중 오류가 발생했습니다.', 'error')
   } finally {
     saving.value = false
   }
 }
+const onDelete = () => {
+  if (!dialog.editingId) return
 
-onMounted(() => {
-  venueStore.loadVenues()
-})
+  $q.dialog({
+    title: '세션 삭제',
+    message: '정말 삭제하시겠습니까?',
+    cancel: true,
+    persistent: true,
+    ok: {
+      label: '삭제',
+      color: 'negative',
+    },
+    cancelLabel: '취소',
+  }).onOk(async () => {
+    deleting.value = true
+    try {
+      await gameSessionStore.removeSession(dialog.editingId)
+      alert.show('세션이 삭제되었습니다.', 'info')
+      closeDialog()
+    } catch (e) {
+      console.error(e)
+      alert.show('세션 삭제 중 오류가 발생했습니다.', 'error')
+    } finally {
+      deleting.value = false
+    }
+  })
+}
+
+const shiftMonth = (delta) => {
+  // 미래로 가려는데 이미 오늘 기준 현재 월이면 막기
+  if (delta > 0 && isAtMaxMonth.value) return
+
+  const base = new Date(year.value, month.value - 1 + delta, 1)
+  const nextYear = base.getFullYear()
+  const nextMonth = base.getMonth() + 1
+
+  // 혹시 계산으로 미래로 넘어갈 경우 방지
+  if (nextYear > currentYear || (nextYear === currentYear && nextMonth > currentMonth)) {
+    return
+  }
+
+  year.value = nextYear
+  month.value = nextMonth
+
+  gameSessionStore.loadMonthly(year.value, month.value)
+}
 </script>
 
 <style scoped>
@@ -586,5 +674,44 @@ onMounted(() => {
     padding-left: 12px;
     padding-right: 12px;
   }
+}
+.kpi-header {
+  flex-wrap: wrap;
+}
+
+.kpi-container {
+  flex-wrap: wrap;
+  margin-left: 12px;
+  margin-right: 12px;
+}
+
+/* 모바일에서 세션 추가 버튼 라인브레이크 대응 */
+.kpi-add-btn {
+  white-space: nowrap;
+}
+
+.kpi-card {
+  width: 115px;
+  height: 70px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+.kpi-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1.2;
 }
 </style>
