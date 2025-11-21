@@ -354,7 +354,7 @@ const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
 const form = reactive({
   venueId: null,
   date: today,
-  gameType: '데일리',
+  gameType: 'GTD',
   buyInPerEntry: null,
   entries: 1,
   discount: 0,
@@ -413,7 +413,7 @@ const profitColor = (v) => {
 const resetForm = () => {
   form.venueId = null
   form.date = today
-  form.gameType = '데일리'
+  form.gameType = 'GTD'
   form.buyInPerEntry = null
   form.entries = 1
   form.discount = 0

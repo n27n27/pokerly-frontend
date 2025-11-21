@@ -11,62 +11,29 @@ const routes = [
     children: [{ path: '', component: () => import('pages/SignupView.vue') }],
   },
 
-  { path: '', redirect: '/login' },
+  { path: '/', redirect: '/login' },
 
   // 🔹 인증 필요한 페이지 (MainLayout 사용)
   {
     path: '/app',
     component: () => import('layouts/MainLayout.vue'),
+    meta: { requiresAuth: true },
+    redirect: '/app/dashboard',
     children: [
-      {
-        path: 'dashboard',
-        component: () => import('pages/DashboardPage.vue'),
-        meta: { requiresAuth: true },
-      },
+      { path: 'dashboard', component: () => import('pages/DashboardPage.vue') },
 
       // My Poker
-      {
-        path: 'mypoker/ledger',
-        component: () => import('pages/MyPokerLedgerPage.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
-        path: 'mypoker/hand-review',
-        component: () => import('pages/MyPokerHandReviewPage.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
-        path: 'mypoker/journal',
-        component: () => import('pages/MyPokerJournalPage.vue'),
-        meta: { requiresAuth: true },
-      },
+      { path: 'mypoker/ledger', component: () => import('pages/MyPokerLedgerPage.vue') },
+      { path: 'mypoker/hand-review', component: () => import('pages/MyPokerHandReviewPage.vue') },
+      { path: 'mypoker/journal', component: () => import('pages/MyPokerJournalPage.vue') },
 
       // Statistics
-      {
-        path: 'statistics/month',
-        component: () => import('pages/StatisticsMonthlyPage.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
-        path: 'statistics/session',
-        component: () => import('pages/StatisticsSessionPage.vue'),
-        meta: { requiresAuth: true },
-      },
+      { path: 'statistics/month', component: () => import('pages/StatisticsMonthlyPage.vue') },
+      { path: 'statistics/session', component: () => import('pages/StatisticsSessionPage.vue') },
 
       // Venues
-      {
-        path: 'venues/list',
-        component: () => import('pages/VenuesListPage.vue'),
-        meta: { requiresAuth: true },
-      },
-      {
-        path: 'venues/points',
-        component: () => import('pages/VenuesPointsPage.vue'),
-        meta: { requiresAuth: true },
-      },
-
-      // 기본 /app 진입 시 대시보드로 리다이렉트
-      { path: '', redirect: '/app/dashboard' },
+      { path: 'venues/list', component: () => import('pages/VenuesListPage.vue') },
+      { path: 'venues/points', component: () => import('pages/VenuesPointsPage.vue') },
     ],
   },
 
