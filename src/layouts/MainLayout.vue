@@ -16,7 +16,7 @@
         <!-- 로고 + 타이틀 -->
         <div class="row items-center no-wrap">
           <q-img
-            src="src/assets/logo.png"
+            src="~assets/logo.png"
             alt="Pokerly Logo"
             class="pokerly-logo q-mr-sm"
             spinner-color="white"
@@ -35,7 +35,7 @@
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered content-class="bg-grey-1">
       <q-list padding>
         <!-- Dashboard -->
-        <q-item clickable v-ripple :to="{ path: '/app/dashboard' }" exact>
+        <q-item clickable v-ripple :to="{ path: '/app/dashboard' }" exact @click="onClickMenu">
           <q-item-section avatar>
             <q-icon name="grid_view" />
           </q-item-section>
@@ -53,7 +53,13 @@
           expand-icon="keyboard_arrow_down"
           default-opened
         >
-          <q-item clickable v-ripple :to="{ path: '/app/mypoker/ledger' }" exact>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/mypoker/ledger' }"
+            exact
+            @click="onClickMenu"
+          >
             <q-item-section avatar>
               <q-icon name="table_view" />
             </q-item-section>
@@ -62,7 +68,13 @@
             </q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple :to="{ path: '/app/mypoker/hand-review' }" exact>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/mypoker/hand-review' }"
+            exact
+            @click="onClickMenu"
+          >
             <q-item-section avatar>
               <q-icon name="casino" />
             </q-item-section>
@@ -71,7 +83,13 @@
             </q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple :to="{ path: '/app/mypoker/journal' }" exact>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/mypoker/journal' }"
+            exact
+            @click="onClickMenu"
+          >
             <q-item-section avatar>
               <q-icon name="edit_note" />
             </q-item-section>
@@ -85,7 +103,13 @@
 
         <!-- Statistics -->
         <q-expansion-item icon="query_stats" label="통계" expand-icon="keyboard_arrow_down">
-          <q-item clickable v-ripple :to="{ path: '/app/statistics/month' }" exact>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/statistics/month' }"
+            exact
+            @click="onClickMenu"
+          >
             <q-item-section avatar>
               <q-icon name="calendar_month" />
             </q-item-section>
@@ -94,7 +118,13 @@
             </q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple :to="{ path: '/app/statistics/session' }" exact>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/statistics/session' }"
+            exact
+            @click="onClickMenu"
+          >
             <q-item-section avatar>
               <q-icon name="analytics" />
             </q-item-section>
@@ -108,7 +138,7 @@
 
         <!-- Venues -->
         <q-expansion-item icon="storefront" label="매장" expand-icon="keyboard_arrow_down">
-          <q-item clickable v-ripple :to="{ path: '/app/venues/list' }" exact>
+          <q-item clickable v-ripple :to="{ path: '/app/venues/list' }" exact @click="onClickMenu">
             <q-item-section avatar>
               <q-icon name="list_alt" />
             </q-item-section>
@@ -117,7 +147,13 @@
             </q-item-section>
           </q-item>
 
-          <q-item clickable v-ripple :to="{ path: '/app/venues/points' }" exact>
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/venues/points' }"
+            exact
+            @click="onClickMenu"
+          >
             <q-item-section avatar>
               <q-icon name="stars" />
             </q-item-section>
@@ -149,6 +185,10 @@ const onLogout = () => {
   auth.logout()
 
   router.push('/login')
+}
+
+const onClickMenu = () => {
+  leftDrawerOpen.value = false
 }
 </script>
 
