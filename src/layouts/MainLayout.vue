@@ -79,7 +79,10 @@
               <q-icon name="casino" />
             </q-item-section>
             <q-item-section>
-              <q-item-label>핸드 복기</q-item-label>
+              <q-item-label
+                >핸드 복기
+                <q-badge color="grey-6" rounded text-color="white" label="Demo" outline />
+              </q-item-label>
             </q-item-section>
           </q-item>
 
@@ -173,11 +176,11 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 
-const leftDrawerOpen = ref(true)
+const leftDrawerOpen = ref(null)
 const router = useRouter()
 const auth = useAuthStore()
 
@@ -190,6 +193,9 @@ const onLogout = () => {
 const onClickMenu = () => {
   leftDrawerOpen.value = false
 }
+onMounted(() => {
+  leftDrawerOpen.value = false
+})
 </script>
 
 <style scoped>

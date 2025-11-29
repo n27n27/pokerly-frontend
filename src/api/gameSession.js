@@ -26,3 +26,8 @@ export const fetchGameSession = async (id) => {
   const res = await api.get(`/game-sessions/${id}`)
   return res.data.data
 }
+
+export const fetchSessionOptions = async () => {
+  const res = await api.get('/game-sessions/options')
+  return res.data.data
+}
