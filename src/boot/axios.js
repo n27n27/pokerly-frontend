@@ -1,102 +1,159 @@
+// src/boot/axios.js
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
 
+// --- Axios 인스턴스 생성 ---
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: Number(import.meta.env.VITE_API_TIMEOUT || 10000),
 })
 
-// --- Access/Refresh 토큰 헬퍼 ---
-// localStorage에는 "순수 accessToken"만 저장 (Bearer 붙여 저장하지 않음)
-const getAT = () => localStorage.getItem('accessToken') || ''
-const getRT = () => localStorage.getItem('refreshToken') || ''
-const setAT = (t) => localStorage.setItem('accessToken', t || '')
-const setRT = (t) =>
-  t ? localStorage.setItem('refreshToken', t) : localStorage.removeItem('refreshToken')
+// --- 토큰 헬퍼 ---
+const AT_KEY = 'accessToken'
+const RT_KEY = 'refreshToken'
+
+const getAT = () => localStorage.getItem(AT_KEY) || ''
+const getRT = () => localStorage.getItem(RT_KEY) || ''
+
+const setAT = (t) => localStorage.setItem(AT_KEY, t || '')
+const setRT = (t) => (t ? localStorage.setItem(RT_KEY, t) : localStorage.removeItem(RT_KEY))
+
 const clearTokens = () => {
-  localStorage.removeItem('accessToken')
-  localStorage.removeItem('refreshToken')
+  localStorage.removeItem(AT_KEY)
+  localStorage.removeItem(RT_KEY)
+}
+
+// ApiResponse<T> 이든 T 이든 공통 처리
+const unwrap = (res) => {
+  const raw = res.data
+  return raw && typeof raw === 'object' && 'data' in raw ? raw.data : raw
 }
 
 // --- 요청 인터셉터: Authorization 자동 주입 ---
-api.interceptors.request.use((config) => {
-  const at = getAT()
-  if (at) {
-    config.headers.Authorization = `Bearer ${at}`
-  }
-  return config
-})
+api.interceptors.request.use(
+  (config) => {
+    const at = getAT()
+    if (at) {
+      config.headers.Authorization = `Bearer ${at}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error),
+)
 
-// --- 응답 인터셉터: 401 처리(단일 refresh 큐) ---
+// --- 응답 인터셉터: 401 시 자동 refresh ---
 let isRefreshing = false
-let pendingQueue = []
+let pendingRequests = []
 
-async function callRefresh() {
+const processQueue = (error, token = null) => {
+  pendingRequests.forEach((promise) => {
+    if (error) {
+      promise.reject(error)
+    } else {
+      promise.resolve(token)
+    }
+  })
+  pendingRequests = []
+}
+
+// 🔹 refresh 호출
+const requestRefresh = async () => {
   const rt = getRT()
-  if (!rt) throw new Error('No refresh token')
+  if (!rt) {
+    throw new Error('No refresh token')
+  }
 
-  // 백엔드 스펙에 맞춰 경로/바디 수정
-  const resp = await axios.post(
-    `${import.meta.env.VITE_API_BASE_URL}/auth/refresh`,
-    { refreshToken: rt },
-    { timeout: Number(import.meta.env.VITE_API_TIMEOUT || 10000) },
-  )
-  return resp.data // { accessToken, refreshToken? }
+  // ⚠️ baseURL 에 이미 /api 가 있으므로 여기서는 /auth/refresh 만!
+  const res = await api.post('/auth/refresh', { refreshToken: rt })
+
+  const payload = unwrap(res) // AuthResponse 또는 ApiResponse<AuthResponse>.data
+
+  if (!payload || !payload.accessToken) {
+    // 서버가 에러 형식으로 응답해서 data 없을 경우 방어
+    throw new Error('Unexpected refresh response shape')
+  }
+
+  const { accessToken, refreshToken } = payload
+
+  setAT(accessToken)
+  if (refreshToken) setRT(refreshToken)
+
+  return { accessToken }
 }
 
 api.interceptors.response.use(
-  (res) => res,
+  (response) => response,
   async (error) => {
-    const { response, config } = error
+    const originalRequest = error.config
 
-    // 로그인, 회원가입 요청은 refresh 시도하지 않음
-    if (config.url.includes('/auth/login') || config.url.includes('/users/register')) {
-      return Promise.reject(error)
-    }
-    if (!response) return Promise.reject(error)
+    if (!error.response) return Promise.reject(error)
+    const { status } = error.response
 
-    // 다른 에러는 통과
-    if (response.status !== 401 || config._retry) {
+    // 401 이 아니거나 이미 재시도한 요청이면 그대로 실패
+    if (status !== 401 || originalRequest._retry) {
       return Promise.reject(error)
     }
 
-    // 401 최초 1회만 refresh
-    config._retry = true
+    originalRequest._retry = true
 
     if (isRefreshing) {
-      // refresh 중이면 큐에 넣고 refresh 완료 후 재시도
+      // 이미 refresh 중이면 큐에 넣고 기다렸다가 재시도
       return new Promise((resolve, reject) => {
-        pendingQueue.push({ resolve, reject, config })
+        pendingRequests.push({
+          resolve: (token) => {
+            if (token) {
+              originalRequest.headers.Authorization = `Bearer ${token}`
+            }
+            resolve(api(originalRequest))
+          },
+          reject: (err) => reject(err),
+        })
       })
     }
 
     isRefreshing = true
-    try {
-      const data = await callRefresh()
-      if (data?.accessToken) setAT(data.accessToken)
-      if (data?.refreshToken) setRT(data.refreshToken)
 
-      // 대기중 모두 재시도
-      pendingQueue.forEach(({ resolve }) => resolve(api(config)))
-      pendingQueue = []
-      return api(config)
-    } catch (e) {
-      // 모두 실패 처리 & 토큰 제거
-      pendingQueue.forEach(({ reject }) => reject(e))
-      pendingQueue = []
+    try {
+      const { accessToken } = await requestRefresh()
+
+      processQueue(null, accessToken)
+
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`
+      return api(originalRequest)
+    } catch (refreshError) {
+      processQueue(refreshError, null)
       clearTokens()
-      return Promise.reject(e)
+      console.error('axios refresh 실패', refreshError)
+      return Promise.reject(refreshError)
     } finally {
       isRefreshing = false
     }
   },
 )
 
+// --- 앱 시작 시 사용할 부트스트랩 함수 ---
+export const bootstrapAuth = async () => {
+  const at = getAT()
+  const rt = getRT()
+
+  // 둘 다 없으면 할 일 없음
+  if (!at && !rt) return
+
+  // AccessToken 이 없고 RefreshToken 만 있으면 미리 한 번 갱신 시도
+  if (!at && rt) {
+    try {
+      await requestRefresh()
+    } catch (e) {
+      clearTokens()
+      console.error('bootstrapAuth: 토큰 갱신 실패', e)
+    }
+  }
+}
+
+// --- Quasar boot 등록 ---
 export default boot(({ app }) => {
-  // Options API 에서 this.$axios / this.$api 사용 가능
   app.config.globalProperties.$axios = axios
   app.config.globalProperties.$api = api
 })
 
-// Composition API에서 import해 쓰기 위함
 export { api }
