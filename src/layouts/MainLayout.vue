@@ -149,21 +149,6 @@
               <q-item-label>매장 목록</q-item-label>
             </q-item-section>
           </q-item>
-
-          <q-item
-            clickable
-            v-ripple
-            :to="{ path: '/app/venues/points' }"
-            exact
-            @click="onClickMenu"
-          >
-            <q-item-section avatar>
-              <q-icon name="stars" />
-            </q-item-section>
-            <q-item-section>
-              <q-item-label>매장 포인트</q-item-label>
-            </q-item-section>
-          </q-item>
         </q-expansion-item>
       </q-list>
     </q-drawer>
