@@ -32,8 +32,8 @@ const routes = [
       { path: 'statistics/session', component: () => import('pages/StatisticsSessionPage.vue') },
 
       // Venues
-      { path: 'venues/list', component: () => import('pages/VenuesListPage.vue') },
-      { path: 'venues/points', component: () => import('pages/VenuesPointsPage.vue') },
+      { path: 'venues/list', component: () => import('pages/VenueListPage.vue') },
+      { path: 'venues/:id', component: () => import('pages/VenueDetailPage.vue') },
     ],
   },
 
