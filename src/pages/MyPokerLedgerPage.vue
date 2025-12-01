@@ -361,7 +361,11 @@ const $q = useQuasar()
 const alert = useAlert()
 const venueStore = useVenueStore()
 const gameSessionStore = useGameSessionStore()
-const today = new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
+const now = new Date()
+const yyyy = now.getFullYear()
+const mm = String(now.getMonth() + 1).padStart(2, '0')
+const dd = String(now.getDate()).padStart(2, '0')
+const today = `${yyyy}-${mm}-${dd}`
 
 const currentYear = Number(today.slice(0, 4))
 const currentMonth = Number(today.slice(5, 7))
