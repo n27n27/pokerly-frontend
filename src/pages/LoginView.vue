@@ -61,7 +61,7 @@ const onLogin = async () => {
       password: password.value,
     })
     alert.show('로그인 성공! 🎉', 'success')
-    router.replace('/app/mypoker/ledger')
+    router.replace('/app/dashboard')
   } catch (e) {
     console.error(e)
     const msg = e?.response?.data?.message || '아이디 또는 비밀번호가 올바르지 않습니다.'
