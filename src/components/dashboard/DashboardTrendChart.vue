@@ -1,14 +1,12 @@
 <template>
   <div>
-    <Apexchart type="line" height="260" :options="chartOptions" :series="series" />
+    <apex-chart type="line" height="260" :options="chartOptions" :series="series" />
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import VueApexCharts from 'vue3-apexcharts'
 
-const Apexchart = VueApexCharts
 const props = defineProps({
   last6Months: {
     default: () => [],
