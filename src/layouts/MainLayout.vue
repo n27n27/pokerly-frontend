@@ -170,10 +170,10 @@ const leftDrawerOpen = ref(null)
 const router = useRouter()
 const auth = useAuthStore()
 
-const onLogout = () => {
-  auth.logout()
+const onLogout = async () => {
+  await auth.logout()
 
-  router.push('/login')
+  router.replace('/login')
 }
 
 const onClickMenu = () => {

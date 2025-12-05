@@ -779,31 +779,60 @@ const shiftMonth = (delta) => {
 .rounded-borders {
   border-radius: 12px;
 }
+
 .form-body {
   padding-left: 8px;
   padding-right: 8px;
 }
 
-@media (min-width: 768px) {
-  .form-body {
-    padding-left: 12px;
-    padding-right: 12px;
-  }
-}
-
-/* 상단 KPI 영역 */
+/* ------------------------------
+   KPI 카드 영역 (완전 새 구성)
+------------------------------ */
 .kpi-header {
   flex-wrap: wrap;
   gap: 8px;
 }
 
+/* KPI 카드 묶음 */
 .kpi-container {
+  display: flex;
   flex-wrap: wrap;
+  gap: 8px;
   margin-left: 12px;
   margin-right: 12px;
 }
 
-/* 모바일 레이아웃 개선 */
+/* KPI 카드 스타일 */
+.kpi-card {
+  flex: 1 1 110px; /* 최소 110px, 그 이상은 여유에 따라 */
+  max-width: 160px; /* 너무 커지는 것 방지 */
+  height: 70px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
+}
+
+/* KPI 라벨 & 값 */
+.kpi-label {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 2px;
+}
+
+.kpi-value {
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1.2;
+}
+
+/* ------------------------------
+   모바일 레이아웃 개선
+------------------------------ */
 @media (max-width: 767px) {
   .kpi-header {
     flex-direction: column;
@@ -816,8 +845,8 @@ const shiftMonth = (delta) => {
 
   .kpi-container {
     order: 2;
-    justify-content: space-between;
     margin: 4px 0 8px 0;
+    justify-content: flex-start;
   }
 
   .kpi-add-btn {
@@ -826,35 +855,20 @@ const shiftMonth = (delta) => {
   }
 }
 
-/* 기본 버튼 설정 */
+/* 초소형 스마트폰 최적화 (아이폰 SE 등) */
+@media (max-width: 480px) {
+  .kpi-card {
+    flex: 1 1 30%; /* 3개가 한 줄에 들어가려고 함 */
+    max-width: none;
+  }
+}
+
+/* 세션 추가 버튼 */
 .kpi-add-btn {
   white-space: nowrap;
 }
 
-.kpi-card {
-  width: 115px;
-  height: 70px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
-}
-
-.kpi-label {
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 2px;
-}
-
-.kpi-value {
-  font-size: 18px;
-  font-weight: bold;
-  line-height: 1.2;
-}
+/* 선택 정보 블록 */
 .optional-section {
   border-radius: 10px;
   background: #f7f8fa;

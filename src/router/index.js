@@ -1,4 +1,3 @@
-// src/router/index.js
 import { route } from 'quasar/wrappers'
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import routes from './routes'
@@ -18,14 +17,24 @@ export default route(function () {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
 
-  // ✅ 로그인/권한 가드 (새로고침 복구 + requiresAuth + role + refresh 부트스트랩)
+  // ✅ 로그인/권한 가드
   Router.beforeEach(async (to, _from, next) => {
     const auth = useAuthStore()
 
     const needsAuth = to.matched.some((r) => r.meta?.requiresAuth)
     const requiredRole = to.matched.find((r) => r.meta?.role)?.meta?.role
 
-    // 0) 인증이 필요한 페이지 진입 시, 처음 한 번만 refresh 기반 부트스트랩
+    // 🔸 A. 로그인/회원가입 페이지로 가는 경우는 최대한 건드리지 않기
+    if (to.path === '/login' || to.path === '/signup') {
+      // 이미 로그인 돼 있으면 앱 메인으로 보냄
+      if (auth.user) {
+        return next('/app')
+      }
+      // 비로그인 상태면 그대로 통과
+      return next()
+    }
+
+    // 🔸 B. 인증 필요한 페이지에 처음 접근 시 refresh 기반 부트스트랩 (한 번만)
     if (needsAuth && !authBootstrapped) {
       authBootstrapped = true
       try {
@@ -37,12 +46,12 @@ export default route(function () {
       }
     }
 
-    // 1) 새로고침 후 user 비어있지만 accessToken이 있으면 /me로 복구 시도
-    if (!auth.user) {
+    // 🔸 C. 인증 필요한 페이지인데 user가 비어 있고, 로컬에 accessToken 이 있으면 /me 로 복구 시도
+    if (needsAuth && !auth.user) {
       const at = localStorage.getItem('accessToken')
       if (at) {
         try {
-          await auth.fetchMe() // 실패시 무시하고 진행
+          await auth.fetchMe()
         } catch (_error) {
           console.error('fetchMe 실패', _error)
           localStorage.removeItem('accessToken')
@@ -51,17 +60,12 @@ export default route(function () {
       }
     }
 
-    // 2) 인증이 필요한데 로그인 안됨 → /login 로 리다이렉트 (+원래 가려던 경로)
+    // 🔸 D. 인증이 필요한데 여전히 로그인 안 됨 → /login으로
     if (needsAuth && !auth.user) {
       return next({ path: '/login', query: { redirect: to.fullPath } })
     }
 
-    // 3) 이미 로그인했는데 /login 또는 /signup 접근 → /ledger로 보냄
-    if ((to.path === '/login' || to.path === '/signup') && auth.user) {
-      return next('/app')
-    }
-
-    // 4) 역할 가드: meta.role 이 있고 불일치하면 홈으로
+    // 🔸 E. 역할 가드: meta.role 이 있고 불일치하면 홈으로
     if (requiredRole && auth.user && auth.user.role !== requiredRole) {
       return next('/')
     }
