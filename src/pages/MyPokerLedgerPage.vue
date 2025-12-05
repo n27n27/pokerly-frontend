@@ -1,88 +1,93 @@
 <template>
   <q-page padding class="ledger-page">
-    <!-- ====================== 상단 영역 ====================== -->
-    <div class="row items-center justify-between q-mb-md kpi-header">
-      <!-- 좌측: 월 선택 -->
-      <div class="row items-center">
-        <q-btn flat round dense icon="chevron_left" @click="shiftMonth(-1)" />
-        <div class="text-h6 text-weight-bold q-mx-sm">{{ year }}년 {{ month }}월</div>
+    <div class="ledger-container">
+      <!-- ====================== 상단 영역 ====================== -->
+      <div class="row items-center justify-between q-mb-md kpi-header">
+        <!-- 좌측: 월 선택 -->
+        <div class="row items-center month-nav">
+          <q-btn flat round dense icon="chevron_left" @click="shiftMonth(-1)" />
+          <div class="text-h6 text-weight-bold q-mx-sm">{{ year }}년 {{ month }}월</div>
+          <q-btn
+            flat
+            round
+            dense
+            icon="chevron_right"
+            @click="shiftMonth(1)"
+            :disable="isAtMaxMonth"
+          />
+        </div>
+
+        <!-- 중앙: KPI 요약 -->
+        <div class="row items-center q-gutter-sm kpi-container">
+          <q-card class="kpi-card">
+            <div class="kpi-label">총 바인</div>
+            <div class="kpi-value">{{ money(summary.totalBuyIn) }}</div>
+          </q-card>
+
+          <q-card class="kpi-card">
+            <div class="kpi-label">총 상금</div>
+            <div class="kpi-value">{{ money(summary.totalPrize) }}</div>
+          </q-card>
+
+          <q-card class="kpi-card">
+            <div class="kpi-label">월 순수익</div>
+            <div class="kpi-value" :class="profitColor(summary.totalProfit)">
+              {{ signedMoney(summary.totalProfit) }}
+            </div>
+          </q-card>
+        </div>
+
+        <!-- 우측: 세션 추가 버튼 -->
         <q-btn
-          flat
-          round
-          dense
-          icon="chevron_right"
-          @click="shiftMonth(1)"
-          :disable="isAtMaxMonth"
+          color="primary"
+          unelevated
+          icon="add"
+          label="세션 추가"
+          @click="openCreateDialog"
+          class="kpi-add-btn"
         />
       </div>
 
-      <!-- 중앙: KPI 요약 -->
-      <div class="row items-center q-gutter-sm kpi-container">
-        <q-card class="kpi-card">
-          <div class="kpi-label">총 바인</div>
-          <div class="kpi-value">{{ money(summary.totalBuyIn) }}</div>
-        </q-card>
+      <q-separator spaced />
 
-        <q-card class="kpi-card">
-          <div class="kpi-label">총 상금</div>
-          <div class="kpi-value">{{ money(summary.totalPrize) }}</div>
-        </q-card>
-
-        <q-card class="kpi-card">
-          <div class="kpi-label">월 순수익</div>
-          <div class="kpi-value" :class="profitColor(summary.totalProfit)">
-            {{ signedMoney(summary.totalProfit) }}
-          </div>
-        </q-card>
+      <!-- ====================== 리스트 ====================== -->
+      <div v-if="sessions.length === 0" class="q-mt-lg text-grey-6">
+        아직 등록된 세션이 없습니다. 오른쪽 상단의 <b>세션 추가</b> 버튼으로 첫 세션을 기록해
+        보세요.
       </div>
 
-      <!-- 우측: 세션 추가 버튼 -->
-      <q-btn
-        color="primary"
-        unelevated
-        icon="add"
-        label="세션 추가"
-        @click="openCreateDialog"
-        class="kpi-add-btn"
-      />
-    </div>
+      <div v-else class="q-mt-md">
+        <q-list bordered separator class="rounded-borders bg-white">
+          <q-item v-for="s in sessions" :key="s.id" clickable v-ripple @click="openEditDialog(s)">
+            <q-item-section>
+              <div class="row items-center justify-between">
+                <div class="column">
+                  <div class="row items-center q-gutter-sm">
+                    <div class="text-subtitle2 text-weight-medium">
+                      {{ s.displayTitle }}
+                    </div>
 
-    <q-separator spaced />
-
-    <!-- ====================== 리스트 (임시/샘플) ====================== -->
-    <div v-if="sessions.length === 0" class="q-mt-lg text-grey-6">
-      아직 등록된 세션이 없습니다. 오른쪽 상단의 <b>세션 추가</b> 버튼으로 첫 세션을 기록해 보세요.
-    </div>
-
-    <div v-else class="q-mt-md">
-      <q-list bordered separator class="rounded-borders bg-white">
-        <q-item v-for="s in sessions" :key="s.id" clickable v-ripple @click="openEditDialog(s)">
-          <q-item-section>
-            <div class="row items-center justify-between">
-              <div class="column">
-                <div class="row items-center q-gutter-sm">
-                  <div class="text-subtitle2 text-weight-medium">
-                    {{ s.venueName || '매장 미지정' }}
+                    <!-- 게임 타입 배지는 그대로 유지 -->
+                    <q-badge outline color="primary" v-if="s.gameType" class="text-caption">
+                      {{ s.gameType }}
+                    </q-badge>
                   </div>
-                  <q-badge outline color="primary" v-if="s.gameType" class="text-caption">
-                    {{ s.gameType }}
-                  </q-badge>
+                  <div class="text-caption text-grey-7 q-mt-xs">
+                    {{ s.playDate }} · 바인 {{ money(s.totalBuyIn) }} · 상금 {{ money(s.prize) }}
+                  </div>
                 </div>
-                <div class="text-caption text-grey-7 q-mt-xs">
-                  {{ s.playDate }} · 바인 {{ money(s.totalBuyIn) }} · 상금 {{ money(s.prize) }}
-                </div>
-              </div>
 
-              <div class="column items-end">
-                <div class="text-subtitle2 text-weight-bold" :class="profitColor(s.netProfit)">
-                  {{ signedMoney(s.netProfit) }}
+                <div class="column items-end">
+                  <div class="text-subtitle2 text-weight-bold" :class="profitColor(s.netProfit)">
+                    {{ signedMoney(s.netProfit) }}
+                  </div>
+                  <div class="text-caption text-grey-6">엔트리 {{ s.entries }}회</div>
                 </div>
-                <div class="text-caption text-grey-6">엔트리 {{ s.entries }}회</div>
               </div>
-            </div>
-          </q-item-section>
-        </q-item>
-      </q-list>
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </div>
     </div>
 
     <!-- ====================== 세션 추가/수정 다이얼로그 ====================== -->
@@ -105,8 +110,18 @@
               <!-- A. 기본 정보 -->
               <div class="text-caption text-grey-7 q-mb-xs">기본 정보</div>
 
-              <!-- 매장 -->
-              <div class="q-mb-sm">
+              <!-- 세션 타입 -->
+              <q-option-group
+                v-model="form.sessionType"
+                :options="sessionTypeOptions"
+                type="radio"
+                inline
+                color="primary"
+                class="q-mb-sm"
+              />
+
+              <!-- 매장 (VENUE 타입일 때만) -->
+              <div class="q-mb-sm" v-if="form.sessionType === 'VENUE'">
                 <!-- 매장 리스트가 있을 때: 셀렉트 + 아래에 "매장 추가" -->
                 <template v-if="venueOptions.length > 0">
                   <q-select
@@ -184,6 +199,48 @@
                 inline
                 color="primary"
               />
+
+              <!-- 토너먼트 정보 (선택 입력) -->
+              <q-expansion-item
+                dense
+                expand-separator
+                icon="trophy"
+                label="토너먼트 정보 (선택)"
+                caption="GTD / 전체 엔트리 수 등"
+                class="q-mt-md"
+              >
+                <div class="optional-section q-mt-xs">
+                  <div class="text-caption text-grey-7 q-mb-xs">
+                    광고된 GTD 금액과 전체 엔트리 수를 기록해 두면 나중에 EV 분석에 활용할 수
+                    있어요. (선택 입력)
+                  </div>
+
+                  <div class="row q-col-gutter-sm">
+                    <div class="col-12 col-md-6">
+                      <q-input
+                        v-model.number="form.gtdAmount"
+                        label="GTD 금액"
+                        type="number"
+                        filled
+                        dense
+                        color="primary"
+                        prefix="₩"
+                      />
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <q-input
+                        v-model.number="form.fieldEntries"
+                        label="전체 엔트리 수"
+                        type="number"
+                        filled
+                        dense
+                        color="primary"
+                        suffix="엔트리"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </q-expansion-item>
 
               <q-separator spaced />
 
@@ -381,11 +438,21 @@ onMounted(async () => {
 })
 
 // ----------------------- 상태 -----------------------
+const venueOptions = computed(() => venueStore.venues)
+
 const sessions = computed(() =>
-  gameSessionStore.sessions.map((s) => ({
-    ...s,
-    venueName: venueOptions.value.find((v) => v.id === s.venueId)?.name || '',
-  })),
+  gameSessionStore.sessions.map((s) => {
+    const isVenue = s.sessionType === 'VENUE'
+    const venueName = isVenue ? venueOptions.value.find((v) => v.id === s.venueId)?.name || '' : ''
+
+    const displayTitle = isVenue ? venueName || '매장 미지정' : sessionTypeLabel(s.sessionType) // '대회', '온라인', '기타' 등
+
+    return {
+      ...s,
+      venueName,
+      displayTitle,
+    }
+  }),
 )
 
 const summary = computed(() => {
@@ -405,12 +472,18 @@ const summary = computed(() => {
     totalProfit,
   }
 })
-const venueOptions = computed(() => venueStore.venues)
 
 const gameTypeOptions = [
   { label: 'GTD', value: 'GTD' },
   { label: '데일리', value: '데일리' },
   { label: '기타', value: '기타' },
+]
+
+const sessionTypeOptions = [
+  { label: '매장', value: 'VENUE' },
+  { label: '대회', value: 'MAJOR' },
+  { label: '온라인', value: 'ONLINE' },
+  { label: '기타', value: 'OTHER' },
 ]
 
 const dialog = reactive({
@@ -420,6 +493,7 @@ const dialog = reactive({
 })
 
 const form = reactive({
+  sessionType: 'VENUE',
   venueId: null,
   playDate: today,
   gameType: 'GTD',
@@ -427,6 +501,8 @@ const form = reactive({
   entries: 1,
   discount: 0,
   prize: 0,
+  gtdAmount: null,
+  fieldEntries: null,
   notes: '',
 })
 
@@ -478,8 +554,24 @@ const profitColor = (v) => {
   return 'text-grey-7'
 }
 
+const sessionTypeLabel = (t) => {
+  switch (t) {
+    case 'VENUE':
+      return '매장'
+    case 'MAJOR':
+      return '대회'
+    case 'ONLINE':
+      return '온라인'
+    case 'OTHER':
+      return '기타'
+    default:
+      return t || ''
+  }
+}
+
 // ----------------------- 다이얼로그 제어 -----------------------
 const resetForm = () => {
+  form.sessionType = 'VENUE'
   form.venueId = null
   form.playDate = today
   form.gameType = 'GTD'
@@ -487,6 +579,8 @@ const resetForm = () => {
   form.entries = 1
   form.discount = 0
   form.prize = 0
+  form.gtdAmount = null
+  form.fieldEntries = null
   form.notes = ''
 }
 
@@ -500,6 +594,7 @@ const openCreateDialog = () => {
 const openEditDialog = (session) => {
   dialog.mode = 'edit'
   dialog.editingId = session.id
+  form.sessionType = session.sessionType || 'VENUE'
   form.venueId = session.venueId
   form.playDate = session.playDate
   form.gameType = session.gameType
@@ -507,6 +602,8 @@ const openEditDialog = (session) => {
   form.entries = session.entries
   form.discount = session.discount
   form.prize = session.prize
+  form.gtdAmount = session.gtdAmount
+  form.fieldEntries = session.fieldEntries
   form.notes = session.notes || ''
   dialog.open = true
 }
@@ -555,13 +652,14 @@ const onSaveVenue = async () => {
   }
 }
 
-// ----------------------- 저장 로직 (임시) -----------------------
+// ----------------------- 저장 로직 -----------------------
 const onSubmit = async () => {
-  // TODO: 나중에 QForm validate로 교체 가능
-  if (!form.venueId) {
-    alert.show('매장 이름을 입력하세요.', 'warning')
+  // sessionType 에 따른 venueId 검증
+  if (form.sessionType === 'VENUE' && !form.venueId) {
+    alert.show('매장을 선택하세요.', 'warning')
     return
   }
+
   if (!form.buyInPerEntry || form.buyInPerEntry <= 0) {
     alert.show('1회 바인 금액을 입력하세요.', 'warning')
     return
@@ -583,10 +681,14 @@ const onSubmit = async () => {
     return
   }
 
+  // NON-VENUE 타입에서는 venueId 를 명시적으로 null 로
+  const venueIdPayload = form.sessionType === 'VENUE' ? form.venueId : null
+
   saving.value = true
   try {
     const payload = {
-      venueId: form.venueId,
+      sessionType: form.sessionType,
+      venueId: venueIdPayload,
       playDate: form.playDate,
       gameType: form.gameType,
       buyInPerEntry: Number(form.buyInPerEntry),
@@ -594,6 +696,8 @@ const onSubmit = async () => {
       discount: Number(form.discount),
       prize: Number(form.prize),
       notes: form.notes,
+      gtdAmount: form.gtdAmount != null ? Number(form.gtdAmount) : null,
+      fieldEntries: form.fieldEntries != null ? Number(form.fieldEntries) : null,
     }
 
     if (dialog.mode === 'create') {
@@ -612,6 +716,7 @@ const onSubmit = async () => {
     saving.value = false
   }
 }
+
 const onDelete = () => {
   if (!dialog.editingId) return
 
@@ -665,6 +770,12 @@ const shiftMonth = (delta) => {
   background: #f5f7f8;
 }
 
+/* PC에서 본문 max-width 1100 */
+.ledger-container {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
 .rounded-borders {
   border-radius: 12px;
 }
@@ -679,8 +790,11 @@ const shiftMonth = (delta) => {
     padding-right: 12px;
   }
 }
+
+/* 상단 KPI 영역 */
 .kpi-header {
   flex-wrap: wrap;
+  gap: 8px;
 }
 
 .kpi-container {
@@ -689,7 +803,30 @@ const shiftMonth = (delta) => {
   margin-right: 12px;
 }
 
-/* 모바일에서 세션 추가 버튼 라인브레이크 대응 */
+/* 모바일 레이아웃 개선 */
+@media (max-width: 767px) {
+  .kpi-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .month-nav {
+    justify-content: center;
+  }
+
+  .kpi-container {
+    order: 2;
+    justify-content: space-between;
+    margin: 4px 0 8px 0;
+  }
+
+  .kpi-add-btn {
+    order: 3;
+    align-self: stretch;
+  }
+}
+
+/* 기본 버튼 설정 */
 .kpi-add-btn {
   white-space: nowrap;
 }
@@ -717,5 +854,10 @@ const shiftMonth = (delta) => {
   font-size: 18px;
   font-weight: bold;
   line-height: 1.2;
+}
+.optional-section {
+  border-radius: 10px;
+  background: #f7f8fa;
+  padding: 8px 10px 10px;
 }
 </style>
