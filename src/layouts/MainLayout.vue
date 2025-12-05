@@ -32,7 +32,8 @@
     </q-header>
 
     <!-- 사이드바 -->
-    <q-drawer v-model="leftDrawerOpen" show-if-above bordered content-class="bg-grey-1">
+    <!-- <q-drawer v-model="leftDrawerOpen" show-if-above bordered content-class="bg-grey-1"> -->
+    <q-drawer v-model="leftDrawerOpen" show-if-above bordered behavior="mobile" :width="220">
       <q-list padding>
         <!-- Dashboard -->
         <q-item clickable v-ripple :to="{ path: '/app/dashboard' }" exact @click="onClickMenu">
