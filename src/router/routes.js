@@ -28,8 +28,12 @@ const routes = [
       { path: 'mypoker/journal', component: () => import('pages/MyPokerJournalPage.vue') },
 
       // Statistics
-      { path: 'statistics/month', component: () => import('pages/StatisticsMonthlyPage.vue') },
-      { path: 'statistics/session', component: () => import('pages/StatisticsSessionPage.vue') },
+      { path: 'statistics/month', component: () => import('pages/statistics/MonthlyPage.vue') },
+      { path: 'statistics/session', component: () => import('pages/statistics/SessionPage.vue') },
+      {
+        path: 'statistics/venue',
+        component: () => import('pages/statistics/VenueStatsPage.vue'),
+      },
 
       // Venues
       { path: 'venues/list', component: () => import('pages/VenueListPage.vue') },
