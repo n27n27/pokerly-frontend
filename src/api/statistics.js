@@ -15,3 +15,12 @@ export const fetchMonthlyStatistics = async (year, month) => {
   })
   return unwrap(res) // MonthlyStatisticsResponse
 }
+
+/**
+ * 세션 분석 통계 조회
+ * GET /api/statistics/sessions
+ */
+export const fetchSessionStatistics = async () => {
+  const res = await api.get('/statistics/sessions')
+  return unwrap(res) // StatisticsSessionResponse
+}
