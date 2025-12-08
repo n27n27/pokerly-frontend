@@ -130,11 +130,6 @@ function getProfit(v) {
   return Number(v.totalProfit ?? v.profit ?? v.monthlyProfit ?? v.profitCashRealized ?? 0)
 }
 
-function getSessionCount(v) {
-  // 세션 수 후보 키들
-  return Number(v.playCount ?? v.totalSessions ?? v.sessionCount ?? v.sessions ?? v.count ?? 0)
-}
-
 function getPrize(v) {
   // 프라이즈(상금) 후보 키들
   return Number(v.totalPrize ?? v.prize ?? v.totalCashOut ?? 0)
@@ -148,54 +143,34 @@ function getPrize(v) {
  */
 const bestVenueInfo = computed(() => {
   const m = monthly.value
-  if (!m) {
-    return { label: '', name: '' }
-  }
+  if (!m) return { label: '', name: '' }
 
   const profitVenues = Array.isArray(m.topProfitVenues) ? m.topProfitVenues : []
-  if (profitVenues.length === 0) {
-    return { label: '', name: '' }
+  const visitVenues = Array.isArray(m.topVisitVenues) ? m.topVisitVenues : []
+
+  // 1) 양수 이익 매장 있으면 → 최다 이익 매장
+  const positiveProfit = profitVenues.filter((v) => getProfit(v) > 0)
+  if (positiveProfit.length > 0) {
+    const best = positiveProfit.reduce((acc, cur) => (getProfit(cur) > getProfit(acc) ? cur : acc))
+    return { label: '최다 이익 매장', name: best.venueName }
   }
 
-  // 1) 순이익 양수 매장
-  const positiveProfitVenues = profitVenues.filter((v) => getProfit(v) > 0)
-
-  if (positiveProfitVenues.length > 0) {
-    const best = positiveProfitVenues.reduce((acc, cur) =>
-      getProfit(cur) > getProfit(acc) ? cur : acc,
-    )
-    return {
-      label: '최다 이익 매장',
-      name: best.venueName,
-    }
-  }
-
-  // 2) 순이익은 전부 0 이하지만, 프라이즈를 받은 매장이 있는 경우
+  // 2) 수익은 0 이하지만 상금 있는 매장 → 가장 상금을 많이 받은 매장
   const prizeVenues = profitVenues.filter((v) => getPrize(v) > 0)
   if (prizeVenues.length > 0) {
-    const bestPrize = prizeVenues.reduce((acc, cur) => (getPrize(cur) > getPrize(acc) ? cur : acc))
+    const best = prizeVenues.reduce((acc, cur) => (getPrize(cur) > getPrize(acc) ? cur : acc))
+    return { label: '가장 상금을 많이 받은 매장', name: best.venueName }
+  }
+
+  // 3) 상금도 0 → topVisitVenues[0] = 가장 자주 간 매장
+  if (visitVenues.length > 0) {
     return {
-      label: '가장 상금을 많이 받은 매장',
-      name: bestPrize.venueName,
+      label: '가장 자주 간 매장',
+      name: visitVenues[0].venueName,
     }
   }
 
-  // 3) 프라이즈도 전부 0 → 가장 자주 간 매장
-  const bestByVisit = profitVenues.reduce((acc, cur) => {
-    const accCount = getSessionCount(acc)
-    const curCount = getSessionCount(cur)
-
-    if (curCount > accCount) return cur
-    if (curCount < accCount) return acc
-
-    // 세션 수 동률이면, 손실이 덜한 쪽(= 순이익이 더 큰 쪽)
-    return getProfit(cur) > getProfit(acc) ? cur : acc
-  })
-
-  return {
-    label: '가장 자주 간 매장',
-    name: bestByVisit.venueName,
-  }
+  return { label: '', name: '' }
 })
 
 const bestVenueLabel = computed(() => bestVenueInfo.value.label)

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { api } from 'boot/axios'
+import { api, clearTokens } from 'boot/axios'
 import { ref, computed } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -28,9 +28,12 @@ export const useAuthStore = defineStore('auth', () => {
 
       const { accessToken, refreshToken, user: userPayload } = payload
 
+      // 🔥 axios 부트에서 쓰는 키와 동일해야 함
       localStorage.setItem('accessToken', accessToken)
       if (refreshToken) {
         localStorage.setItem('refreshToken', refreshToken)
+      } else {
+        localStorage.removeItem('refreshToken')
       }
 
       user.value = userPayload
@@ -41,9 +44,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   // /me로 유저 정보 복구
   const fetchMe = async () => {
-    const res = await api.get('/users/me')
-    const payload = unwrap(res) // UserResponse
-    user.value = payload
+    try {
+      const res = await api.get('/users/me')
+      const payload = unwrap(res) // UserResponse
+      user.value = payload
+    } catch (e) {
+      // 🔥 여기서 에러를 던지면 boot 단계가 죽을 수 있으니 절대 throw 하지 않음
+      console.warn('fetchMe 실패 (무시 가능한 에러)', e)
+      user.value = null
+      // 토큰이 이미 axios 인터셉터에서 clear + /login redirect 됐을 수 있음
+    }
   }
 
   // 로그아웃 (백엔드 + 로컬 둘 다 정리)
@@ -54,8 +64,7 @@ export const useAuthStore = defineStore('auth', () => {
       // 토큰 만료 등으로 실패해도 상관 없으니 로그만
       console.error('logout error (ignored)', e)
     } finally {
-      localStorage.removeItem('accessToken')
-      localStorage.removeItem('refreshToken')
+      clearTokens() // 🔥 axios 부트와 동일한 방식으로 토큰 제거
       user.value = null
     }
   }

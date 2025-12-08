@@ -107,6 +107,7 @@
 
         <!-- Statistics -->
         <q-expansion-item icon="query_stats" label="통계" expand-icon="keyboard_arrow_down">
+          <!-- 월간 -->
           <q-item
             clickable
             v-ripple
@@ -118,10 +119,12 @@
               <q-icon name="calendar_month" />
             </q-item-section>
             <q-item-section>
-              <q-item-label>월간 통계</q-item-label>
+              <!-- 이름은 원하는대로: '월간', '월간 통계' 중 택1 -->
+              <q-item-label>월간</q-item-label>
             </q-item-section>
           </q-item>
 
+          <!-- 세션 -->
           <q-item
             clickable
             v-ripple
@@ -133,7 +136,23 @@
               <q-icon name="analytics" />
             </q-item-section>
             <q-item-section>
-              <q-item-label>세션 분석</q-item-label>
+              <q-item-label>세션</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- 매장 -->
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/statistics/venue' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="leaderboard" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>매장</q-item-label>
             </q-item-section>
           </q-item>
         </q-expansion-item>
