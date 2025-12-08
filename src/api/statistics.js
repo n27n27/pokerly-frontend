@@ -24,3 +24,12 @@ export const fetchSessionStatistics = async () => {
   const res = await api.get('/statistics/sessions')
   return unwrap(res) // StatisticsSessionResponse
 }
+
+/**
+ * 매장별 통계 조회
+ * GET /api/statistics/venues
+ */
+export const fetchVenueStatistics = async () => {
+  const res = await api.get('/statistics/venues')
+  return unwrap(res) // VenueStatsResponse
+}

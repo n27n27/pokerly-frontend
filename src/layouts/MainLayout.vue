@@ -149,7 +149,7 @@
             @click="onClickMenu"
           >
             <q-item-section avatar>
-              <q-icon name="storefront" />
+              <q-icon name="leaderboard" />
             </q-item-section>
             <q-item-section>
               <q-item-label>매장</q-item-label>
