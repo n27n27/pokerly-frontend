@@ -3,7 +3,10 @@
     <div class="column q-gutter-lg" style="max-width: 1120px; margin: 0 auto">
       <!-- HEADER -->
       <div>
-        <div class="text-h5 text-weight-bold q-mb-xs">Tournament EV 계산기</div>
+        <div class="row items-center">
+          <div class="text-h5 text-weight-bold q-mb-xs">Tournament EV 계산기</div>
+          <q-badge color="orange-6" text-color="white" label="BETA" />
+        </div>
         <div class="text-body2 text-grey-7">
           바인, GTD, 엔트리 수, 필드 난이도, 할인율을 기반으로 여러 토너먼트의 기대수익(EV)을
           비교하는 도구입니다.
@@ -13,9 +16,7 @@
       <!-- MOBILE 안내 -->
       <q-banner v-if="$q.screen.xs" class="bg-grey-2 rounded-borders q-pa-sm">
         <q-icon name="smartphone" class="q-mr-sm" />
-        <span class="text-caption">
-          모바일에서는 가로 화면(랜드스케이프)에서 보시면 더 편리합니다.
-        </span>
+        <span class="text-caption"> 모바일에서는 가로 화면으로 보시면 더 편리합니다. </span>
       </q-banner>
 
       <!-- 내 실력 설정 -->
@@ -592,8 +593,7 @@ function calcEv(t) {
       rake = 1 - prizeRatioBase
     }
   } else if (t.mode === 'FIXED_PRIZE') {
-
-  /* ---------------- 고정 프라이즈 ---------------- */
+    /* ---------------- 고정 프라이즈 ---------------- */
     const fp = Number(t.fixedPrize)
     if (!fp) return invalidResult()
 
@@ -601,8 +601,7 @@ function calcEv(t) {
     overlay = 0
     rake = 1 - prizePool / totalPaid
   } else if (t.mode === 'PERCENTAGE') {
-
-  /* ---------------- 프라이즈 비율 ---------------- */
+    /* ---------------- 프라이즈 비율 ---------------- */
     const pr = Number(t.prizeRatio)
     if (pr < 0 || pr > 100) return invalidResult()
 
