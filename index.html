@@ -12,7 +12,13 @@
       content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width<% if (ctx.mode.cordova || ctx.mode.capacitor) { %>, viewport-fit=cover<% } %>"
     />
 
-    <link rel="icon" type="image/ico" href="/logo.png" />
+    <!-- 🔹 빌드 시마다 자동으로 바뀌는 버전값 -->
+    <script>
+      window.VERSION_HASH = '<%= versionHash %>'
+    </script>
+
+    <!-- 🔹 파비콘에도 버전값 붙이기 (캐시 강제 무력화) -->
+    <link rel="icon" type="image/ico" href="/logo.png?v=<%= versionHash %>" />
   </head>
   <body>
     <!-- quasar:entry-point -->
