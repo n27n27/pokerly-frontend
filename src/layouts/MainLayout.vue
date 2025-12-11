@@ -32,7 +32,6 @@
     </q-header>
 
     <!-- 사이드바 -->
-    <!-- <q-drawer v-model="leftDrawerOpen" show-if-above bordered content-class="bg-grey-1"> -->
     <q-drawer v-model="leftDrawerOpen" show-if-above bordered behavior="mobile" :width="220">
       <q-list padding>
         <!-- Dashboard -->
@@ -80,8 +79,8 @@
               <q-icon name="casino" />
             </q-item-section>
             <q-item-section>
-              <q-item-label
-                >핸드 복기
+              <q-item-label>
+                핸드 복기
                 <q-badge color="grey-6" rounded text-color="white" label="Demo" outline />
               </q-item-label>
             </q-item-section>
@@ -119,7 +118,6 @@
               <q-icon name="calendar_month" />
             </q-item-section>
             <q-item-section>
-              <!-- 이름은 원하는대로: '월간', '월간 통계' 중 택1 -->
               <q-item-label>월간</q-item-label>
             </q-item-section>
           </q-item>
@@ -159,6 +157,124 @@
 
         <q-separator spaced />
 
+        <!-- Tools -->
+        <q-expansion-item icon="calculate" label="도구" expand-icon="keyboard_arrow_down">
+          <template #header>
+            <q-item-section avatar>
+              <q-icon name="calculate" />
+            </q-item-section>
+
+            <q-item-section>
+              <q-item-label>도구</q-item-label>
+            </q-item-section>
+
+            <q-item-section side>
+              <q-badge color="orange-8" text-color="white" label="개발중" rounded class="q-ml-xs" />
+            </q-item-section>
+          </template>
+          <!-- 콜 EV 계산기 -->
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/tools/call-ev' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="functions" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>콜 EV 계산기</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- Tournament EV -->
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/tools/tournament-ev' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="emoji_events" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Tournament EV</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- Re-Entry EV -->
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/tools/reentry-ev' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="replay" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Re-Entry EV</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- Iso / 3Bet 사이즈 -->
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/tools/iso-3bet' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="compare_arrows" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Iso / 3Bet 사이즈</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- ICM 계산기 -->
+          <q-item clickable v-ripple :to="{ path: '/app/tools/icm' }" exact @click="onClickMenu">
+            <q-item-section avatar>
+              <q-icon name="account_balance_wallet" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>ICM 계산기</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- SPR 계산기 -->
+          <q-item clickable v-ripple :to="{ path: '/app/tools/spr' }" exact @click="onClickMenu">
+            <q-item-section avatar>
+              <q-icon name="waterfall_chart" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>SPR 계산기</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- Implied Odds -->
+          <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/tools/implied-odds' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="trending_up" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>Implied Odds</q-item-label>
+            </q-item-section>
+          </q-item>
+        </q-expansion-item>
+
+        <q-separator spaced />
+
         <!-- Venues -->
         <q-expansion-item icon="storefront" label="매장" expand-icon="keyboard_arrow_down">
           <q-item clickable v-ripple :to="{ path: '/app/venues/list' }" exact @click="onClickMenu">
@@ -191,13 +307,13 @@ const auth = useAuthStore()
 
 const onLogout = async () => {
   await auth.logout()
-
   router.replace('/login')
 }
 
 const onClickMenu = () => {
   leftDrawerOpen.value = false
 }
+
 onMounted(() => {
   leftDrawerOpen.value = false
 })
