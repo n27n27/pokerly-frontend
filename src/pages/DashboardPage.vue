@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md bg-grey-1">
-    <div class="dashboard-container column">
+    <div class="dashboard-container">
       <!-- ================== 상단: 월 선택 ================== -->
       <div class="row items-center justify-between q-mb-sm">
         <div class="row items-center q-gutter-xs">
