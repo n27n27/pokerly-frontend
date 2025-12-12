@@ -172,6 +172,7 @@
               <q-badge color="orange-8" text-color="white" label="개발중" rounded class="q-ml-xs" />
             </q-item-section>
           </template>
+
           <!-- 콜 EV 계산기 -->
           <q-item
             clickable
@@ -286,6 +287,24 @@
             </q-item-section>
           </q-item>
         </q-expansion-item>
+
+        <q-separator spaced />
+
+        <!-- 문의 / 피드백 (매장 밑에 단일 탭) -->
+        <q-item
+          clickable
+          v-ripple
+          :to="{ path: '/app/support/feedback' }"
+          exact
+          @click="onClickMenu"
+        >
+          <q-item-section avatar>
+            <q-icon name="chat_bubble_outline" />
+          </q-item-section>
+          <q-item-section>
+            <q-item-label>문의 / 피드백</q-item-label>
+          </q-item-section>
+        </q-item>
       </q-list>
     </q-drawer>
 

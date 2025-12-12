@@ -65,6 +65,14 @@ const routes = [
       // -------------------------------------------------
       { path: 'venues/list', component: () => import('pages/VenueListPage.vue') },
       { path: 'venues/:id', component: () => import('pages/VenueDetailPage.vue') },
+
+      // -------------------------------------------------
+      // feedback
+      // -------------------------------------------------
+      {
+        path: 'support/feedback',
+        component: () => import('pages/support/FeedbackView.vue'),
+      },
     ],
   },
 
