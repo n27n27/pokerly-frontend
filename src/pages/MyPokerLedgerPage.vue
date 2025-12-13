@@ -1,10 +1,10 @@
 <template>
-  <q-page padding class="ledger-page">
+  <q-page class="ledger-page">
     <div class="ledger-container">
       <!-- ====================== 상단 영역 ====================== -->
-      <div class="row items-center justify-between q-mb-md kpi-header">
+      <div class="kpi-header-grid kpi-header-gap">
         <!-- 좌측: 월 선택 -->
-        <div class="row items-center month-nav">
+        <div class="month-nav row items-center">
           <q-btn flat round dense icon="chevron_left" @click="shiftMonth(-1)" />
           <div class="text-h6 text-weight-bold q-mx-sm">{{ year }}년 {{ month }}월</div>
           <q-btn
@@ -18,7 +18,7 @@
         </div>
 
         <!-- 중앙: KPI 요약 -->
-        <div class="row items-center q-gutter-sm kpi-container">
+        <div class="kpi-container">
           <q-card class="kpi-card">
             <div class="kpi-label">총 바인</div>
             <div class="kpi-value">{{ money(summary.totalBuyIn) }}</div>
@@ -37,37 +37,54 @@
           </q-card>
         </div>
 
-        <!-- 우측: 세션 추가 버튼 -->
-        <q-btn
-          color="primary"
-          unelevated
-          icon="add"
-          label="세션 추가"
-          @click="openCreateDialog"
-          class="kpi-add-btn"
-        />
+        <!-- 우측: 정렬 + 세션 추가 -->
+        <div class="header-actions row items-center">
+          <q-btn
+            flat
+            dense
+            icon="sort"
+            :label="sortOrder === 'DESC' ? '최신순' : '과거순'"
+            @click="toggleSort"
+            class="sort-btn"
+          />
+
+          <q-btn
+            color="primary"
+            unelevated
+            icon="add"
+            label="세션 추가"
+            @click="openCreateDialog"
+            class="kpi-add-btn"
+          />
+        </div>
       </div>
 
-      <q-separator spaced />
+      <!-- ✅ 모바일에서는 spacer 줄이고 싶어서 조건부 spaced -->
+      <q-separator :spaced="$q.screen.gt.sm" />
 
       <!-- ====================== 리스트 ====================== -->
-      <div v-if="sessions.length === 0" class="q-mt-lg text-grey-6">
+      <div v-if="sortedSessions.length === 0" class="q-mt-lg text-grey-6">
         아직 등록된 세션이 없습니다. 오른쪽 상단의 <b>세션 추가</b> 버튼으로 첫 세션을 기록해
         보세요.
       </div>
 
       <div v-else class="q-mt-md">
         <q-list bordered separator class="rounded-borders bg-white">
-          <q-item v-for="s in sessions" :key="s.id" clickable v-ripple @click="openEditDialog(s)">
+          <q-item
+            v-for="s in sortedSessions"
+            :key="s.id"
+            clickable
+            v-ripple
+            @click="openEditDialog(s)"
+          >
             <q-item-section>
               <div class="row items-center justify-between">
                 <div class="column">
-                  <div class="row items-center q-gutter-sm">
+                  <div class="row items-center title-row">
                     <div class="text-subtitle2 text-weight-medium">
                       {{ s.displayTitle }}
                     </div>
 
-                    <!-- 게임 타입 배지는 그대로 유지 -->
                     <q-badge outline color="primary" v-if="s.gameType" class="text-caption">
                       {{ s.gameType }}
                     </q-badge>
@@ -122,7 +139,6 @@
 
               <!-- 매장 (VENUE 타입일 때만) -->
               <div class="q-mb-sm" v-if="form.sessionType === 'VENUE'">
-                <!-- 매장 리스트가 있을 때: 셀렉트 + 아래에 "매장 추가" -->
                 <template v-if="venueOptions.length > 0">
                   <q-select
                     v-model="form.venueId"
@@ -155,7 +171,6 @@
                   </div>
                 </template>
 
-                <!-- 매장 리스트가 없을 때: 안내 문구 + 등록 버튼 -->
                 <template v-else>
                   <div class="q-pa-sm bg-grey-2 rounded-borders">
                     <div class="text-caption text-grey-7 q-mb-xs">아직 등록된 매장이 없습니다.</div>
@@ -418,6 +433,7 @@ const $q = useQuasar()
 const alert = useAlert()
 const venueStore = useVenueStore()
 const gameSessionStore = useGameSessionStore()
+
 const now = new Date()
 const yyyy = now.getFullYear()
 const mm = String(now.getMonth() + 1).padStart(2, '0')
@@ -437,6 +453,12 @@ onMounted(async () => {
   await gameSessionStore.loadMonthly(year.value, month.value)
 })
 
+// ----------------------- 정렬(기본 최신순) -----------------------
+const sortOrder = ref('DESC') // 'DESC' 최신순 | 'ASC' 과거순
+const toggleSort = () => {
+  sortOrder.value = sortOrder.value === 'DESC' ? 'ASC' : 'DESC'
+}
+
 // ----------------------- 상태 -----------------------
 const venueOptions = computed(() => venueStore.venues)
 
@@ -444,8 +466,7 @@ const sessions = computed(() =>
   gameSessionStore.sessions.map((s) => {
     const isVenue = s.sessionType === 'VENUE'
     const venueName = isVenue ? venueOptions.value.find((v) => v.id === s.venueId)?.name || '' : ''
-
-    const displayTitle = isVenue ? venueName || '매장 미지정' : sessionTypeLabel(s.sessionType) // '대회', '온라인', '기타' 등
+    const displayTitle = isVenue ? venueName || '매장 미지정' : sessionTypeLabel(s.sessionType)
 
     return {
       ...s,
@@ -454,6 +475,15 @@ const sessions = computed(() =>
     }
   }),
 )
+
+const sortedSessions = computed(() => {
+  const arr = [...sessions.value]
+  arr.sort((a, b) => {
+    const cmp = a.playDate.localeCompare(b.playDate) // YYYY-MM-DD
+    return sortOrder.value === 'ASC' ? cmp : -cmp
+  })
+  return arr
+})
 
 const summary = computed(() => {
   let totalBuyIn = 0
@@ -466,11 +496,7 @@ const summary = computed(() => {
     totalProfit += s.netProfit || 0
   })
 
-  return {
-    totalBuyIn,
-    totalPrize,
-    totalProfit,
-  }
+  return { totalBuyIn, totalPrize, totalProfit }
 })
 
 const gameTypeOptions = [
@@ -510,9 +536,7 @@ const saving = ref(false)
 const deleting = ref(false)
 
 // ----------------------- 매장 다이얼로그 상태 -----------------------
-const venueDialog = reactive({
-  open: false,
-})
+const venueDialog = reactive({ open: false })
 
 const venueForm = reactive({
   name: '',
@@ -639,7 +663,6 @@ const onSaveVenue = async () => {
     }
 
     await venueStore.addVenue(newVenue)
-
     closeVenueDialog()
   } catch (e) {
     if (e.status === 409) {
@@ -654,7 +677,6 @@ const onSaveVenue = async () => {
 
 // ----------------------- 저장 로직 -----------------------
 const onSubmit = async () => {
-  // sessionType 에 따른 venueId 검증
   if (form.sessionType === 'VENUE' && !form.venueId) {
     alert.show('매장을 선택하세요.', 'warning')
     return
@@ -681,7 +703,6 @@ const onSubmit = async () => {
     return
   }
 
-  // NON-VENUE 타입에서는 venueId 를 명시적으로 null 로
   const venueIdPayload = form.sessionType === 'VENUE' ? form.venueId : null
 
   saving.value = true
@@ -725,10 +746,7 @@ const onDelete = () => {
     message: '정말 삭제하시겠습니까?',
     cancel: true,
     persistent: true,
-    ok: {
-      label: '삭제',
-      color: 'negative',
-    },
+    ok: { label: '삭제', color: 'negative' },
     cancelLabel: '취소',
   }).onOk(async () => {
     deleting.value = true
@@ -746,21 +764,16 @@ const onDelete = () => {
 }
 
 const shiftMonth = (delta) => {
-  // 미래로 가려는데 이미 오늘 기준 현재 월이면 막기
   if (delta > 0 && isAtMaxMonth.value) return
 
   const base = new Date(year.value, month.value - 1 + delta, 1)
   const nextYear = base.getFullYear()
   const nextMonth = base.getMonth() + 1
 
-  // 혹시 계산으로 미래로 넘어갈 경우 방지
-  if (nextYear > currentYear || (nextYear === currentYear && nextMonth > currentMonth)) {
-    return
-  }
+  if (nextYear > currentYear || (nextYear === currentYear && nextMonth > currentMonth)) return
 
   year.value = nextYear
   month.value = nextMonth
-
   gameSessionStore.loadMonthly(year.value, month.value)
 }
 </script>
@@ -770,10 +783,12 @@ const shiftMonth = (delta) => {
   background: #f5f7f8;
 }
 
-/* PC에서 본문 max-width 1100 */
+/* 패딩을 컨테이너에서 통일 */
 .ledger-container {
   max-width: 1100px;
   margin: 0 auto;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 .rounded-borders {
@@ -786,26 +801,34 @@ const shiftMonth = (delta) => {
 }
 
 /* ------------------------------
-   KPI 카드 영역 (완전 새 구성)
+   헤더: 3칸 그리드
 ------------------------------ */
-.kpi-header {
-  flex-wrap: wrap;
-  gap: 8px;
+.kpi-header-grid {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* 좌 월 / 중 KPI / 우 액션 */
+  align-items: center;
+  column-gap: 12px;
 }
 
-/* KPI 카드 묶음 */
+/* 헤더 아래 기본 간격 */
+.kpi-header-gap {
+  margin-bottom: 12px;
+}
+
+.month-nav {
+  justify-self: start;
+}
+
+/* ✅ KPI 3개 동일 사이즈 + 가운데 칸에서 우측 정렬(PC에서 정리된 느낌) */
 .kpi-container {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-left: 12px;
-  margin-right: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 160px);
+  gap: 10px;
+  justify-content: end;
 }
 
-/* KPI 카드 스타일 */
 .kpi-card {
-  flex: 1 1 110px; /* 최소 110px, 그 이상은 여유에 따라 */
-  max-width: 160px; /* 너무 커지는 것 방지 */
+  width: 160px;
   height: 70px;
   padding: 8px 12px;
   border-radius: 12px;
@@ -817,7 +840,6 @@ const shiftMonth = (delta) => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.07);
 }
 
-/* KPI 라벨 & 값 */
 .kpi-label {
   font-size: 12px;
   color: #666;
@@ -830,42 +852,73 @@ const shiftMonth = (delta) => {
   line-height: 1.2;
 }
 
+/* 우측 액션 */
+.header-actions {
+  justify-self: end;
+  display: flex;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.sort-btn,
+.kpi-add-btn {
+  white-space: nowrap;
+}
+
+/* 세션 타이틀 줄 간격 */
+.title-row {
+  gap: 8px;
+}
+
 /* ------------------------------
-   모바일 레이아웃 개선
+   모바일: 타이트하게
 ------------------------------ */
 @media (max-width: 767px) {
-  .kpi-header {
-    flex-direction: column;
-    align-items: stretch;
+  .ledger-container {
+    padding: 12px;
+  }
+
+  .kpi-header-grid {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+    column-gap: 0;
   }
 
   .month-nav {
+    justify-self: center;
     justify-content: center;
   }
 
   .kpi-container {
-    order: 2;
-    margin: 4px 0 8px 0;
-    justify-content: flex-start;
+    grid-template-columns: repeat(3, 1fr);
+    justify-content: stretch;
+    gap: 8px;
+  }
+
+  /* ✅ 모바일에서 KPI 카드 얇게 */
+  .kpi-card {
+    width: auto;
+    height: 58px;
+    padding: 6px 10px;
+  }
+
+  .kpi-value {
+    font-size: 16px;
+  }
+
+  /* ✅ 모바일에서 헤더 아래 여백 더 줄이기 */
+  .kpi-header-gap {
+    margin-bottom: 6px;
+  }
+
+  .header-actions {
+    justify-self: stretch;
+    justify-content: space-between;
   }
 
   .kpi-add-btn {
-    order: 3;
-    align-self: stretch;
+    flex: 0 0 auto;
   }
-}
-
-/* 초소형 스마트폰 최적화 (아이폰 SE 등) */
-@media (max-width: 480px) {
-  .kpi-card {
-    flex: 1 1 30%; /* 3개가 한 줄에 들어가려고 함 */
-    max-width: none;
-  }
-}
-
-/* 세션 추가 버튼 */
-.kpi-add-btn {
-  white-space: nowrap;
 }
 
 /* 선택 정보 블록 */
