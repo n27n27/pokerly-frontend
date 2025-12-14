@@ -1,6 +1,6 @@
 <template>
   <q-page class="q-pa-md">
-    <div class="column q-gutter-md" style="max-width: 640px; margin: 0 auto">
+    <div class="column q-gutter-y-md" style="max-width: 640px; margin: 0 auto">
       <div class="text-h5 text-weight-bold">문의 / 피드백</div>
 
       <div class="text-body1 text-grey-8">
