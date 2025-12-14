@@ -1,11 +1,14 @@
 <template>
   <q-page class="q-pa-md">
     <div class="page-wrap column q-gutter-y-lg">
-      <!-- 헤더 -->
+      <!-- HEADER -->
       <div>
-        <div class="text-h5 text-weight-bold q-mb-xs">Iso / 3Bet 사이즈 계산기</div>
+        <div class="row items-center q-gutter-sm q-mb-xs">
+          <div class="text-h5 text-weight-bold">Iso / 3Bet 사이즈 계산기</div>
+          <q-badge color="orange-6" text-color="white" label="BETA" />
+        </div>
         <div class="text-body2 text-grey-7">
-          상황(림프 / 오픈 / 스퀴즈)에 따라 표준적인 프리플랍 레이즈·3Bet·4Bet 권장 사이즈를
+          상황(Iso Raise / 3Bet / Squeeze)에 따라 표준적인 프리플랍 레이즈·3Bet·4Bet 권장 사이즈를
           계산합니다.
         </div>
       </div>
@@ -21,6 +24,9 @@
           map-options
           outlined
           dense
+          behavior="menu"
+          options-dense
+          popup-content-class="pokerly-select-menu"
         />
         <div class="text-caption text-grey-7 q-mt-sm">
           상황에 따라 입력 항목과 계산 방식이 달라집니다.
@@ -30,7 +36,7 @@
       <!-- 2) 입력 -->
       <q-card flat bordered class="q-pa-md">
         <div class="row q-col-gutter-md">
-          <!-- ISO: 림프만 있음 -->
+          <!-- ISO -->
           <template v-if="scenario === 'ISO'">
             <div class="col-12 col-sm-6">
               <q-select
@@ -41,6 +47,9 @@
                 dense
                 emit-value
                 map-options
+                behavior="menu"
+                options-dense
+                popup-content-class="pokerly-select-menu"
               />
               <div class="text-caption text-grey-7 q-mt-xs">
                 림퍼가 많을수록 멀티웨이를 피하기 위해 더 크게 레이즈하는 편입니다.
@@ -56,6 +65,9 @@
                 dense
                 emit-value
                 map-options
+                behavior="menu"
+                options-dense
+                popup-content-class="pokerly-select-menu"
               />
               <q-input
                 v-if="baseOpenMode === 'CUSTOM'"
@@ -70,12 +82,12 @@
                 hint="예: 2.2 / 2.5 / 3"
               />
               <div class="text-caption text-grey-7 q-mt-xs">
-                Iso는 ‘오픈 사이즈’가 없기 때문에 계산 편의를 위해 기준 오픈값을 사용합니다.
+                Iso는 오픈 사이즈가 없기 때문에 계산 편의를 위해 기준 오픈값을 사용합니다.
               </div>
             </div>
           </template>
 
-          <!-- 3Bet / Squeeze -->
+          <!-- 3BET / SQUEEZE -->
           <template v-else>
             <div class="col-12 col-sm-4">
               <q-select
@@ -86,6 +98,9 @@
                 dense
                 emit-value
                 map-options
+                behavior="menu"
+                options-dense
+                popup-content-class="pokerly-select-menu"
               />
               <q-input
                 v-if="openMode === 'CUSTOM'"
@@ -111,10 +126,14 @@
                 emit-value
                 map-options
                 :disable="scenario === '3BET'"
-                hint="3Bet(오픈만)에서는 콜러가 0으로 고정됩니다"
+                hint="3Bet에서는 콜러 수가 0으로 고정됩니다"
+                behavior="menu"
+                options-dense
+                popup-content-class="pokerly-select-menu"
               />
             </div>
 
+            <!-- ✅ 포지션도 q-select로 (menu 모드로 자연스럽게) -->
             <div class="col-12 col-sm-4">
               <q-select
                 v-model="position"
@@ -124,23 +143,26 @@
                 map-options
                 outlined
                 dense
+                behavior="menu"
+                options-dense
+                popup-content-class="pokerly-select-menu"
               />
               <div class="text-caption text-grey-7 q-mt-xs">
-                OOP(선 액션)에서는 상황을 단순하게 만들기 위해 더 큰 사이즈를 사용하는 것이
-                일반적입니다.
+                OOP(내가 먼저 액션)에서는 콜을 줄이고 이후 액션을 단순하게 만들기 위해 사이즈를 더
+                크게 사용하는 것이 일반적입니다.
               </div>
             </div>
           </template>
         </div>
       </q-card>
 
-      <!-- 3) 라운딩(표시 안정화 + 선택 라운딩) -->
+      <!-- 3) 라운딩 -->
       <q-card flat bordered class="q-pa-md">
         <div class="row items-center justify-between q-col-gutter-md">
           <div class="col-12 col-sm-6">
             <q-toggle v-model="roundingEnabled" label="라운딩 적용" />
             <div class="text-caption text-grey-7 q-mt-xs">
-              표시값은 항상 소수점 1자리로 정리되며, 라운딩을 켜면 0.5bb 또는 1bb 단위로 맞춥니다.
+              표시값은 소수점 1자리로 정리되며, 라운딩을 켜면 0.5bb 또는 1bb 단위로 맞춥니다.
             </div>
           </div>
 
@@ -154,6 +176,9 @@
               emit-value
               map-options
               :disable="!roundingEnabled"
+              behavior="menu"
+              options-dense
+              popup-content-class="pokerly-select-menu"
             />
           </div>
         </div>
@@ -223,7 +248,7 @@
               outlined
               dense
               placeholder="기본값: 1"
-              label="스퀴즈 추가 보정 (bb)"
+              label="Squeeze 추가 보정 (bb)"
             />
           </div>
 
@@ -235,7 +260,7 @@
               outlined
               dense
               placeholder="기본값: 1"
-              label="스퀴즈: 콜러당 추가 (bb)"
+              label="Squeeze: 콜러당 추가 (bb)"
             />
           </div>
 
@@ -304,16 +329,16 @@
             <q-card flat bordered class="q-pa-md">
               <div class="text-body2">
                 <div v-if="scenario === 'ISO'">
-                  Iso 레이즈는 림퍼들을 상대로 멀티웨이를 피하기 위한 레이즈입니다. 림퍼가 많을수록
-                  사이즈를 키우는 것이 일반적입니다.
+                  Iso Raise는 림퍼들을 상대로 멀티웨이를 피하기 위한 레이즈 액션입니다. 림퍼가
+                  많을수록 사이즈를 키우는 것이 일반적입니다.
                 </div>
                 <div v-else-if="scenario === '3BET'">
-                  3Bet은 상대 오픈 한 명을 대상으로 한 레이즈입니다. OOP에서는 콜을 줄이고 이후
-                  플레이를 단순하게 만들기 위해 더 크게 치는 편입니다.
+                  3Bet은 상대의 오픈에 대한 레이즈 액션입니다. OOP(내가 먼저 액션)에서는 콜을 줄이고
+                  이후 액션을 단순하게 만들기 위해 더 크게 치는 편입니다.
                 </div>
                 <div v-else>
-                  스퀴즈는 오픈 + 콜러가 있는 상황에서 콜러들을 내보내기 위한 레이즈입니다. 일반
-                  3Bet보다 더 큰 사이즈가 필요합니다.
+                  Squeeze는 오픈 이후 콜러가 있는 상황에서 오프너와 콜러 모두를 압박하기 위한 레이즈
+                  액션입니다. 일반 3Bet보다 더 큰 사이즈가 필요합니다.
                 </div>
               </div>
             </q-card>
@@ -325,10 +350,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import { logToolUsage } from 'src/api/tools'
 
 /* =====================
- * 1) 선택지
+ * 1) 상황/옵션
  * ===================== */
 const scenario = ref('ISO')
 const scenarioOptions = [
@@ -339,11 +365,13 @@ const scenarioOptions = [
 
 const position = ref('IP')
 const positionOptions = [
-  { label: 'IP (내가 나중에 액션)', value: 'IP' },
-  { label: 'OOP (내가 먼저 액션)', value: 'OOP' },
+  { label: 'IP (나중에 액션)', value: 'IP' },
+  { label: 'OOP (먼저 액션)', value: 'OOP' },
 ]
 
-// 오픈 사이즈: 선택 + 커스텀
+/* =====================
+ * 2) 입력(프리셋 + 직접입력)
+ * ===================== */
 const openPresets = [2, 2.2, 2.5, 2.7, 3, 3.5, 4, 5, 6, 7]
 const openMode = ref(2.2)
 const openCustom = ref(2.2)
@@ -357,15 +385,13 @@ const openModeOptions = computed(() => {
   return presetOpts
 })
 
-// 콜러 수: 0~9
+// 콜러 0~9
 const callerOptions = Array.from({ length: 10 }, (_, i) => ({ label: String(i), value: i }))
+// 림퍼 1~9
 const limperOptions = Array.from({ length: 10 }, (_, i) => ({ label: String(i), value: i })).slice(
   1,
-) // 1~9
+)
 
-/* =====================
- * 2) 입력값
- * ===================== */
 const callers = ref(0)
 const limpers = ref(1)
 
@@ -380,7 +406,7 @@ const roundUnitOptions = [
 ]
 
 /* =====================
- * 4) 고급 설정(placeholder만) - 내부 기본값은 코드에서 적용
+ * 4) 고급 설정(placeholder만, 내부 기본값 적용)
  * ===================== */
 const isoMult = ref(null) // 기본 3
 const callerAdd = ref(null) // 기본 1.5
@@ -399,10 +425,8 @@ const num = (v, fallback = 0) => {
   return Number.isFinite(n) ? n : fallback
 }
 
-// 1) 표시 안정화(항상 적용): 소수점 쓰레기 제거 -> 1자리
 const normalize = (v) => Math.round(num(v, 0) * 10) / 10
 
-// 2) 옵션 라운딩(선택 적용): 0.5 / 1 단위
 const applyRounding = (v) => {
   const n = normalize(v)
   if (!roundingEnabled.value) return n
@@ -418,7 +442,7 @@ const fmtBb = (v) => {
 }
 
 /* =====================
- * 6) 실제 오픈값/기준오픈값 계산
+ * 6) 실제 오픈/기준오픈 값
  * ===================== */
 const openSize = computed(() => {
   const v = openMode.value === 'CUSTOM' ? openCustom.value : openMode.value
@@ -430,13 +454,13 @@ const baseOpen = computed(() => {
   return num(v, 2.5)
 })
 
-// 3BET(오픈만)에서는 콜러는 0으로 고정되게 UX 보장
+// 3BET에서는 콜러 0 고정
 watch(scenario, (s) => {
   if (s === '3BET') callers.value = 0
 })
 
 /* =====================
- * 7) 계산 로직
+ * 7) 공식 기본값
  * ===================== */
 const defaults = computed(() => ({
   isoMult: isoMult.value ?? 3,
@@ -449,22 +473,23 @@ const defaults = computed(() => ({
   fourOOP: fourBetMultOOP.value ?? 2.3,
 }))
 
+/* =====================
+ * 8) 계산
+ * ===================== */
 const primarySizeRaw = computed(() => {
   const d = defaults.value
 
   if (scenario.value === 'ISO') {
-    // Iso: 기준오픈 × 배수 + 림퍼수 × 추가
     return baseOpen.value * d.isoMult + num(limpers.value, 1) * d.callerAdd
   }
 
   const mult = position.value === 'OOP' ? d.threeOOP : d.threeIP
 
   if (scenario.value === '3BET') {
-    // 3Bet: 오픈 × 배수 (콜러 없음)
     return openSize.value * mult
   }
 
-  // SQUEEZE: 오픈 × 배수 + 콜러수 × 추가 + 스퀴즈 보정
+  // SQUEEZE
   return openSize.value * mult + num(callers.value, 0) * d.threeCallerAdd + d.squeezeExtra
 })
 
@@ -477,19 +502,21 @@ const fourBetSize = computed(() => {
 })
 
 /* =====================
- * 8) 라벨/공식 표시
+ * 9) 라벨/공식 문자열
  * ===================== */
 const primaryLabel = computed(() => {
   if (scenario.value === 'ISO') return '권장 Iso 레이즈'
   if (scenario.value === '3BET') return '권장 3Bet 사이즈'
-  return '권장 스퀴즈(3Bet) 사이즈'
+  return '권장 Squeeze(3Bet) 사이즈'
 })
 
 const primaryFormula = computed(() => {
   const d = defaults.value
+
   if (scenario.value === 'ISO') {
     return `기준오픈(${normalize(baseOpen.value)}bb) × ${d.isoMult} + 림퍼(${limpers.value}) × ${d.callerAdd}bb`
   }
+
   const mult = position.value === 'OOP' ? d.threeOOP : d.threeIP
 
   if (scenario.value === '3BET') {
@@ -504,11 +531,57 @@ const fourBetFormula = computed(() => {
   const mult = position.value === 'OOP' ? d.fourOOP : d.fourIP
   return `3Bet(${normalize(primarySize.value)}bb) × ${mult}`
 })
+
+/* =====================
+ * 10) 사용 로그(통계용)
+ * - OPEN: 페이지 진입 1회
+ * - CALCULATE: "초기 렌더링 제외" + "결과값이 실제로 변한 첫 순간"에 1회
+ * ===================== */
+const isValid = computed(() => {
+  if (scenario.value === 'ISO') {
+    return num(limpers.value, 0) > 0 && num(baseOpen.value, 0) > 0
+  }
+  const openOk = num(openSize.value, 0) > 0
+  const callersOk = scenario.value === '3BET' ? true : num(callers.value, 0) >= 0
+  return openOk && callersOk
+})
+
+onMounted(() => {
+  logToolUsage('ISO_3BET', 'OPEN')
+})
+
+const loggedCalc = ref(false)
+
+watch(
+  primarySizeRaw,
+  (now, prev) => {
+    if (loggedCalc.value) return
+    if (prev === undefined) return // 초기 렌더링 제외
+    if (now === prev) return
+    if (!isValid.value) return
+
+    loggedCalc.value = true
+    logToolUsage('ISO_3BET', 'CALCULATE')
+  },
+  { immediate: true },
+)
 </script>
 
 <style scoped>
 .page-wrap {
   max-width: 1120px;
   margin: 0 auto;
+}
+
+/* q-select 옵션 메뉴(팝업) 스타일 */
+.pokerly-select-menu {
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
+  padding: 6px 0;
+  max-width: min(520px, 92vw);
+}
+
+.pokerly-select-menu .q-item {
+  min-height: 38px;
 }
 </style>
