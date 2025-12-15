@@ -8,13 +8,22 @@
           <q-badge color="orange-6" text-color="white" label="BETA" />
         </div>
         <div class="text-body2 text-grey-7">
-          팟 크기, 콜 금액, 아웃 수를 기반으로 이 콜이 장기적으로 +EV인지 계산합니다.
+          팟 크기, 콜 금액, 아웃 수를 기반으로 “지금 이 콜”이 장기적으로 +EV인지 계산합니다.
         </div>
       </div>
 
       <!-- 입력 카드 -->
       <q-card flat bordered class="q-pa-md full-width calculator-card">
-        <div class="text-subtitle1 text-weight-bold q-mb-sm">입력 값</div>
+        <div class="row items-center justify-between q-mb-sm">
+          <div class="text-subtitle1 text-weight-bold">입력 값</div>
+          <q-btn
+            unelevated
+            color="primary"
+            icon="calculate"
+            label="계산하기"
+            @click="onCalculate"
+          />
+        </div>
 
         <!-- 팟 / 콜 / 아웃 -->
         <div class="row q-col-gutter-md q-mb-md">
@@ -57,6 +66,22 @@
           </div>
         </div>
 
+        <!-- 올인/무료 확정 -->
+        <div class="row items-center q-col-gutter-md q-mb-sm">
+          <div class="col-12 col-sm-6">
+            <q-toggle
+              v-model="twoCardsGuaranteed"
+              label="올인/무료로 2장 확정 (추가 결정 없음)"
+              color="primary"
+              dense
+            />
+          </div>
+          <div class="col-12 col-sm-6 text-caption text-grey-6">
+            <b>기본은 1장(턴)</b> 기준입니다. 턴이 공짜가 아니라면 플랍 콜을 2장 확률로 판단하면 안
+            됩니다.
+          </div>
+        </div>
+
         <!-- 남은 카드 수 -->
         <div class="row q-col-gutter-md items-center">
           <div class="col-12 col-sm-6">
@@ -68,13 +93,27 @@
               emit-value
               map-options
               label="남은 카드 수"
+              :disable="twoCardsGuaranteed"
             />
           </div>
+
           <div class="col-12 col-sm-6 text-caption text-grey-6">
-            대부분 플랍에서 계산하므로 기본값은 <b>2장(턴+리버)</b>입니다.<br />
-            턴에서 콜을 고민 중이면 1장을 선택하세요.
+            <div v-if="twoCardsGuaranteed">
+              올인/무료 카드로 <b>턴+리버(2장)</b>이 확정되어 2장 확률로 계산합니다.
+            </div>
+            <div v-else>플랍에서 콜이나 리버에서 콜은 1장 확률로 계산합니다.</div>
           </div>
         </div>
+
+        <q-banner v-if="errorMsg" dense rounded class="q-mt-md" inline-actions>
+          <template #avatar>
+            <q-icon name="error_outline" />
+          </template>
+          <div class="text-body2">{{ errorMsg }}</div>
+          <template #action>
+            <q-btn flat label="닫기" @click="errorMsg = ''" />
+          </template>
+        </q-banner>
       </q-card>
 
       <!-- 결과 카드 -->
@@ -83,33 +122,35 @@
           <div class="text-subtitle1 text-weight-bold">결과</div>
 
           <q-chip
-            v-if="isValid"
-            :color="isPlusEv ? 'positive' : 'negative'"
+            v-if="result.ready"
+            :color="result.isPlusEv ? 'positive' : 'negative'"
             text-color="white"
-            :icon="isPlusEv ? 'trending_up' : 'trending_down'"
+            :icon="result.isPlusEv ? 'trending_up' : 'trending_down'"
             class="status-chip"
           >
-            {{ isPlusEv ? '+EV 콜' : '-EV 콜' }}
+            {{ result.isPlusEv ? '+EV 콜' : '-EV 콜' }}
           </q-chip>
         </div>
 
-        <div v-if="!isValid" class="text-grey-7 text-body2">
-          팟, 콜 금액, 아웃 수를 모두 0보다 크게 입력하면 결과가 표시됩니다.
+        <div v-if="!result.ready" class="text-grey-7 text-body2">
+          값을 입력하고 <b>계산하기</b>를 눌러주세요.
         </div>
 
         <div v-else class="column q-gutter-sm">
           <div class="result-row">
             <span class="label">필요 승률 (팟 오즈)</span>
-            <span class="value">{{ potOddsPercent }} %</span>
+            <span class="value">{{ result.potOddsPercent }} %</span>
           </div>
 
           <div class="result-row">
             <span class="label">실제 승률 (아웃 기반)</span>
             <span
               class="value"
-              :class="actualEquity >= requiredEquity ? 'text-positive' : 'text-negative'"
+              :class="
+                result.actualEquity >= result.requiredEquity ? 'text-positive' : 'text-negative'
+              "
             >
-              {{ actualEquityPercent }} %
+              {{ result.actualEquityPercent }} %
             </span>
           </div>
 
@@ -117,14 +158,12 @@
 
           <div class="result-row">
             <span class="label">콜 EV</span>
-            <span class="value" :class="evPerCall > 0 ? 'text-positive' : 'text-negative'">
-              {{ formattedEvPerCall }} 칩
+            <span class="value" :class="result.evPerCall > 0 ? 'text-positive' : 'text-negative'">
+              {{ result.formattedEvPerCall }} 칩
             </span>
           </div>
 
-          <div class="text-caption text-grey-6 q-mt-sm">
-            EV = 승률 × (팟 + 콜 금액) − (1 − 승률) × 콜 금액
-          </div>
+          <div class="text-caption text-grey-6 q-mt-sm">EV = 승률 × (팟 + 콜 금액) − 콜 금액</div>
         </div>
       </q-card>
 
@@ -134,7 +173,8 @@
         <div class="text-body2 text-grey-7">
           • <b>필요 승률</b> = 콜 금액 ÷ (현재 팟 + 콜 금액)<br />
           • <b>실제 승률</b>은 아웃 수와 남은 카드 수에 따라 조합식으로 계산합니다.<br />
-          • 이 계산기는 순수 콜 EV만 다루며, 임플라이드 오즈 / 레이크는 포함하지 않습니다.
+          • 이 계산기는 <b>순수 콜 EV</b>만 다루며, 임플라이드 오즈/턴에서 추가 콜 비용은 포함하지
+          않습니다.
         </div>
       </q-card>
     </div>
@@ -142,96 +182,123 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { logToolUsage } from 'src/api/tools'
 
-/* ================= 기본 상태 ================= */
+/* ================= 입력 상태 ================= */
 
-const potSize = ref(null) // 현재 팟
-const callAmount = ref(null) // 콜 금액
-const outs = ref(null) // 아웃 수
+const potSize = ref(null)
+const callAmount = ref(null)
+const outs = ref(null)
 
-// 기본값: 플랍 기준 2장 (턴+리버)
-const cardsToCome = ref(2)
+// 기본: 1장(턴 한 장) 기준
+const cardsToCome = ref(1)
 const cardsOptions = [
-  { label: '2장 (턴 + 리버)', value: 2 },
-  { label: '1장 (리버만 남음)', value: 1 },
+  { label: '1장 (턴 한 장)', value: 1 },
+  { label: '2장 (턴 + 리버, 확정일 때만)', value: 2 },
 ]
 
-/* ================= Validation ================= */
+const twoCardsGuaranteed = ref(false)
 
-const isValid = computed(() => {
+const errorMsg = ref('')
+
+/* ================= 결과 스냅샷 ================= */
+
+const result = ref({
+  ready: false,
+  requiredEquity: 0,
+  actualEquity: 0,
+  potOddsPercent: '0.0',
+  actualEquityPercent: '0.0',
+  evPerCall: 0,
+  formattedEvPerCall: '0',
+  isPlusEv: false,
+})
+
+/* ================= 통계 ================= */
+
+onMounted(() => {
+  logToolUsage('CALL_EV', 'OPEN').catch(() => {})
+})
+
+/* ================= helpers ================= */
+
+const clamp = (n, min, max) => Math.max(min, Math.min(max, n))
+
+const isValidInput = () => {
   const pot = Number(potSize.value)
   const call = Number(callAmount.value)
   const o = Number(outs.value)
-
   return pot > 0 && call > 0 && o > 0
+}
+
+const calcRequiredEquity = (pot, call) => {
+  // call / (pot + call)
+  const denom = pot + call
+  if (denom <= 0) return 1
+  return call / denom
+}
+
+const calcActualEquity = (outsValue, cards) => {
+  // 조합 기반 (정확):
+  // 1장: outs/47
+  // 2장: 1 - ((47-outs)/47 * (46-outs)/46)
+  const o = clamp(Number(outsValue), 0, 46)
+
+  if (cards === 1) return o / 47
+
+  const missTurn = (47 - o) / 47
+  const missRiver = (46 - o) / 46
+  return 1 - missTurn * missRiver
+}
+
+const calcEvPerCall = (pot, call, eq) => {
+  // EV = eq*(pot+call) - call
+  return eq * (pot + call) - call
+}
+
+/* ================= UX: 2장 확정 토글이면 2장 고정 ================= */
+
+watch(twoCardsGuaranteed, (v) => {
+  if (v) cardsToCome.value = 2
+  else cardsToCome.value = 1
 })
 
-/* ================= 계산 로직 ================= */
+/* ================= actions ================= */
 
-// 필요 승률 (팟 오즈)
-const requiredEquity = computed(() => {
-  if (!isValid.value) return 0
-  const pot = Number(potSize.value)
-  const call = Number(callAmount.value)
-  return call / (pot + call)
-})
+const onCalculate = () => {
+  errorMsg.value = ''
 
-// 실제 승률 (아웃 기반)
-// 1장: outs / 47
-// 2장: 1 - ((47 - outs)/47 * (46 - outs)/46)
-const actualEquity = computed(() => {
-  if (!isValid.value) return 0
-  const o = Math.max(0, Math.min(Number(outs.value), 46))
-
-  if (cardsToCome.value === 1) {
-    return o / 47
-  } else {
-    const missTurn = (47 - o) / 47
-    const missRiver = (46 - o) / 46
-    return 1 - missTurn * missRiver
+  if (!isValidInput()) {
+    result.value.ready = false
+    errorMsg.value = '팟, 콜 금액, 아웃 수를 모두 0보다 크게 입력해 주세요.'
+    return
   }
-})
 
-const potOddsPercent = computed(() => (requiredEquity.value * 100).toFixed(1))
-
-const actualEquityPercent = computed(() => (actualEquity.value * 100).toFixed(1))
-
-// EV = equity * (pot + call) - (1 - equity) * call
-const evPerCall = computed(() => {
-  if (!isValid.value) return 0
   const pot = Number(potSize.value)
   const call = Number(callAmount.value)
-  const eq = actualEquity.value
+  const o = Number(outs.value)
+  const cards = Number(cardsToCome.value)
 
-  return eq * (pot + call) - (1 - eq) * call
-})
+  const required = calcRequiredEquity(pot, call)
+  const actual = calcActualEquity(o, cards)
+  const ev = calcEvPerCall(pot, call, actual)
+  const isPlus = ev > 0
 
-const formattedEvPerCall = computed(() => Math.round(evPerCall.value).toLocaleString())
+  result.value = {
+    ready: true,
+    requiredEquity: required,
+    actualEquity: actual,
+    potOddsPercent: (required * 100).toFixed(1),
+    actualEquityPercent: (actual * 100).toFixed(1),
+    evPerCall: ev,
+    formattedEvPerCall: Math.round(ev).toLocaleString(),
+    isPlusEv: isPlus,
+  }
 
-const isPlusEv = computed(() => evPerCall.value > 0)
-
-/* ================= 사용 로그 (통계용) ================= */
-
-// 페이지 진입 시 1회
-onMounted(() => {
-  logToolUsage('CALL_EV', 'OPEN')
-})
-
-// 처음으로 유효한 계산이 발생했을 때 1회
-const loggedCalc = ref(false)
-
-watch(
-  [isValid, potSize, callAmount, outs, cardsToCome],
-  () => {
-    if (isValid.value && !loggedCalc.value) {
-      loggedCalc.value = true
-      logToolUsage('CALL_EV', 'CALCULATE')
-    }
-  },
-  { deep: false },
-)
+  // 통계: 버튼 클릭 시에만
+  logToolUsage('CALL_EV', 'CALCULATE').catch(() => {})
+}
 </script>
 
 <style scoped>
