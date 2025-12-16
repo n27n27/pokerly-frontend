@@ -5,7 +5,6 @@
       <div>
         <div class="row items-center q-gutter-sm q-mb-xs">
           <div class="text-h5 text-weight-bold">콜 EV 계산기</div>
-          <q-badge color="orange-6" text-color="white" label="BETA" />
         </div>
         <div class="text-body2 text-grey-7">
           팟 크기, 콜 금액, 아웃 수를 기반으로 “지금 이 콜”이 장기적으로 +EV인지 계산합니다.
@@ -94,6 +93,7 @@
               map-options
               label="남은 카드 수"
               :disable="twoCardsGuaranteed"
+              behavior="menu"
             />
           </div>
 

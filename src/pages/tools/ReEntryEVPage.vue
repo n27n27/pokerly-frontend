@@ -5,7 +5,6 @@
       <div class="q-mb-sm">
         <div class="row items-center q-gutter-sm q-mb-xs">
           <div class="text-h5 text-weight-bold">Re-Entry EV 계산기</div>
-          <q-badge color="amber-8" text-color="white" label="BETA" />
         </div>
         <div class="text-body2 text-grey-7">
           지금 이 시점에 <span class="text-weight-medium">리엔트리를 넣는 게 괜찮은 선택인지</span>

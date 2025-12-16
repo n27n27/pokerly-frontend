@@ -5,7 +5,6 @@
       <div>
         <div class="row items-center q-gutter-sm q-mb-xs">
           <div class="text-h5 text-weight-bold">ICM 계산기</div>
-          <q-badge color="amber-8" text-color="white" label="BETA" rounded />
         </div>
         <div class="text-body2 text-grey-7">
           남은 상금(1등부터)과 스택을 입력하면 각 순위의 결과(ICM 기대값)를 계산합니다.

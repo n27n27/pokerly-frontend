@@ -169,7 +169,7 @@
             </q-item-section>
 
             <q-item-section side>
-              <q-badge color="orange-8" text-color="white" label="개발중" rounded class="q-ml-xs" />
+              <q-badge color="orange-8" text-color="white" label="BETA" rounded class="q-ml-xs" />
             </q-item-section>
           </template>
 

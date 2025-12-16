@@ -5,7 +5,6 @@
       <div>
         <div class="row items-center">
           <div class="text-h5 text-weight-bold q-mb-xs">Tournament EV 계산기</div>
-          <q-badge color="orange-6" text-color="white" label="BETA" />
         </div>
         <div class="text-body2 text-grey-7">
           바인, GTD, 엔트리 수, 필드 난이도, 할인율을 기반으로 여러 토너먼트의 기대수익(EV)을
