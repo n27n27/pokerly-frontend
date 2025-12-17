@@ -66,6 +66,9 @@
             <div class="text-caption text-grey-6 q-mb-sm">
               매장 토너 / 메이저 대회 / 온라인 등 타입별로 몇 번 쳤고, 얼마나 벌었는지 정리한
               표입니다.
+              <span v-if="$q.screen.lt.sm" class="text-grey-7">
+                (모바일 세로 화면에서는 핵심 지표만 표시됩니다.)
+              </span>
             </div>
 
             <q-separator />
@@ -78,22 +81,26 @@
               flat
               dense
               hide-pagination
+              class="q-mt-sm"
             >
               <template #body-cell-totalProfit="props">
-                <q-td :props="props">
-                  {{ formatMoney(props.row.totalProfit) }}
+                <q-td :props="props" :class="profitTextClass(props.row.totalProfit)">
+                  {{ formatSigned(props.row.totalProfit) }}
                 </q-td>
               </template>
+
               <template #body-cell-totalBuyIn="props">
                 <q-td :props="props">
                   {{ formatMoney(props.row.totalBuyIn) }}
                 </q-td>
               </template>
+
               <template #body-cell-roi="props">
-                <q-td :props="props">
+                <q-td :props="props" :class="roiTextClass(props.row.roi)">
                   {{ formatPercent(props.row.roi) }}
                 </q-td>
               </template>
+
               <template #body-cell-itmRatio="props">
                 <q-td :props="props">
                   {{ formatPercent(props.row.itmRatio * 100) }}
@@ -102,51 +109,6 @@
             </q-table>
 
             <div v-else class="q-pa-md text-grey-6 text-caption">데이터가 없습니다.</div>
-          </q-card-section>
-        </q-card>
-
-        <!-- 매장별 손익 (Top 3) -->
-        <q-card flat bordered class="bg-white q-mb-md">
-          <q-card-section>
-            <div class="text-subtitle1 text-weight-medium q-mb-xs">매장별 손익 (Top 3)</div>
-            <div class="text-caption text-grey-6 q-mb-sm">
-              누적 손익 기준 상위 3개 매장을 보여줍니다. (마이너스 매장도 포함)
-            </div>
-
-            <q-separator />
-
-            <q-table
-              v-if="byVenue && byVenue.length"
-              :rows="byVenue"
-              :columns="venueColumns"
-              row-key="venueId"
-              flat
-              dense
-              hide-pagination
-            >
-              <template #body-cell-totalProfit="props">
-                <q-td :props="props">
-                  {{ formatMoney(props.row.totalProfit) }}
-                </q-td>
-              </template>
-              <template #body-cell-totalBuyIn="props">
-                <q-td :props="props">
-                  {{ formatMoney(props.row.totalBuyIn) }}
-                </q-td>
-              </template>
-              <template #body-cell-roi="props">
-                <q-td :props="props">
-                  {{ formatPercent(props.row.roi) }}
-                </q-td>
-              </template>
-              <template #body-cell-itmRatio="props">
-                <q-td :props="props">
-                  {{ formatPercent(props.row.itmRatio * 100) }}
-                </q-td>
-              </template>
-            </q-table>
-
-            <div v-else class="q-pa-md text-grey-6 text-caption">표기할 매장이 없습니다.</div>
           </q-card-section>
         </q-card>
 
@@ -216,9 +178,31 @@
 
                 <q-separator class="q-mb-sm" />
 
-                <div v-if="topSessions && topSessions.length">
-                  <SessionListCard v-for="s in topSessions" :key="s.id" :session="s" />
+                <div v-if="topSessions && topSessions.length" class="q-gutter-y-sm">
+                  <div v-for="s in topSessions" :key="s.id">
+                    <!-- ✅ 배지 헤더 -->
+                    <div class="row items-center q-mb-xs">
+                      <q-badge outline color="primary" class="q-mr-xs">
+                        {{ sessionTypeLabel(s.sessionType) }}
+                      </q-badge>
+
+                      <!-- (선택) 콜라보 배지: 백엔드가 isCollab/collabLabel 내려주면 바로 활성화 -->
+                      <q-badge
+                        v-if="s.isCollab"
+                        color="deep-orange"
+                        text-color="white"
+                        class="q-mr-xs"
+                      >
+                        {{ s.collabLabel ? `콜라보 · ${s.collabLabel}` : '콜라보' }}
+                      </q-badge>
+
+                      <q-space />
+                    </div>
+
+                    <SessionListCard :session="s" />
+                  </div>
                 </div>
+
                 <div v-else class="q-pa-md text-grey-6 text-caption">표시할 세션이 없습니다.</div>
               </q-card-section>
             </q-card>
@@ -236,9 +220,31 @@
 
                 <q-separator class="q-mb-sm" />
 
-                <div v-if="worstSessions && worstSessions.length">
-                  <SessionListCard v-for="s in worstSessions" :key="s.id" :session="s" />
+                <div v-if="worstSessions && worstSessions.length" class="q-gutter-y-sm">
+                  <div v-for="s in worstSessions" :key="s.id">
+                    <!-- ✅ 배지 헤더 -->
+                    <div class="row items-center q-mb-xs">
+                      <q-badge outline color="primary" class="q-mr-xs">
+                        {{ sessionTypeLabel(s.sessionType) }}
+                      </q-badge>
+
+                      <!-- (선택) 콜라보 배지 -->
+                      <q-badge
+                        v-if="s.isCollab"
+                        color="deep-orange"
+                        text-color="white"
+                        class="q-mr-xs"
+                      >
+                        {{ s.collabLabel ? `콜라보 · ${s.collabLabel}` : '콜라보' }}
+                      </q-badge>
+
+                      <q-space />
+                    </div>
+
+                    <SessionListCard :session="s" />
+                  </div>
                 </div>
+
                 <div v-else class="q-pa-md text-grey-6 text-caption">표시할 세션이 없습니다.</div>
               </q-card-section>
             </q-card>
@@ -252,12 +258,14 @@
 <script setup>
 import { onMounted, computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { useQuasar } from 'quasar'
 import { useStatisticsSessionStore } from 'src/stores/statisticsSessionStore'
 
 import KpiCard from 'src/components/statistics/KpiCard.vue'
 import ConditionTable from 'src/components/statistics/ConditionTable.vue'
 import SessionListCard from 'src/components/statistics/SessionListCard.vue'
 
+const $q = useQuasar()
 const store = useStatisticsSessionStore()
 
 const {
@@ -265,7 +273,6 @@ const {
   error,
   summary,
   byType,
-  byVenue,
   itmPattern,
   conditionAnalysis,
   topSessions,
@@ -278,8 +285,39 @@ onMounted(() => {
   load()
 })
 
-// ----- 테이블 컬럼 -----
-const typeColumns = [
+// ----- 타입 라벨 변환 -----
+function translateType(type) {
+  switch (type) {
+    case 'VENUE':
+      return '매장 토너'
+    case 'MAJOR':
+      return '메이저 대회'
+    case 'ONLINE':
+      return '온라인'
+    case 'OTHER':
+      return '기타'
+    case 'UNKNOWN':
+      return '미분류'
+    default:
+      return type || '기타'
+  }
+}
+
+function sessionTypeLabel(type) {
+  // Top/Worst 배지용 (SimpleSession.sessionType)
+  return translateType(type)
+}
+
+// 타입 rows 매핑
+const mappedTypeRows = computed(() =>
+  (byType.value ?? []).map((row) => ({
+    ...row,
+    typeLabel: translateType(row.type),
+  })),
+)
+
+// ----- 테이블 컬럼: 모바일 세로는 compact -----
+const typeColumnsFull = [
   { name: 'typeLabel', label: '타입', field: 'typeLabel', align: 'left' },
   { name: 'sessions', label: '세션 수', field: 'sessions', align: 'right' },
   { name: 'totalBuyIn', label: '총 바인', field: 'totalBuyIn', align: 'right' },
@@ -289,35 +327,14 @@ const typeColumns = [
   { name: 'itmRatio', label: 'ITM 비율', field: 'itmRatio', align: 'right' },
 ]
 
-const venueColumns = [
-  { name: 'venueName', label: '매장', field: 'venueName', align: 'left' },
-  { name: 'sessions', label: '세션 수', field: 'sessions', align: 'right' },
-  { name: 'totalBuyIn', label: '총 바인', field: 'totalBuyIn', align: 'right' },
-  { name: 'totalProfit', label: '총 손익', field: 'totalProfit', align: 'right' },
+const typeColumnsCompact = [
+  { name: 'typeLabel', label: '타입', field: 'typeLabel', align: 'left' },
+  { name: 'sessions', label: '세션', field: 'sessions', align: 'right' },
+  { name: 'totalProfit', label: '손익', field: 'totalProfit', align: 'right' },
   { name: 'roi', label: 'ROI', field: 'roi', align: 'right' },
-  { name: 'itmRatio', label: 'ITM 비율', field: 'itmRatio', align: 'right' },
 ]
 
-// 타입 라벨 변환
-const mappedTypeRows = computed(() =>
-  (byType.value ?? []).map((row) => ({
-    ...row,
-    typeLabel: translateType(row.type),
-  })),
-)
-
-function translateType(type) {
-  switch (type) {
-    case 'VENUE':
-      return '매장 토너'
-    case 'MAJOR':
-      return '메이저 대회'
-    case 'ONLINE':
-      return '온라인'
-    default:
-      return type || '기타'
-  }
-}
+const typeColumns = computed(() => ($q.screen.lt.sm ? typeColumnsCompact : typeColumnsFull))
 
 // ----- 포맷터 -----
 function formatMoney(v) {
@@ -335,6 +352,20 @@ function formatSigned(v) {
 function formatPercent(v) {
   if (typeof v !== 'number') return '-'
   return `${v.toFixed(1)}%`
+}
+
+function profitTextClass(v) {
+  const n = Number(v) || 0
+  if (n > 0) return 'text-positive'
+  if (n < 0) return 'text-negative'
+  return 'text-grey-7'
+}
+
+function roiTextClass(v) {
+  const n = Number(v) || 0
+  if (n > 0) return 'text-positive'
+  if (n < 0) return 'text-negative'
+  return 'text-grey-7'
 }
 </script>
 

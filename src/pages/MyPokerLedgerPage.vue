@@ -152,56 +152,83 @@
 
               <!-- 매장 (VENUE 타입일 때만) -->
               <div class="q-mb-sm" v-if="form.sessionType === 'VENUE'">
-                <template v-if="venueOptions.length > 0">
-                  <q-select
-                    v-model="form.venueId"
-                    :options="venueOptions"
-                    option-value="id"
-                    option-label="name"
-                    emit-value
-                    map-options
-                    label="매장"
-                    filled
-                    dense
-                    color="primary"
-                    :rules="[(v) => !!v || '매장을 선택하세요.']"
-                    behavior="menu"
-                  />
+                <!-- ✅ 단독 / 콜라보 선택 -->
+                <q-option-group
+                  v-model="form.isCollab"
+                  :options="collabOptions"
+                  type="radio"
+                  inline
+                  color="primary"
+                  class="q-mb-sm"
+                />
 
-                  <div class="row items-center q-mt-xs">
-                    <q-space />
-                    <q-btn
-                      flat
+                <!-- ✅ 콜라보 라벨 (콜라보일 때만) -->
+                <q-input
+                  v-if="form.isCollab"
+                  v-model="form.collabLabel"
+                  label="콜라보 이름"
+                  filled
+                  dense
+                  color="primary"
+                  placeholder="예: 로이스 + 키키"
+                  :rules="[(v) => !!(v && String(v).trim()) || '콜라보 이름을 입력하세요.']"
+                />
+
+                <!-- ✅ 단독일 때만 매장 선택 -->
+                <template v-if="!form.isCollab">
+                  <template v-if="venueOptions.length > 0">
+                    <q-select
+                      v-model="form.venueId"
+                      :options="venueOptions"
+                      option-value="id"
+                      option-label="name"
+                      emit-value
+                      map-options
+                      label="매장"
+                      filled
                       dense
-                      no-caps
-                      size="sm"
-                      icon="add_business"
                       color="primary"
-                      class="text-caption"
-                      @click="openVenueDialog"
-                    >
-                      <span class="q-ml-xs">새 매장 등록</span>
-                    </q-btn>
-                  </div>
-                </template>
+                      :rules="[(v) => !!v || '매장을 선택하세요.']"
+                      behavior="menu"
+                    />
 
-                <template v-else>
-                  <div class="q-pa-sm bg-grey-2 rounded-borders">
-                    <div class="text-caption text-grey-7 q-mb-xs">아직 등록된 매장이 없습니다.</div>
-                    <div class="row items-center justify-between">
-                      <div class="text-caption text-grey-6">
-                        먼저 매장을 등록한 뒤 세션을 추가할 수 있습니다.
-                      </div>
+                    <div class="row items-center q-mt-xs">
+                      <q-space />
                       <q-btn
+                        flat
                         dense
                         no-caps
-                        color="primary"
+                        size="sm"
                         icon="add_business"
-                        label="매장 등록"
+                        color="primary"
+                        class="text-caption"
                         @click="openVenueDialog"
-                      />
+                      >
+                        <span class="q-ml-xs">새 매장 등록</span>
+                      </q-btn>
                     </div>
-                  </div>
+                  </template>
+
+                  <template v-else>
+                    <div class="q-pa-sm bg-grey-2 rounded-borders">
+                      <div class="text-caption text-grey-7 q-mb-xs">
+                        아직 등록된 매장이 없습니다.
+                      </div>
+                      <div class="row items-center justify-between">
+                        <div class="text-caption text-grey-6">
+                          먼저 매장을 등록한 뒤 세션을 추가할 수 있습니다.
+                        </div>
+                        <q-btn
+                          dense
+                          no-caps
+                          color="primary"
+                          icon="add_business"
+                          label="매장 등록"
+                          @click="openVenueDialog"
+                        />
+                      </div>
+                    </div>
+                  </template>
                 </template>
               </div>
 
@@ -436,7 +463,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useAlert } from 'src/composables/useAlert'
 import { useVenueStore } from 'stores/venue'
 import { useGameSessionStore } from 'src/stores/gameSession'
@@ -493,7 +520,12 @@ const sessions = computed(() =>
   gameSessionStore.sessions.map((s) => {
     const isVenue = s.sessionType === 'VENUE'
     const venueName = isVenue ? venueOptions.value.find((v) => v.id === s.venueId)?.name || '' : ''
-    const displayTitle = isVenue ? venueName || '매장 미지정' : sessionTypeLabel(s.sessionType)
+    const isCollab = !!s.isCollab
+    const displayTitle = isVenue
+      ? isCollab
+        ? `[콜라보] ${s.collabLabel || '콜라보'}`
+        : venueName || '매장 미지정'
+      : sessionTypeLabel(s.sessionType)
 
     return {
       ...s,
@@ -546,6 +578,11 @@ const sessionTypeOptions = [
   { label: '기타', value: 'OTHER' },
 ]
 
+const collabOptions = [
+  { label: '단독', value: false },
+  { label: '콜라보', value: true },
+]
+
 const dialog = reactive({
   open: false,
   mode: 'create', // 'create' | 'edit'
@@ -564,6 +601,8 @@ const form = reactive({
   gtdAmount: null,
   fieldEntries: null,
   notes: '',
+  isCollab: false,
+  collabLabel: '',
 })
 
 const saving = ref(false)
@@ -640,6 +679,8 @@ const resetForm = () => {
   form.gtdAmount = null
   form.fieldEntries = null
   form.notes = ''
+  form.isCollab = false
+  form.collabLabel = ''
 }
 
 const openCreateDialog = () => {
@@ -663,6 +704,8 @@ const openEditDialog = (session) => {
   form.gtdAmount = session.gtdAmount
   form.fieldEntries = session.fieldEntries
   form.notes = session.notes || ''
+  form.isCollab = session.isCollab || false
+  form.collabLabel = session.collabLabel || ''
   dialog.open = true
 }
 
@@ -724,9 +767,18 @@ const onSaveVenue = async () => {
 
 // ----------------------- 저장 로직 -----------------------
 const onSubmit = async () => {
-  if (form.sessionType === 'VENUE' && !form.venueId) {
-    alert.show('매장을 선택하세요.', 'warning')
-    return
+  if (form.sessionType === 'VENUE') {
+    if (form.isCollab) {
+      if (!form.collabLabel || !form.collabLabel.trim()) {
+        alert.show('콜라보 이름을 입력하세요.', 'warning')
+        return
+      }
+    } else {
+      if (!form.venueId) {
+        alert.show('매장을 선택하세요.', 'warning')
+        return
+      }
+    }
   }
 
   if (!form.buyInPerEntry || form.buyInPerEntry <= 0) {
@@ -750,13 +802,19 @@ const onSubmit = async () => {
     return
   }
 
-  const venueIdPayload = form.sessionType === 'VENUE' ? form.venueId : null
+  const isVenue = form.sessionType === 'VENUE'
+  const isCollab = isVenue ? !!form.isCollab : false
+
+  const venueIdPayload = isVenue && !isCollab ? form.venueId : null
+  const collabLabelPayload = isVenue && isCollab ? form.collabLabel.trim() : null
 
   saving.value = true
   try {
     const payload = {
       sessionType: form.sessionType,
       venueId: venueIdPayload,
+      isCollab,
+      collabLabel: collabLabelPayload,
       playDate: form.playDate,
       gameType: form.gameType,
       buyInPerEntry: Number(form.buyInPerEntry),
@@ -827,6 +885,23 @@ const shiftMonth = async (delta) => {
   month.value = nextMonth
   await loadMonthlySafe(year.value, month.value)
 }
+
+watch(
+  () => [form.sessionType, form.isCollab],
+  ([type, collab]) => {
+    if (type !== 'VENUE') {
+      form.venueId = null
+      form.isCollab = false
+      form.collabLabel = ''
+      return
+    }
+    if (collab) {
+      form.venueId = null
+    } else {
+      form.collabLabel = ''
+    }
+  },
+)
 </script>
 
 <style scoped>
