@@ -5,15 +5,27 @@
       <div class="kpi-header-grid kpi-header-gap">
         <!-- 좌측: 월 선택 -->
         <div class="month-nav row items-center">
-          <q-btn flat round dense icon="chevron_left" @click="shiftMonth(-1)" />
-          <div class="text-h6 text-weight-bold q-mx-sm">{{ year }}년 {{ month }}월</div>
+          <q-btn
+            flat
+            round
+            dense
+            icon="chevron_left"
+            @click="shiftMonth(-1)"
+            :disable="monthlyLoading"
+          />
+
+          <div class="text-h6 text-weight-bold q-mx-sm row items-center">
+            <span>{{ year }}년 {{ month }}월</span>
+            <q-spinner v-if="monthlyLoading" size="16px" class="q-ml-sm" />
+          </div>
+
           <q-btn
             flat
             round
             dense
             icon="chevron_right"
             @click="shiftMonth(1)"
-            :disable="isAtMaxMonth"
+            :disable="isAtMaxMonth || monthlyLoading"
           />
         </div>
 
@@ -55,6 +67,7 @@
             label="세션 추가"
             @click="openCreateDialog"
             class="kpi-add-btn"
+            :disable="monthlyLoading"
           />
         </div>
       </div>
@@ -123,7 +136,7 @@
         <!-- 폼 본문 -->
         <q-card-section>
           <q-form @submit.prevent="onSubmit">
-            <div class="q-gutter-md form-body">
+            <div class="q-gutter-y-md form-body">
               <!-- A. 기본 정보 -->
               <div class="text-caption text-grey-7 q-mb-xs">기본 정보</div>
 
@@ -152,6 +165,7 @@
                     dense
                     color="primary"
                     :rules="[(v) => !!v || '매장을 선택하세요.']"
+                    behavior="menu"
                   />
 
                   <div class="row items-center q-mt-xs">
@@ -239,7 +253,6 @@
                         filled
                         dense
                         color="primary"
-                        prefix="₩"
                       />
                     </div>
                     <div class="col-12 col-md-6">
@@ -305,7 +318,7 @@
               <q-item class="q-mt-sm q-pa-none">
                 <q-item-section>
                   <q-item-label caption>총 바인 금액</q-item-label>
-                  <q-item-label class="text-weight-medium">
+                  <q-item-label class="text-weight-medium q-px-sm">
                     {{ money(totalBuyIn) }}
                   </q-item-label>
                 </q-item-section>
@@ -318,18 +331,18 @@
 
               <q-input
                 v-model.number="form.prize"
-                label="Prize (상금/수익)"
+                label="상금"
                 type="number"
                 filled
                 dense
                 color="primary"
-                :rules="[(v) => v >= 0 || 'Prize는 0 이상이어야 합니다.']"
+                :rules="[(v) => v >= 0 || '상금은 0 이상이어야 합니다.']"
               />
 
               <q-item class="q-mt-sm q-pa-none">
                 <q-item-section>
                   <q-item-label caption>순수익</q-item-label>
-                  <q-item-label class="text-weight-bold" :class="profitColor(netProfit)">
+                  <q-item-label class="text-weight-bold q-px-sm" :class="profitColor(netProfit)">
                     {{ signedMoney(netProfit) }}
                   </q-item-label>
                 </q-item-section>
@@ -448,9 +461,23 @@ const month = ref(currentMonth)
 
 const isAtMaxMonth = computed(() => year.value === currentYear && month.value === currentMonth)
 
+// ----------------------- 월 로딩 안정화(레이스 방지) -----------------------
+const monthlyLoading = ref(false)
+let monthlyReqToken = 0
+
+const loadMonthlySafe = async (y, m) => {
+  const token = ++monthlyReqToken
+  monthlyLoading.value = true
+  try {
+    await gameSessionStore.loadMonthly(y, m)
+  } finally {
+    if (token === monthlyReqToken) monthlyLoading.value = false
+  }
+}
+
 onMounted(async () => {
   await venueStore.loadVenues()
-  await gameSessionStore.loadMonthly(year.value, month.value)
+  await loadMonthlySafe(year.value, month.value)
 })
 
 // ----------------------- 정렬(기본 최신순) -----------------------
@@ -476,11 +503,18 @@ const sessions = computed(() =>
   }),
 )
 
+// ✅ 동일 날짜 정렬 깨짐 방지: playDate 동일하면 id로 tie-break
 const sortedSessions = computed(() => {
   const arr = [...sessions.value]
   arr.sort((a, b) => {
-    const cmp = a.playDate.localeCompare(b.playDate) // YYYY-MM-DD
-    return sortOrder.value === 'ASC' ? cmp : -cmp
+    const d = a.playDate.localeCompare(b.playDate) // YYYY-MM-DD
+    if (d !== 0) return sortOrder.value === 'ASC' ? d : -d
+
+    const ai = Number(a.id)
+    const bi = Number(b.id)
+    const t =
+      Number.isNaN(ai) || Number.isNaN(bi) ? String(a.id).localeCompare(String(b.id)) : ai - bi
+    return sortOrder.value === 'ASC' ? t : -t
   })
   return arr
 })
@@ -662,10 +696,23 @@ const onSaveVenue = async () => {
       notes: venueForm.notes || '',
     }
 
-    await venueStore.addVenue(newVenue)
+    // addVenue가 반환을 안 해도 일단 로딩해서 최신 목록 보장
+    const created = await venueStore.addVenue(newVenue)
+    await venueStore.loadVenues()
+
+    // 세션 입력 중이면 새로 만든 매장을 자동 선택 (가능하면)
+    if (dialog.open && form.sessionType === 'VENUE') {
+      if (created?.id) {
+        form.venueId = created.id
+      } else {
+        const found = venueStore.venues.find((v) => v.name === newVenue.name)
+        if (found) form.venueId = found.id
+      }
+    }
+
     closeVenueDialog()
   } catch (e) {
-    if (e.status === 409) {
+    if (e?.status === 409) {
       alert.show('이미 등록된 매장 이름입니다.', 'warning')
       return
     }
@@ -699,7 +746,7 @@ const onSubmit = async () => {
     return
   }
   if (form.prize < 0) {
-    alert.show('Prize는 0 이상이어야 합니다.', 'warning')
+    alert.show('상금은 0 이상이어야 합니다.', 'warning')
     return
   }
 
@@ -723,9 +770,11 @@ const onSubmit = async () => {
 
     if (dialog.mode === 'create') {
       await gameSessionStore.addSession(payload)
+      await loadMonthlySafe(year.value, month.value)
       alert.show('세션이 추가되었습니다.', 'success')
     } else {
       await gameSessionStore.editSession(dialog.editingId, payload)
+      await loadMonthlySafe(year.value, month.value)
       alert.show('세션이 수정되었습니다.', 'success')
     }
 
@@ -752,6 +801,7 @@ const onDelete = () => {
     deleting.value = true
     try {
       await gameSessionStore.removeSession(dialog.editingId)
+      await loadMonthlySafe(year.value, month.value)
       alert.show('세션이 삭제되었습니다.', 'info')
       closeDialog()
     } catch (e) {
@@ -763,7 +813,8 @@ const onDelete = () => {
   })
 }
 
-const shiftMonth = (delta) => {
+const shiftMonth = async (delta) => {
+  if (monthlyLoading.value) return
   if (delta > 0 && isAtMaxMonth.value) return
 
   const base = new Date(year.value, month.value - 1 + delta, 1)
@@ -774,7 +825,7 @@ const shiftMonth = (delta) => {
 
   year.value = nextYear
   month.value = nextMonth
-  gameSessionStore.loadMonthly(year.value, month.value)
+  await loadMonthlySafe(year.value, month.value)
 }
 </script>
 
