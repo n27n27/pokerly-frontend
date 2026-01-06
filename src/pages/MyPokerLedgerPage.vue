@@ -274,23 +274,36 @@
                   <div class="row q-col-gutter-sm">
                     <div class="col-12 col-md-6">
                       <q-input
-                        v-model.number="form.gtdAmount"
+                        :model-value="$fmt.num(form.gtdAmount, { empty: '' })"
+                        @update:model-value="
+                          (v) => {
+                            form.gtdAmount = $fmt.parseNum(v)
+                          }
+                        "
                         label="GTD 금액"
-                        type="number"
                         filled
                         dense
                         color="primary"
+                        inputmode="numeric"
+                        placeholder="예: 12,000,000"
                       />
                     </div>
                     <div class="col-12 col-md-6">
                       <q-input
-                        v-model.number="form.fieldEntries"
+                        :model-value="$fmt.num(form.fieldEntries, { empty: '' })"
+                        @update:model-value="
+                          (v) => {
+                            const n = $fmt.parseNum(v)
+                            form.fieldEntries = n == null ? 0 : Math.max(0, Math.trunc(n))
+                          }
+                        "
                         label="전체 엔트리 수"
-                        type="number"
                         filled
                         dense
                         color="primary"
+                        inputmode="numeric"
                         suffix="엔트리"
+                        placeholder="예: 900"
                       />
                     </div>
                   </div>
@@ -305,13 +318,19 @@
               <div class="row">
                 <div class="col-7 q-pr-sm">
                   <q-input
-                    v-model.number="form.buyInPerEntry"
+                    :model-value="$fmt.num(form.buyInPerEntry, { empty: '' })"
+                    @update:model-value="
+                      (v) => {
+                        form.buyInPerEntry = $fmt.parseNum(v)
+                      }
+                    "
                     label="1회 바인 금액"
-                    type="number"
                     filled
                     dense
                     color="primary"
-                    :rules="[(v) => v > 0 || '1회 바인 금액을 입력하세요.']"
+                    inputmode="numeric"
+                    placeholder="예: 100,000"
+                    :rules="[() => (form.buyInPerEntry ?? 0) > 0 || '1회 바인 금액을 입력하세요.']"
                   />
                 </div>
                 <div class="col-5 q-pl-sm">
@@ -328,16 +347,27 @@
               </div>
 
               <q-input
-                v-model.number="form.discount"
+                :model-value="$fmt.num(form.discount, { empty: '' })"
+                @update:model-value="
+                  (v) => {
+                    form.discount = $fmt.parseNum(v) ?? 0
+                  }
+                "
                 label="할인 금액"
-                type="number"
                 filled
                 dense
                 color="primary"
+                inputmode="numeric"
+                placeholder="예: 0"
                 :rules="[
-                  (v) => v >= 0 || '할인은 0 이상이어야 합니다.',
-                  (v) =>
-                    v <= form.buyInPerEntry * form.entries || '할인이 총 바인보다 클 수 없습니다.',
+                  () => (form.discount ?? 0) >= 0 || '할인은 0 이상이어야 합니다.',
+                  () => {
+                    const buyIn = form.buyInPerEntry ?? 0
+                    const entries = form.entries ?? 0
+                    const total = buyIn * entries
+                    const discount = form.discount ?? 0
+                    return discount <= total || '할인이 총 바인보다 클 수 없습니다.'
+                  },
                 ]"
               />
 
@@ -357,13 +387,19 @@
               <div class="text-caption text-grey-7">결과</div>
 
               <q-input
-                v-model.number="form.prize"
+                :model-value="$fmt.num(form.prize, { empty: '' })"
+                @update:model-value="
+                  (v) => {
+                    form.prize = $fmt.parseNum(v) ?? 0
+                  }
+                "
                 label="상금"
-                type="number"
                 filled
                 dense
                 color="primary"
-                :rules="[(v) => v >= 0 || '상금은 0 이상이어야 합니다.']"
+                inputmode="numeric"
+                placeholder="예: 0"
+                :rules="[() => (form.prize ?? 0) >= 0 || '상금은 0 이상이어야 합니다.']"
               />
 
               <q-item class="q-mt-sm q-pa-none">
