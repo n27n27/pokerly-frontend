@@ -28,27 +28,37 @@
         <div class="row q-col-gutter-md q-mb-md">
           <div class="col-12 col-sm-4">
             <q-input
-              v-model.number="potSize"
+              :model-value="$fmt.num(potSize, { empty: '' })"
+              @update:model-value="
+                (v) => {
+                  const n = $fmt.parseNum(v)
+                  potSize = n == null ? 0 : Math.max(0, Math.trunc(n))
+                }
+              "
               filled
               dense
-              type="number"
               label="현재 팟"
               suffix="칩"
-              :min="0"
-              placeholder="예: 120000"
+              inputmode="numeric"
+              placeholder="예: 120,000"
             />
           </div>
 
           <div class="col-12 col-sm-4">
             <q-input
-              v-model.number="callAmount"
+              :model-value="$fmt.num(callAmount, { empty: '' })"
+              @update:model-value="
+                (v) => {
+                  const n = $fmt.parseNum(v)
+                  callAmount = n == null ? 0 : Math.max(0, Math.trunc(n))
+                }
+              "
               filled
               dense
-              type="number"
               label="콜 금액"
               suffix="칩"
-              :min="0"
-              placeholder="예: 40000"
+              inputmode="numeric"
+              placeholder="예: 40,000"
             />
           </div>
 
