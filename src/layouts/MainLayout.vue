@@ -68,7 +68,28 @@
             </q-item-section>
           </q-item>
 
+          <!-- 핸드 로그 -->
           <q-item
+            clickable
+            v-ripple
+            :to="{ path: '/app/mypoker/hand-log' }"
+            exact
+            @click="onClickMenu"
+          >
+            <q-item-section avatar>
+              <q-icon name="casino" />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>
+                핸드 로그
+                <q-badge color="orange-8" rounded text-color="white" label="BETA" outline />
+              </q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <!-- 기존 핸드 복기 Demo: 임시 숨김 -->
+          <q-item
+            v-if="showHandReviewDemo"
             clickable
             v-ripple
             :to="{ path: '/app/mypoker/hand-review' }"
@@ -290,7 +311,7 @@
 
         <q-separator spaced />
 
-        <!-- 문의 / 피드백 (매장 밑에 단일 탭) -->
+        <!-- 문의 / 피드백 -->
         <q-item
           clickable
           v-ripple
@@ -321,6 +342,10 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 
 const leftDrawerOpen = ref(null)
+
+// 기존 핸드 복기 Demo 메뉴 노출 여부
+const showHandReviewDemo = false
+
 const router = useRouter()
 const auth = useAuthStore()
 

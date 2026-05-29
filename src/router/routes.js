@@ -26,9 +26,30 @@ const routes = [
       // -------------------------------------------------
       // My Poker
       // -------------------------------------------------
-      { path: 'mypoker/ledger', component: () => import('pages/MyPokerLedgerPage.vue') },
-      { path: 'mypoker/hand-review', component: () => import('pages/MyPokerHandReviewPage.vue') },
-      { path: 'mypoker/journal', component: () => import('pages/MyPokerJournalPage.vue') },
+      {
+        path: 'mypoker/ledger',
+        component: () => import('src/pages/mypoker/MyPokerLedgerPage.vue'),
+      },
+      {
+        path: 'mypoker/hand-log',
+        component: () => import('src/pages/mypoker/HandLogPage.vue'),
+      },
+      {
+        path: 'mypoker/hand-log/:eventId',
+        component: () => import('src/pages/mypoker/HandLogEventDetailPage.vue'),
+      },
+      {
+        path: 'mypoker/hand-log/:eventId/levels/:levelId',
+        component: () => import('pages/mypoker/HandLogLevelDetailPage.vue'),
+      },
+      {
+        path: 'mypoker/hand-review',
+        component: () => import('src/pages/mypoker/MyPokerHandReviewPage.vue'),
+      },
+      {
+        path: 'mypoker/journal',
+        component: () => import('src/pages/mypoker/MyPokerJournalPage.vue'),
+      },
 
       // -------------------------------------------------
       // Statistics
