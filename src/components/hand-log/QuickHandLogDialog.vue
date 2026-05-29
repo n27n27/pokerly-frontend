@@ -1,5 +1,5 @@
 <template>
-  <q-dialog v-model="dialogModel" :maximized="$q.screen.lt.sm">
+  <q-dialog v-model="dialogModel" :maximized="$q.screen.lt.sm" :persistent="loading">
     <q-card class="dialog-card">
       <q-card-section>
         <div class="text-h6 text-weight-bold">핸드 기록</div>
@@ -29,6 +29,7 @@
               label="카드 1"
               behavior="menu"
               popup-content-class="rank-select-popup"
+              :disable="loading"
             />
 
             <q-select
@@ -43,9 +44,15 @@
               label="카드 2"
               behavior="menu"
               popup-content-class="rank-select-popup"
+              :disable="loading"
             />
 
-            <q-toggle v-model="form.suited" color="primary" label="수딧" :disable="isPair" />
+            <q-toggle
+              v-model="form.suited"
+              color="primary"
+              label="수딧"
+              :disable="isPair || loading"
+            />
 
             <q-badge v-if="selectedHand" color="dark" class="hand-preview">
               {{ selectedHand }}
@@ -65,6 +72,7 @@
           label="포지션"
           behavior="menu"
           popup-content-class="form-select-popup"
+          :disable="loading"
         />
 
         <!-- 액션 -->
@@ -79,6 +87,7 @@
           label="프리플랍 액션"
           behavior="menu"
           popup-content-class="form-select-popup"
+          :disable="loading"
         />
 
         <q-toggle
@@ -86,6 +95,7 @@
           v-model="form.preflopAllIn"
           color="negative"
           label="올인으로 실행"
+          :disable="loading"
         />
 
         <!-- 결과 -->
@@ -100,9 +110,15 @@
           label="결과"
           behavior="menu"
           popup-content-class="form-select-popup"
+          :disable="loading"
         />
 
-        <q-toggle v-model="form.reviewRequired" color="amber-8" label="복기 필요" />
+        <q-toggle
+          v-model="form.reviewRequired"
+          color="amber-8"
+          label="복기 필요"
+          :disable="loading"
+        />
 
         <q-input
           v-model="form.memo"
@@ -112,15 +128,23 @@
           autogrow
           label="간단 메모"
           placeholder="예: 턴 콜 애매, 리버 블러프 캐치 후보, BB 방어 후 플랍 체크레이즈"
+          :disable="loading"
         />
       </q-card-section>
 
       <q-separator />
 
       <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="취소" color="grey-8" v-close-popup />
+        <q-btn flat label="취소" color="grey-8" :disable="loading" v-close-popup />
 
-        <q-btn color="dark" unelevated label="저장" :disable="!canSave" @click="onSave" />
+        <q-btn
+          color="dark"
+          unelevated
+          label="저장"
+          :loading="loading"
+          :disable="!canSave || loading"
+          @click="onSave"
+        />
       </q-card-actions>
     </q-card>
   </q-dialog>
@@ -128,6 +152,8 @@
 
 <script setup>
 import { computed, reactive, watch } from 'vue'
+
+import { getHandStrength } from 'src/utils/handLogHandAnalysis'
 
 const props = defineProps({
   modelValue: {
@@ -141,6 +167,10 @@ const props = defineProps({
   levelLabel: {
     type: String,
     default: '',
+  },
+  loading: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -183,7 +213,13 @@ const RESULT_OPTIONS = [
   { label: '찹', value: 'CHOP' },
 ]
 
-const ALL_IN_COMPATIBLE_ACTIONS = ['CALL', 'OPEN', 'THREE_BET', 'FOUR_BET_PLUS', 'BB_DEFENSE']
+const ALL_IN_COMPATIBLE_ACTIONS = new Set([
+  'CALL',
+  'OPEN',
+  'THREE_BET',
+  'FOUR_BET_PLUS',
+  'BB_DEFENSE',
+])
 
 const dialogModel = computed({
   get: () => props.modelValue,
@@ -226,7 +262,7 @@ const selectedHand = computed(() => {
 })
 
 const canMarkPreflopAllIn = computed(() => {
-  return ALL_IN_COMPATIBLE_ACTIONS.includes(form.actionType)
+  return ALL_IN_COMPATIBLE_ACTIONS.has(form.actionType)
 })
 
 const canSave = computed(() => {
@@ -248,6 +284,12 @@ watch(
   },
 )
 
+watch(dialogModel, (value) => {
+  if (!value) {
+    resetForm()
+  }
+})
+
 const resetForm = () => {
   form.firstRank = null
   form.secondRank = null
@@ -265,9 +307,11 @@ const getOptionLabel = (options, value) => {
 }
 
 const onSave = () => {
-  if (!canSave.value) {
+  if (!canSave.value || props.loading) {
     return
   }
+
+  const handStrength = getHandStrength(selectedHand.value)
 
   emit('save', {
     holeCards: selectedHand.value,
@@ -278,7 +322,6 @@ const onSave = () => {
     suited: form.suited,
 
     position: form.position,
-    positionLabel: getOptionLabel(POSITION_OPTIONS, form.position),
 
     actionType: form.actionType,
     actionLabel: getOptionLabel(ACTION_OPTIONS, form.actionType),
@@ -288,14 +331,14 @@ const onSave = () => {
     resultType: form.resultType,
     resultLabel: getOptionLabel(RESULT_OPTIONS, form.resultType),
 
-    important: form.reviewRequired,
     reviewRequired: form.reviewRequired,
 
     memo: form.memo,
-  })
 
-  dialogModel.value = false
-  resetForm()
+    handStrengthTier: handStrength.tier,
+    handStrengthLabel: handStrength.label,
+    handStrengthColor: handStrength.color,
+  })
 }
 </script>
 
@@ -343,6 +386,7 @@ const onSave = () => {
   }
 }
 </style>
+
 <style>
 .rank-select-popup {
   width: 96px !important;
@@ -355,5 +399,13 @@ const onSave = () => {
   min-height: 36px;
   padding-left: 12px;
   padding-right: 12px;
+}
+
+.form-select-popup {
+  max-height: 280px !important;
+}
+
+.form-select-popup .q-item {
+  min-height: 40px;
 }
 </style>

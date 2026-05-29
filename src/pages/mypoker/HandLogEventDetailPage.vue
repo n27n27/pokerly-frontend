@@ -1,15 +1,24 @@
 <template>
   <q-page class="hand-log-detail-page q-pa-md">
     <div class="page-container">
+      <!-- 상세 로딩 -->
+      <q-card v-if="isInitialLoading" flat bordered class="empty-card">
+        <q-card-section class="text-center q-py-xl">
+          <q-spinner size="32px" color="primary" />
+
+          <div class="text-body2 text-grey-7 q-mt-md">대회 정보를 불러오는 중입니다.</div>
+        </q-card-section>
+      </q-card>
+
       <!-- 대회가 없을 때 -->
-      <q-card v-if="!event" flat bordered class="empty-card">
+      <q-card v-else-if="!event" flat bordered class="empty-card">
         <q-card-section class="text-center q-py-xl">
           <q-icon name="error_outline" size="42px" color="grey-5" />
 
           <div class="text-subtitle1 text-weight-bold q-mt-md">대회를 찾을 수 없습니다</div>
 
           <div class="text-body2 text-grey-7 q-mt-xs">
-            새로고침했거나 아직 저장되지 않은 대회일 수 있습니다.
+            삭제되었거나 접근할 수 없는 대회일 수 있습니다.
           </div>
 
           <q-btn
@@ -35,9 +44,19 @@
               </div>
 
               <div class="text-body2 text-grey-7 q-mt-xs">
-                {{ event.date || '날짜 미입력' }}
-                <span v-if="event.venueName"> · {{ event.venueName }}</span>
+                {{ formatDateTime(event.eventAt || event.createdAt) }}
               </div>
+            </div>
+
+            <div class="col-12 col-md-auto">
+              <q-btn
+                class="copy-btn"
+                color="dark"
+                outline
+                icon="content_copy"
+                label="전체 복기 복사"
+                @click="copyEventReviewText"
+              />
             </div>
           </div>
         </div>
@@ -60,6 +79,7 @@
                   unelevated
                   icon="add"
                   label="레벨 추가"
+                  :disable="saving"
                   @click="openLevelDialog"
                 />
               </div>
@@ -181,7 +201,7 @@
     </div>
 
     <!-- 레벨 추가 다이얼로그 -->
-    <q-dialog v-model="levelDialog">
+    <q-dialog v-model="levelDialog" :persistent="saving">
       <q-card class="level-dialog-card">
         <q-card-section>
           <div class="text-h6 text-weight-bold">레벨 추가</div>
@@ -198,6 +218,7 @@
             label="레벨"
             placeholder="예: 4"
             min="1"
+            :disable="saving"
           />
 
           <q-input
@@ -207,6 +228,7 @@
             label="스몰 블라인드"
             placeholder="예: 300"
             min="0"
+            :disable="saving"
           />
 
           <q-input
@@ -216,6 +238,7 @@
             label="빅 블라인드"
             placeholder="예: 600"
             min="0"
+            :disable="saving"
           />
 
           <q-input
@@ -225,17 +248,19 @@
             label="앤티"
             placeholder="예: 600"
             min="0"
+            :disable="saving"
           />
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="취소" color="grey-8" v-close-popup />
+          <q-btn flat label="취소" color="grey-8" :disable="saving" v-close-popup />
 
           <q-btn
             unelevated
             label="저장"
             color="primary"
-            :disable="!canSaveLevel"
+            :loading="saving"
+            :disable="!canSaveLevel || saving"
             @click="saveLevel"
           />
         </q-card-actions>
@@ -245,22 +270,26 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
+import { storeToRefs } from 'pinia'
+import { copyToClipboard } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
+import { useAlert } from 'src/composables/useAlert'
 
 import { useHandLogStore } from 'src/stores/handLog'
+import { buildEventReviewText } from 'src/utils/handLogExportText'
 
 const VPIP_ACTIONS = new Set(['LIMP', 'CALL', 'OPEN', 'THREE_BET', 'FOUR_BET_PLUS', 'BB_DEFENSE'])
-
 const PFR_ACTIONS = new Set(['OPEN', 'THREE_BET', 'FOUR_BET_PLUS'])
-
 const THREE_BET_PLUS_ACTIONS = new Set(['THREE_BET', 'FOUR_BET_PLUS'])
-
 const SHOWDOWN_RESULTS = new Set(['SHOWDOWN_WIN', 'SHOWDOWN_LOSS'])
 
 const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
 const handLogStore = useHandLogStore()
+
+const { detailLoading, saving } = storeToRefs(handLogStore)
 
 const levelDialog = ref(false)
 
@@ -275,6 +304,10 @@ const eventId = computed(() => route.params.eventId)
 
 const event = computed(() => {
   return handLogStore.getEventById(eventId.value)
+})
+
+const isInitialLoading = computed(() => {
+  return detailLoading.value && !event.value
 })
 
 const blindLevels = computed(() => {
@@ -331,6 +364,24 @@ const canSaveLevel = computed(() => {
   )
 })
 
+watch(
+  eventId,
+  async (value) => {
+    if (!value) {
+      return
+    }
+
+    try {
+      await handLogStore.fetchEventDetail(value)
+    } catch (error) {
+      console.error(error)
+
+      alert.show('대회 정보를 불러오지 못했습니다.', 'error')
+    }
+  },
+  { immediate: true },
+)
+
 const goList = () => {
   router.push('/app/mypoker/hand-log')
 }
@@ -347,38 +398,56 @@ const resetLevelForm = () => {
   levelForm.ante = ''
 }
 
-const saveLevel = () => {
-  if (!canSaveLevel.value) {
+const saveLevel = async () => {
+  if (!canSaveLevel.value || saving.value) {
     return
   }
 
-  handLogStore.addBlindLevel(eventId.value, {
-    levelNo: toNumber(levelForm.levelNo),
-    smallBlind: toNumber(levelForm.smallBlind),
-    bigBlind: toNumber(levelForm.bigBlind),
-    ante: toNumber(levelForm.ante),
-  })
+  try {
+    await handLogStore.addBlindLevel(eventId.value, {
+      levelNo: toNumber(levelForm.levelNo),
+      smallBlind: toNumber(levelForm.smallBlind),
+      bigBlind: toNumber(levelForm.bigBlind),
+      ante: toNumber(levelForm.ante),
+    })
 
-  levelDialog.value = false
-  resetLevelForm()
+    levelDialog.value = false
+    resetLevelForm()
+  } catch (error) {
+    console.error(error)
+
+    alert.show('레벨을 추가하지 못했습니다.', 'error')
+  }
 }
 
 const openLevel = (level) => {
-  const levelId = level.id || level.tempId
-
-  if (!levelId) {
+  if (!level.id) {
     return
   }
 
-  router.push(`/app/mypoker/hand-log/${eventId.value}/levels/${levelId}`)
+  router.push(`/app/mypoker/hand-log/${eventId.value}/levels/${level.id}`)
 }
 
 const getLevelKey = (level) => {
-  return (
-    level.id ||
-    level.tempId ||
-    `${level.levelNo}-${level.smallBlind}-${level.bigBlind}-${level.ante}`
-  )
+  return level.id
+}
+
+const copyEventReviewText = async () => {
+  if (!event.value) {
+    return
+  }
+
+  const text = buildEventReviewText(event.value)
+
+  try {
+    await copyToClipboard(text)
+
+    alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'positive')
+  } catch (error) {
+    console.error(error)
+
+    alert.show('복사에 실패했습니다.', 'error')
+  }
 }
 
 const formatBlind = (level) => {
@@ -409,16 +478,30 @@ const formatPercent = (count, total) => {
   return `${Math.round((count / total) * 100)}%`
 }
 
+const formatDateTime = (value) => {
+  if (!value) {
+    return '날짜 미입력'
+  }
+
+  return new Date(value).toLocaleString('ko-KR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+}
+
 const getLevelHandCount = (level) => {
-  return level.hands?.length || 0
+  return level.handCount ?? level.hands?.length ?? 0
 }
 
 const getLevelReviewCount = (level) => {
-  return level.hands?.filter((hand) => isReviewHand(hand)).length || 0
+  return level.reviewRequiredCount ?? level.hands?.filter((hand) => isReviewHand(hand)).length ?? 0
 }
 
 const isReviewHand = (hand) => {
-  return Boolean(hand?.reviewRequired || hand?.important)
+  return Boolean(hand?.reviewRequired)
 }
 
 const getActionValue = (hand) => {
@@ -513,8 +596,9 @@ const isShowdownResult = (result) => {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
-.level-add-btn {
-  min-width: 120px;
+.level-add-btn,
+.copy-btn {
+  min-width: 132px;
 }
 
 .level-dialog-card {
@@ -529,7 +613,8 @@ const isShowdownResult = (result) => {
 }
 
 @media (max-width: 599px) {
-  .level-add-btn {
+  .level-add-btn,
+  .copy-btn {
     width: 100%;
   }
 }
