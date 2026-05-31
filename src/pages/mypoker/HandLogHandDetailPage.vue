@@ -107,7 +107,6 @@
             <div class="hand-summary-panel q-mt-md">
               <div class="hand-summary-main">
                 <div>
-                  <div class="hand-summary-label">169 순위</div>
                   <div class="hand-summary-value">{{ handRankText }}</div>
                 </div>
 
@@ -118,17 +117,6 @@
                   text-color="white"
                   :label="handRankGroupText"
                 />
-              </div>
-
-              <q-separator class="q-my-md" />
-
-              <div class="hand-summary-list">
-                <div class="hand-summary-row">
-                  <span>복기 상태</span>
-                  <strong :class="{ 'text-orange-8': hand.reviewRequired }">
-                    {{ hand.reviewRequired ? '복기 필요' : '필요 없음' }}
-                  </strong>
-                </div>
               </div>
             </div>
           </q-card-section>

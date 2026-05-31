@@ -143,8 +143,6 @@
                         text-color="white"
                         label="복기"
                       />
-
-                      <q-icon name="chevron_right" size="22px" color="grey-6" />
                     </div>
                   </div>
                 </q-card-section>

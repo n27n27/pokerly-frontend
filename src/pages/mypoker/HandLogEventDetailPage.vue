@@ -39,12 +39,8 @@
 
           <div class="row items-start justify-between q-col-gutter-md">
             <div class="col-12 col-md">
-              <div class="text-h5 text-weight-bold">
+              <div class="text-h5 text-weight-bold event-title">
                 {{ event.name }}
-              </div>
-
-              <div class="text-body2 text-grey-7 q-mt-xs">
-                {{ formatDateTime(event.eventAt || event.createdAt) }}
               </div>
             </div>
 
@@ -80,7 +76,7 @@
                   icon="add"
                   label="레벨 추가"
                   :disable="saving"
-                  @click="openLevelDialog"
+                  @click="openLevelCreateDialog"
                 />
               </div>
             </div>
@@ -99,33 +95,76 @@
               </q-card-section>
             </q-card>
 
-            <div v-else class="column q-gutter-sm">
-              <q-card
+            <div v-else class="level-list">
+              <div
                 v-for="level in blindLevels"
                 :key="getLevelKey(level)"
-                flat
-                bordered
-                class="level-card cursor-pointer"
+                class="level-row cursor-pointer"
                 @click="openLevel(level)"
               >
-                <q-card-section>
-                  <div class="row items-center justify-between q-col-gutter-md">
-                    <div class="col">
-                      <div class="text-subtitle1 text-weight-bold">
-                        L{{ level.levelNo }} · {{ formatBlind(level) }}
-                      </div>
+                <div class="level-row-main">
+                  <div class="level-title">L{{ level.levelNo }} · {{ formatBlind(level) }}</div>
 
-                      <div class="text-body2 text-grey-7 q-mt-xs">
-                        {{ getLevelHandCount(level) }}핸드 · 복기 {{ getLevelReviewCount(level) }}개
-                      </div>
-                    </div>
-
-                    <div class="col-auto">
-                      <q-icon name="chevron_right" size="24px" color="grey-6" />
-                    </div>
+                  <div class="level-meta">
+                    {{ getLevelHandCount(level) }}핸드 · 복기 {{ getLevelReviewCount(level) }}개
                   </div>
-                </q-card-section>
-              </q-card>
+                </div>
+
+                <div class="level-row-action">
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    icon="more_vert"
+                    color="grey-7"
+                    :disable="saving"
+                    @click.stop
+                  >
+                    <q-menu auto-close anchor="bottom right" self="top right">
+                      <q-list dense class="level-menu-list">
+                        <q-item clickable @click.stop="openLevelEditDialog(level)">
+                          <q-item-section avatar>
+                            <q-icon name="edit" size="18px" color="grey-8" />
+                          </q-item-section>
+
+                          <q-item-section>수정</q-item-section>
+                        </q-item>
+
+                        <q-separator />
+
+                        <q-item
+                          v-if="levelHasHands(level)"
+                          clickable
+                          class="blocked-delete-item"
+                          @click.stop="notifyBlockedDeleteLevel"
+                        >
+                          <q-item-section avatar>
+                            <q-icon name="lock" size="18px" color="grey-6" />
+                          </q-item-section>
+
+                          <q-item-section>
+                            <div class="blocked-delete-title">삭제 불가</div>
+                            <div class="blocked-delete-caption">핸드 먼저 삭제</div>
+                          </q-item-section>
+                        </q-item>
+
+                        <q-item
+                          v-else
+                          clickable
+                          class="delete-menu-item"
+                          @click.stop="confirmDeleteLevel(level)"
+                        >
+                          <q-item-section avatar>
+                            <q-icon name="delete" size="18px" color="negative" />
+                          </q-item-section>
+
+                          <q-item-section>삭제</q-item-section>
+                        </q-item>
+                      </q-list>
+                    </q-menu>
+                  </q-btn>
+                </div>
+              </div>
             </div>
           </q-card-section>
         </q-card>
@@ -255,12 +294,15 @@
       </template>
     </div>
 
-    <!-- 레벨 추가 다이얼로그 -->
+    <!-- 레벨 추가/수정 다이얼로그 -->
     <q-dialog v-model="levelDialog" :persistent="saving">
       <q-card class="level-dialog-card">
         <q-card-section>
-          <div class="text-h6 text-weight-bold">레벨 추가</div>
-          <div class="text-body2 text-grey-7 q-mt-xs">이 레벨 안에서 핸드를 기록하게 됩니다.</div>
+          <div class="text-h6 text-weight-bold">{{ levelDialogTitle }}</div>
+
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            {{ levelDialogDescription }}
+          </div>
         </q-card-section>
 
         <q-separator />
@@ -308,11 +350,11 @@
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="취소" color="grey-8" :disable="saving" v-close-popup />
+          <q-btn flat label="취소" color="grey-8" :disable="saving" @click="closeLevelDialog" />
 
           <q-btn
             unelevated
-            label="저장"
+            :label="levelSaveButtonLabel"
             color="primary"
             :loading="saving"
             :disable="!canSaveLevel || saving"
@@ -327,7 +369,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { copyToClipboard } from 'quasar'
+import { copyToClipboard, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlert } from 'src/composables/useAlert'
 
@@ -344,12 +386,14 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const $q = useQuasar()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
 
 const { detailLoading, saving } = storeToRefs(handLogStore)
 
 const levelDialog = ref(false)
+const editingLevel = ref(null)
 
 const levelForm = reactive({
   levelNo: '',
@@ -430,6 +474,28 @@ const pfrPercent = computed(() => {
   return formatPercent(pfrCount.value, totalHandCount.value)
 })
 
+const isLevelEditMode = computed(() => {
+  return Boolean(editingLevel.value?.id)
+})
+
+const levelDialogTitle = computed(() => {
+  return isLevelEditMode.value ? '레벨 수정' : '레벨 추가'
+})
+
+const levelDialogDescription = computed(() => {
+  return isLevelEditMode.value
+    ? '블라인드 구간 정보를 수정합니다.'
+    : '이 레벨 안에서 핸드를 기록하게 됩니다.'
+})
+
+const levelSaveButtonLabel = computed(() => {
+  return isLevelEditMode.value ? '수정' : '저장'
+})
+
+const notifyBlockedDeleteLevel = () => {
+  alert.show('이 레벨에 기록된 핸드가 있어 삭제할 수 없습니다.', 'warning')
+}
+
 const canSaveLevel = computed(() => {
   return (
     String(levelForm.levelNo || '').trim() !== '' &&
@@ -460,9 +526,31 @@ const goList = () => {
   router.push('/app/mypoker/hand-log')
 }
 
-const openLevelDialog = () => {
+const openLevelCreateDialog = () => {
+  editingLevel.value = null
   resetLevelForm()
   levelDialog.value = true
+}
+
+const openLevelEditDialog = (level) => {
+  editingLevel.value = level
+
+  levelForm.levelNo = level.levelNo ?? ''
+  levelForm.smallBlind = level.smallBlind ?? ''
+  levelForm.bigBlind = level.bigBlind ?? ''
+  levelForm.ante = level.ante ?? 0
+
+  levelDialog.value = true
+}
+
+const closeLevelDialog = () => {
+  if (saving.value) {
+    return
+  }
+
+  levelDialog.value = false
+  editingLevel.value = null
+  resetLevelForm()
 }
 
 const resetLevelForm = () => {
@@ -478,19 +566,82 @@ const saveLevel = async () => {
   }
 
   try {
-    await handLogStore.addBlindLevel(eventId.value, {
-      levelNo: toNumber(levelForm.levelNo),
-      smallBlind: toNumber(levelForm.smallBlind),
-      bigBlind: toNumber(levelForm.bigBlind),
-      ante: toNumber(levelForm.ante),
-    })
+    if (isLevelEditMode.value) {
+      await handLogStore.updateBlindLevel(eventId.value, editingLevel.value.id, {
+        levelNo: toNumber(levelForm.levelNo),
+        smallBlind: toNumber(levelForm.smallBlind),
+        bigBlind: toNumber(levelForm.bigBlind),
+        ante: toNumber(levelForm.ante),
+      })
 
-    levelDialog.value = false
-    resetLevelForm()
+      alert.show('레벨을 수정했습니다.', 'positive')
+    } else {
+      await handLogStore.addBlindLevel(eventId.value, {
+        levelNo: toNumber(levelForm.levelNo),
+        smallBlind: toNumber(levelForm.smallBlind),
+        bigBlind: toNumber(levelForm.bigBlind),
+        ante: toNumber(levelForm.ante),
+      })
+
+      alert.show('레벨을 추가했습니다.', 'positive')
+    }
+
+    closeLevelDialog()
   } catch (error) {
     console.error(error)
 
-    alert.show('레벨을 추가하지 못했습니다.', 'error')
+    alert.show(
+      getErrorMessage(
+        error,
+        isLevelEditMode.value ? '레벨을 수정하지 못했습니다.' : '레벨을 추가하지 못했습니다.',
+      ),
+      'error',
+    )
+  }
+}
+
+const confirmDeleteLevel = (level) => {
+  if (saving.value) {
+    return
+  }
+
+  if (levelHasHands(level)) {
+    alert.show('이 레벨에 기록된 핸드가 있어 삭제할 수 없습니다.', 'warning')
+    return
+  }
+
+  $q.dialog({
+    title: '레벨 삭제',
+    message: `L${level.levelNo} · ${formatBlind(level)} 구간을 삭제할까요?`,
+    cancel: {
+      label: '취소',
+      flat: true,
+      color: 'grey-8',
+    },
+    ok: {
+      label: '삭제',
+      color: 'negative',
+      unelevated: true,
+    },
+    persistent: true,
+  }).onOk(() => {
+    deleteLevel(level)
+  })
+}
+
+const deleteLevel = async (level) => {
+  if (saving.value || !level?.id) {
+    return
+  }
+
+  try {
+    await handLogStore.deleteBlindLevel(eventId.value, level.id)
+
+    alert.show('레벨을 삭제했습니다.', 'positive')
+  } catch (error) {
+    console.error(error)
+
+    alert.show(getErrorMessage(error, '레벨을 삭제하지 못했습니다.'), 'error')
   }
 }
 
@@ -552,26 +703,16 @@ const formatPercent = (count, total) => {
   return `${Math.round((count / total) * 100)}%`
 }
 
-const formatDateTime = (value) => {
-  if (!value) {
-    return '날짜 미입력'
-  }
-
-  return new Date(value).toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
 const getLevelHandCount = (level) => {
   return level.handCount ?? level.hands?.length ?? 0
 }
 
 const getLevelReviewCount = (level) => {
   return level.reviewRequiredCount ?? level.hands?.filter((hand) => isReviewHand(hand)).length ?? 0
+}
+
+const levelHasHands = (level) => {
+  return getLevelHandCount(level) > 0
 }
 
 const getRankToneClass = (bucket) => {
@@ -604,6 +745,15 @@ const getActionValue = (hand) => {
 const getResultValue = (hand) => {
   return hand?.resultType || ''
 }
+
+const getErrorMessage = (error, fallback) => {
+  return (
+    error?.response?.data?.error?.message ||
+    error?.response?.data?.message ||
+    error?.message ||
+    fallback
+  )
+}
 </script>
 
 <style scoped>
@@ -619,10 +769,13 @@ const getResultValue = (hand) => {
 .empty-card,
 .section-card,
 .empty-level-card,
-.level-card,
 .level-dialog-card {
   border-radius: 16px;
   background: #ffffff;
+}
+
+.event-title {
+  line-height: 1.25;
 }
 
 .section-title {
@@ -662,15 +815,60 @@ const getResultValue = (hand) => {
   border-style: dashed;
 }
 
-.level-card {
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.12s ease;
+/* Compact level list */
+.level-list {
+  border: 1px solid #ececef;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #ffffff;
 }
 
-.level-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+.level-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 68px;
+  padding: 13px 12px 13px 14px;
+  border-bottom: 1px solid #f1f1f4;
+  transition:
+    background 0.12s ease,
+    transform 0.12s ease;
+}
+
+.level-row:last-child {
+  border-bottom: none;
+}
+
+.level-row:hover {
+  background: #fafafa;
+}
+
+.level-row-main {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.level-title {
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1.25;
+  color: #111;
+}
+
+.level-meta {
+  margin-top: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #777;
+}
+
+.level-row-action {
+  flex: 0 0 auto;
+}
+
+.level-menu-list {
+  min-width: 138px;
 }
 
 .rank-section {
@@ -856,6 +1054,26 @@ const getResultValue = (hand) => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.blocked-delete-item {
+  cursor: not-allowed;
+}
+
+.blocked-delete-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #666;
+}
+
+.blocked-delete-caption {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #999;
+}
+
+.delete-menu-item {
+  color: #c10015;
 }
 
 @media (max-width: 599px) {

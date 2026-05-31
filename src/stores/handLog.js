@@ -5,11 +5,13 @@ import {
   createHandLogBlindLevel,
   createHandLogEvent,
   createHandLogHand,
+  deleteHandLogBlindLevel,
   deleteHandLogHand,
   fetchHandLogBlindLevel,
   fetchHandLogEvent,
   fetchHandLogEvents,
   fetchHandLogHand,
+  updateHandLogBlindLevel,
   updateHandLogHand,
 } from 'src/api/handLogApi'
 
@@ -438,6 +440,63 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
+  const updateBlindLevel = async (eventId, blindLevelId, payload) => {
+    if (!eventId || !blindLevelId) {
+      return null
+    }
+
+    saving.value = true
+
+    try {
+      const saved = await updateHandLogBlindLevel(eventId, blindLevelId, {
+        levelNo: Number(payload.levelNo),
+        smallBlind: Number(payload.smallBlind),
+        bigBlind: Number(payload.bigBlind),
+        ante: Number(payload.ante || 0),
+      })
+
+      const normalizedLevel = normalizeBlindLevel(saved)
+
+      if (
+        selectedBlindLevel.value &&
+        String(selectedBlindLevel.value.id) === String(blindLevelId)
+      ) {
+        selectedBlindLevel.value = normalizedLevel
+      }
+
+      await fetchEventDetail(eventId)
+
+      return normalizedLevel
+    } finally {
+      saving.value = false
+    }
+  }
+
+  const deleteBlindLevel = async (eventId, blindLevelId) => {
+    if (!eventId || !blindLevelId) {
+      return false
+    }
+
+    saving.value = true
+
+    try {
+      await deleteHandLogBlindLevel(eventId, blindLevelId)
+
+      if (
+        selectedBlindLevel.value &&
+        String(selectedBlindLevel.value.id) === String(blindLevelId)
+      ) {
+        selectedBlindLevel.value = null
+      }
+
+      await fetchEventDetail(eventId)
+
+      return true
+    } finally {
+      saving.value = false
+    }
+  }
+
   const fetchBlindLevelDetail = async (eventId, blindLevelId) => {
     if (!eventId || !blindLevelId) {
       selectedBlindLevel.value = null
@@ -643,6 +702,8 @@ export const useHandLogStore = defineStore('handLog', () => {
     getHandById,
 
     addBlindLevel,
+    updateBlindLevel,
+    deleteBlindLevel,
     fetchBlindLevelDetail,
     addHandToBlindLevel,
 
