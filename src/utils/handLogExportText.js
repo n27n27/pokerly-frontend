@@ -1,24 +1,4 @@
-import { getHandStrength } from 'src/utils/handLogHandAnalysis'
-
-const ACTION_LABEL_MAP = {
-  FOLD: '폴드',
-  CHECK: '체크',
-  LIMP: '림프',
-  CALL: '콜',
-  OPEN: '오픈',
-  THREE_BET: '3벳',
-  FOUR_BET_PLUS: '4벳+',
-  BB_DEFENSE: 'BB 방어',
-}
-
-const RESULT_LABEL_MAP = {
-  FOLD: '폴드',
-  NON_SHOWDOWN_WIN: '노쇼다운 승리',
-  SHOWDOWN_WIN: '쇼다운 승리',
-  SHOWDOWN_LOSS: '쇼다운 패배',
-  CHOP: '찹',
-  NOT_RECORDED: '',
-}
+import { getActionLabel, getResultLabel } from 'src/utils/handLogHandAnalysis'
 
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -26,26 +6,6 @@ const formatNumber = (value) => {
   }
 
   return Number(value).toLocaleString('ko-KR')
-}
-
-const formatDateTime = (value) => {
-  if (!value) {
-    return ''
-  }
-
-  const date = new Date(value)
-
-  if (Number.isNaN(date.getTime())) {
-    return ''
-  }
-
-  return date.toLocaleString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 const formatBlind = (level) => {
@@ -86,30 +46,45 @@ const getHandValue = (hand) => {
   return hand?.holeCards || hand?.hand || '핸드 미입력'
 }
 
-const getHandStrengthLabel = (hand) => {
-  const handValue = getHandValue(hand)
+const getActionText = (hand) => {
+  if (!hand?.actionType && !hand?.preflopAllIn) {
+    return ''
+  }
 
-  return hand?.handStrengthLabel || getHandStrength(handValue).label
+  const actionText = hand?.actionLabel || getActionLabel(hand?.actionType)
+
+  if (actionText && hand?.preflopAllIn) {
+    return `${actionText} 올인`
+  }
+
+  if (actionText) {
+    return actionText
+  }
+
+  return hand?.preflopAllIn ? '올인' : ''
+}
+
+const getResultText = (hand) => {
+  if (!hand?.resultType || hand.resultType === 'NOT_RECORDED') {
+    return ''
+  }
+
+  return hand?.resultLabel || getResultLabel(hand.resultType)
 }
 
 const getHandMetaLines = (hand) => {
   const lines = []
 
   const positionText = hand?.positionLabel || hand?.position || ''
-  const actionText = hand?.actionLabel || ACTION_LABEL_MAP[hand?.actionType] || ''
-  const resultText =
-    hand?.resultType && hand.resultType !== 'NOT_RECORDED'
-      ? hand?.resultLabel || RESULT_LABEL_MAP[hand.resultType] || ''
-      : ''
+  const actionText = getActionText(hand)
+  const resultText = getResultText(hand)
 
   if (positionText) {
     lines.push(`   포지션: ${positionText}`)
   }
 
   if (actionText) {
-    lines.push(`   액션: ${actionText}${hand?.preflopAllIn ? ' 올인' : ''}`)
-  } else if (hand?.preflopAllIn) {
-    lines.push('   액션: 올인')
+    lines.push(`   액션: ${actionText}`)
   }
 
   if (resultText) {
@@ -128,7 +103,7 @@ const getHandMetaLines = (hand) => {
 }
 
 const formatHandBlock = (hand, index) => {
-  const header = `${index + 1}. ${getHandValue(hand)} [${getHandStrengthLabel(hand)}]`
+  const header = `${index + 1}. ${getHandValue(hand)}`
   const metaLines = getHandMetaLines(hand)
 
   if (metaLines.length === 0) {
@@ -154,6 +129,10 @@ export const buildLevelReviewText = ({
     `대회: ${event?.name || '대회명 미입력'}`,
     `구간: L${blindLevel?.levelNo || '-'} · ${formatBlind(blindLevel)}`,
   ]
+
+  if (heroStack || averageStack) {
+    lines.push('스택 기준: 해당 레벨 마감 시점')
+  }
 
   if (heroStack) {
     lines.push(`내 스택: ${formatNumber(heroStack)}`)
@@ -181,7 +160,9 @@ export const buildLevelReviewText = ({
     })
   }
 
-  lines.push('위 핸드들을 기록 순서대로 보고, 이 레벨의 운영과 주요 판단을 복기해줘.')
+  lines.push(
+    '위 핸드들은 이 블라인드 구간에서 기록한 핸드들이고, 스택 정보는 해당 레벨 마감 시점 기준이야. 이 레벨의 운영과 주요 판단을 복기해줘.',
+  )
 
   return lines.join('\n').trim()
 }
@@ -202,12 +183,6 @@ export const buildEventReviewText = (event) => {
   }, 0)
 
   const lines = ['[Pokerly 대회 전체 복기 요청]', '', `대회: ${event?.name || '대회명 미입력'}`]
-
-  const eventTime = formatDateTime(event?.eventAt || event?.createdAt)
-
-  if (eventTime) {
-    lines.push(`대회 시각: ${eventTime}`)
-  }
 
   lines.push('', '전체 요약:')
   lines.push(`기록 핸드: ${totalHands}개`)

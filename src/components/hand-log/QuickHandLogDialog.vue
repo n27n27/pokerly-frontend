@@ -2,7 +2,7 @@
   <q-dialog v-model="dialogModel" :maximized="$q.screen.lt.sm" :persistent="loading">
     <q-card class="dialog-card">
       <q-card-section>
-        <div class="text-h6 text-weight-bold">핸드 기록</div>
+        <div class="text-h6 text-weight-bold">{{ dialogTitle }}</div>
 
         <div class="text-caption text-grey-7 q-mt-xs">
           {{ levelLabel || '현재 레벨에 기록합니다.' }}
@@ -127,7 +127,7 @@
           type="textarea"
           autogrow
           label="간단 메모"
-          placeholder="예: 턴 콜 애매, 리버 블러프 캐치 후보, BB 방어 후 플랍 체크레이즈"
+          placeholder="예: 오픈 후 3벳 콜, 플랍 미스 후 폴드, BB 옵션 체크 후 한방 플러쉬"
           :disable="loading"
         />
       </q-card-section>
@@ -140,7 +140,7 @@
         <q-btn
           color="dark"
           unelevated
-          label="저장"
+          :label="saveButtonLabel"
           :loading="loading"
           :disable="!canSave || loading"
           @click="onSave"
@@ -153,7 +153,16 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
 
-import { getHandStrength } from 'src/utils/handLogHandAnalysis'
+import {
+  ACTION_OPTIONS,
+  ALL_IN_COMPATIBLE_ACTIONS,
+  POSITION_OPTIONS,
+  RESULT_OPTIONS,
+  getActionLabel,
+  getHandStrength,
+  getResultLabel,
+  normalizeHand,
+} from 'src/utils/handLogHandAnalysis'
 
 const props = defineProps({
   modelValue: {
@@ -172,6 +181,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  editHand: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
@@ -182,44 +195,6 @@ const CARD_RANK_OPTIONS = CARD_RANKS.map((rank) => ({
   label: rank,
   value: rank,
 }))
-
-const POSITION_OPTIONS = [
-  { label: 'UTG', value: 'UTG' },
-  { label: 'UTG+1', value: 'UTG+1' },
-  { label: 'MP', value: 'MP' },
-  { label: 'CO', value: 'CO' },
-  { label: 'BTN', value: 'BTN' },
-  { label: 'SB', value: 'SB' },
-  { label: 'BB', value: 'BB' },
-]
-
-const ACTION_OPTIONS = [
-  { label: '폴드', value: 'FOLD' },
-  { label: '체크', value: 'CHECK' },
-  { label: '림프', value: 'LIMP' },
-  { label: '콜', value: 'CALL' },
-  { label: '오픈', value: 'OPEN' },
-  { label: '3벳', value: 'THREE_BET' },
-  { label: '4벳+', value: 'FOUR_BET_PLUS' },
-  { label: 'BB 방어', value: 'BB_DEFENSE' },
-]
-
-const RESULT_OPTIONS = [
-  { label: '미기록', value: 'NOT_RECORDED' },
-  { label: '폴드', value: 'FOLD' },
-  { label: '노쇼다운 승리', value: 'NON_SHOWDOWN_WIN' },
-  { label: '쇼다운 승리', value: 'SHOWDOWN_WIN' },
-  { label: '쇼다운 패배', value: 'SHOWDOWN_LOSS' },
-  { label: '찹', value: 'CHOP' },
-]
-
-const ALL_IN_COMPATIBLE_ACTIONS = new Set([
-  'CALL',
-  'OPEN',
-  'THREE_BET',
-  'FOUR_BET_PLUS',
-  'BB_DEFENSE',
-])
 
 const dialogModel = computed({
   get: () => props.modelValue,
@@ -236,6 +211,18 @@ const form = reactive({
   resultType: 'NOT_RECORDED',
   reviewRequired: false,
   memo: '',
+})
+
+const isEditMode = computed(() => {
+  return Boolean(props.editHand?.id)
+})
+
+const dialogTitle = computed(() => {
+  return isEditMode.value ? '핸드 수정' : '핸드 기록'
+})
+
+const saveButtonLabel = computed(() => {
+  return isEditMode.value ? '수정' : '저장'
 })
 
 const isPair = computed(() => {
@@ -285,10 +272,22 @@ watch(
 )
 
 watch(dialogModel, (value) => {
-  if (!value) {
-    resetForm()
+  if (value) {
+    fillFormFromEditHand()
+    return
   }
+
+  resetForm()
 })
+
+watch(
+  () => props.editHand,
+  () => {
+    if (dialogModel.value) {
+      fillFormFromEditHand()
+    }
+  },
+)
 
 const resetForm = () => {
   form.firstRank = null
@@ -302,8 +301,45 @@ const resetForm = () => {
   form.memo = ''
 }
 
-const getOptionLabel = (options, value) => {
-  return options.find((option) => option.value === value)?.label || ''
+const normalizeLegacyResultType = (hand) => {
+  const resultType = hand?.resultType || 'NOT_RECORDED'
+
+  if (resultType !== 'FOLD') {
+    return resultType
+  }
+
+  const actionType = hand?.actionType || ''
+
+  if (actionType === 'FOLD' || actionType === 'OPEN_FOLD_TO_3BET') {
+    return 'PREFLOP_FOLD'
+  }
+
+  return 'POSTFLOP_FOLD'
+}
+
+const fillFormFromEditHand = () => {
+  resetForm()
+
+  if (!props.editHand) {
+    return
+  }
+
+  const normalized = normalizeHand(props.editHand.holeCards || props.editHand.hand || '')
+
+  form.firstRank = props.editHand.firstRank || normalized[0] || null
+  form.secondRank = props.editHand.secondRank || normalized[1] || null
+  form.suited = Boolean(props.editHand.suited ?? normalized[2] === 's')
+
+  if (form.firstRank && form.secondRank && form.firstRank === form.secondRank) {
+    form.suited = false
+  }
+
+  form.position = props.editHand.position || null
+  form.actionType = props.editHand.actionType || null
+  form.preflopAllIn = Boolean(props.editHand.preflopAllIn)
+  form.resultType = normalizeLegacyResultType(props.editHand)
+  form.reviewRequired = Boolean(props.editHand.reviewRequired)
+  form.memo = props.editHand.memo || ''
 }
 
 const onSave = () => {
@@ -314,6 +350,8 @@ const onSave = () => {
   const handStrength = getHandStrength(selectedHand.value)
 
   emit('save', {
+    id: props.editHand?.id || null,
+
     holeCards: selectedHand.value,
     hand: selectedHand.value,
 
@@ -324,12 +362,12 @@ const onSave = () => {
     position: form.position,
 
     actionType: form.actionType,
-    actionLabel: getOptionLabel(ACTION_OPTIONS, form.actionType),
+    actionLabel: getActionLabel(form.actionType),
 
     preflopAllIn: canMarkPreflopAllIn.value ? form.preflopAllIn : false,
 
     resultType: form.resultType,
-    resultLabel: getOptionLabel(RESULT_OPTIONS, form.resultType),
+    resultLabel: getResultLabel(form.resultType),
 
     reviewRequired: form.reviewRequired,
 

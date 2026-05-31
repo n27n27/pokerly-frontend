@@ -1,8 +1,8 @@
 const RANKS = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
 
-const PREMIUM_HANDS = new Set(['AA', 'KK', 'QQ', 'JJ', 'AKs', 'AKo'])
+const PREMIUM_HANDS = new Set(['AA', 'KK', 'QQ', 'JJ', 'AKs', 'AKo', 'AQs'])
 
-const STRONG_HANDS = new Set(['TT', '99', 'AQs', 'AQo', 'AJs', 'ATs', 'KQs'])
+const STRONG_HANDS = new Set(['TT', '99', 'AQo', 'AJs', 'ATs', 'KQs'])
 
 const PLAYABLE_HANDS = new Set([
   '88',
@@ -87,6 +87,8 @@ const MARGINAL_HANDS = new Set([
   '32s',
 ])
 
+const HIGH_POCKET_HANDS = new Set(['AA', 'KK', 'QQ', 'JJ', 'TT'])
+
 const TIER_META = {
   PREMIUM: {
     label: 'Premium',
@@ -114,6 +116,102 @@ const TIER_META = {
   },
 }
 
+export const POSITION_OPTIONS = [
+  { label: 'UTG', value: 'UTG' },
+  { label: 'UTG+1', value: 'UTG+1' },
+  { label: 'UTG+2', value: 'UTG+2' },
+  { label: 'MP', value: 'MP' },
+  { label: 'LJ', value: 'LJ' },
+  { label: 'HJ', value: 'HJ' },
+  { label: 'CO', value: 'CO' },
+  { label: 'BTN', value: 'BTN' },
+  { label: 'SB', value: 'SB' },
+  { label: 'BB', value: 'BB' },
+]
+
+export const ACTION_OPTIONS = [
+  { label: '폴드', value: 'FOLD' },
+  { label: '체크', value: 'CHECK' },
+
+  { label: '림프', value: 'LIMP' },
+  { label: '콜', value: 'CALL' },
+  { label: 'BB 방어', value: 'BB_DEFENSE' },
+
+  { label: '오픈', value: 'OPEN' },
+  { label: '아이솔레이션', value: 'ISO_RAISE' },
+
+  { label: '3벳', value: 'THREE_BET' },
+  { label: '4벳+', value: 'FOUR_BET_PLUS' },
+
+  { label: '오픈 후 3벳 폴드', value: 'OPEN_FOLD_TO_3BET' },
+  { label: '오픈 후 3벳 콜', value: 'OPEN_CALL_3BET' },
+  { label: '오픈 후 4벳+', value: 'OPEN_4BET_PLUS' },
+]
+
+export const RESULT_OPTIONS = [
+  { label: '미기록', value: 'NOT_RECORDED' },
+  { label: '프리플랍 폴드', value: 'PREFLOP_FOLD' },
+  { label: '포스트플랍 폴드', value: 'POSTFLOP_FOLD' },
+  { label: '노쇼다운 승리', value: 'NON_SHOWDOWN_WIN' },
+  { label: '쇼다운 승리', value: 'SHOWDOWN_WIN' },
+  { label: '쇼다운 패배', value: 'SHOWDOWN_LOSS' },
+  { label: '찹', value: 'CHOP' },
+]
+
+export const ACTION_LABEL_MAP = ACTION_OPTIONS.reduce((acc, option) => {
+  acc[option.value] = option.label
+  return acc
+}, {})
+
+export const RESULT_LABEL_MAP = RESULT_OPTIONS.reduce(
+  (acc, option) => {
+    acc[option.value] = option.label
+    return acc
+  },
+  {
+    // 기존 데이터 호환용
+    FOLD: '폴드',
+  },
+)
+
+export const VPIP_ACTIONS = new Set([
+  'LIMP',
+  'CALL',
+  'BB_DEFENSE',
+  'OPEN',
+  'ISO_RAISE',
+  'THREE_BET',
+  'FOUR_BET_PLUS',
+  'OPEN_FOLD_TO_3BET',
+  'OPEN_CALL_3BET',
+  'OPEN_4BET_PLUS',
+])
+
+export const PFR_ACTIONS = new Set([
+  'OPEN',
+  'ISO_RAISE',
+  'THREE_BET',
+  'FOUR_BET_PLUS',
+  'OPEN_FOLD_TO_3BET',
+  'OPEN_CALL_3BET',
+  'OPEN_4BET_PLUS',
+])
+
+export const THREE_BET_PLUS_ACTIONS = new Set(['THREE_BET', 'FOUR_BET_PLUS', 'OPEN_4BET_PLUS'])
+
+export const SHOWDOWN_RESULTS = new Set(['SHOWDOWN_WIN', 'SHOWDOWN_LOSS'])
+
+export const ALL_IN_COMPATIBLE_ACTIONS = new Set([
+  'CALL',
+  'BB_DEFENSE',
+  'OPEN',
+  'ISO_RAISE',
+  'THREE_BET',
+  'FOUR_BET_PLUS',
+  'OPEN_CALL_3BET',
+  'OPEN_4BET_PLUS',
+])
+
 export const PREFLOP_RANK_BUCKETS = [
   { key: 'P1_10', label: '1~10%', minRank: 1, maxRank: 17 },
   { key: 'P11_20', label: '11~20%', minRank: 18, maxRank: 34 },
@@ -127,8 +225,35 @@ export const PREFLOP_RANK_BUCKETS = [
   { key: 'P91_100', label: '91~100%', minRank: 154, maxRank: 169 },
 ]
 
+export const PREFLOP_RANK_SUMMARY_BUCKETS = [
+  {
+    key: 'TOP',
+    label: '상위 20%',
+    description: '1~34위',
+    minRank: 1,
+    maxRank: 34,
+    colorClass: 'rank-summary-card--top',
+  },
+  {
+    key: 'MIDDLE',
+    label: '중간 21~60%',
+    description: '35~102위',
+    minRank: 35,
+    maxRank: 102,
+    colorClass: 'rank-summary-card--middle',
+  },
+  {
+    key: 'LOW',
+    label: '하위 61~100%',
+    description: '103~169위',
+    minRank: 103,
+    maxRank: 169,
+    colorClass: 'rank-summary-card--low',
+  },
+]
+
 // 169개 스타팅 핸드 고정 순위.
-// 목적: "이번 대회/레벨에서 내가 얼마나 좋은 핸드를 받았는가"를 보기 위한 분포 통계.
+// 목적: "이번 대회/레벨에서 내가 얼마나 좋은 핸드를 받았는가"를 보기 위한 통계.
 // 티어 배지와는 별개로 사용한다.
 export const PREFLOP_169_RANKING = [
   'AA',
@@ -353,6 +478,53 @@ const findPreflopRankBucket = (rank) => {
   })
 }
 
+const findPreflopRankSummaryBucket = (rank) => {
+  return PREFLOP_RANK_SUMMARY_BUCKETS.find((bucket) => {
+    return rank >= bucket.minRank && rank <= bucket.maxRank
+  })
+}
+
+export const getHandInputValue = (item) => {
+  if (typeof item === 'string') {
+    return item
+  }
+
+  return (
+    item?.hand ||
+    item?.holeCards ||
+    item?.cards ||
+    item?.startingHand ||
+    item?.handCode ||
+    item?.preflopHand ||
+    item?.cardText ||
+    ''
+  )
+}
+
+export const getActionLabel = (actionType) => {
+  return ACTION_LABEL_MAP[actionType] || actionType || ''
+}
+
+export const getResultLabel = (resultType) => {
+  return RESULT_LABEL_MAP[resultType] || resultType || ''
+}
+
+export const isVpipAction = (action) => {
+  return VPIP_ACTIONS.has(action)
+}
+
+export const isPfrAction = (action) => {
+  return PFR_ACTIONS.has(action)
+}
+
+export const isThreeBetPlusAction = (action) => {
+  return THREE_BET_PLUS_ACTIONS.has(action)
+}
+
+export const isShowdownResult = (result) => {
+  return SHOWDOWN_RESULTS.has(result)
+}
+
 export const getHandStrength = (hand) => {
   const normalized = normalizeHand(hand)
 
@@ -422,12 +594,15 @@ export const getPreflopRankStat = (hand) => {
       percentile: null,
       bucketKey: 'UNKNOWN',
       bucketLabel: '알 수 없음',
+      summaryKey: 'UNKNOWN',
+      summaryLabel: '알 수 없음',
       minRank: null,
       maxRank: null,
     }
   }
 
   const bucket = findPreflopRankBucket(rank)
+  const summaryBucket = findPreflopRankSummaryBucket(rank)
 
   return {
     hand: normalized,
@@ -435,9 +610,23 @@ export const getPreflopRankStat = (hand) => {
     percentile: Number(((rank / PREFLOP_169_RANKING.length) * 100).toFixed(1)),
     bucketKey: bucket?.key || 'UNKNOWN',
     bucketLabel: bucket?.label || '알 수 없음',
+    summaryKey: summaryBucket?.key || 'UNKNOWN',
+    summaryLabel: summaryBucket?.label || '알 수 없음',
     minRank: bucket?.minRank || null,
     maxRank: bucket?.maxRank || null,
   }
+}
+
+export const isPocketPair = (hand) => {
+  const normalized = normalizeHand(hand)
+
+  return Boolean(normalized && normalized.length === 2 && normalized[0] === normalized[1])
+}
+
+export const isHighPocketPair = (hand) => {
+  const normalized = normalizeHand(hand)
+
+  return HIGH_POCKET_HANDS.has(normalized)
 }
 
 export const createPreflopRankDistribution = (hands = []) => {
@@ -449,11 +638,7 @@ export const createPreflopRankDistribution = (hands = []) => {
   const bucketMap = new Map(distribution.map((bucket) => [bucket.key, bucket]))
 
   hands.forEach((item) => {
-    const hand =
-      typeof item === 'string'
-        ? item
-        : item?.hand || item?.holeCards || item?.cards || item?.startingHand
-
+    const hand = getHandInputValue(item)
     const stat = getPreflopRankStat(hand)
 
     if (!stat.bucketKey || stat.bucketKey === 'UNKNOWN') {
@@ -470,6 +655,67 @@ export const createPreflopRankDistribution = (hands = []) => {
   return distribution
 }
 
+export const createPreflopRankSummary = (hands = []) => {
+  const summary = PREFLOP_RANK_SUMMARY_BUCKETS.map((bucket) => ({
+    ...bucket,
+    count: 0,
+    percent: 0,
+  }))
+
+  const summaryMap = new Map(summary.map((bucket) => [bucket.key, bucket]))
+
+  const normalizedHands = hands
+    .map((item) => normalizeHand(getHandInputValue(item)))
+    .filter(Boolean)
+
+  normalizedHands.forEach((hand) => {
+    const stat = getPreflopRankStat(hand)
+
+    if (!stat.summaryKey || stat.summaryKey === 'UNKNOWN') {
+      return
+    }
+
+    const bucket = summaryMap.get(stat.summaryKey)
+
+    if (bucket) {
+      bucket.count += 1
+    }
+  })
+
+  const total = normalizedHands.length
+
+  summary.forEach((bucket) => {
+    bucket.percent = total ? Math.round((bucket.count / total) * 100) : 0
+  })
+
+  return summary
+}
+
+export const createPocketPairSummary = (hands = []) => {
+  const normalizedHands = hands
+    .map((item) => normalizeHand(getHandInputValue(item)))
+    .filter(Boolean)
+
+  const pocketPairCount = normalizedHands.filter((hand) => isPocketPair(hand)).length
+  const highPocketCount = normalizedHands.filter((hand) => isHighPocketPair(hand)).length
+  const total = normalizedHands.length
+
+  return {
+    total,
+    pocketPairCount,
+    pocketPairPercent: total ? Math.round((pocketPairCount / total) * 100) : 0,
+    highPocketCount,
+    highPocketPercent: total ? Math.round((highPocketCount / total) * 100) : 0,
+  }
+}
+
+export const createHandRankOverview = (hands = []) => {
+  return {
+    rankSummary: createPreflopRankSummary(hands),
+    pocketSummary: createPocketPairSummary(hands),
+  }
+}
+
 export const createHandTierDistribution = (hands = []) => {
   const distribution = Object.keys(TIER_META).map((tier) => ({
     tier,
@@ -480,11 +726,7 @@ export const createHandTierDistribution = (hands = []) => {
   const tierMap = new Map(distribution.map((item) => [item.tier, item]))
 
   hands.forEach((item) => {
-    const hand =
-      typeof item === 'string'
-        ? item
-        : item?.hand || item?.holeCards || item?.cards || item?.startingHand
-
+    const hand = getHandInputValue(item)
     const strength = getHandStrength(hand)
     const target = tierMap.get(strength.tier)
 

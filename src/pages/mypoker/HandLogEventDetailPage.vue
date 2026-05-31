@@ -196,37 +196,55 @@
               </div>
 
               <div class="rank-section q-mt-lg">
-                <div class="section-title">전체 핸드 랭크 분포</div>
+                <div class="section-title">핸드 랭크 요약</div>
 
                 <div class="text-caption text-grey-7 q-mt-xs">
-                  169개 스타팅 핸드 고정 순위 기준입니다. 기록된 핸드가 상위권에 얼마나 몰렸는지
-                  확인하는 용도입니다.
+                  169개 스타팅 핸드 고정 순위 기준입니다. 이 대회에서 좋은 핸드를 얼마나 받았는지
+                  빠르게 확인하는 용도입니다.
                 </div>
 
-                <div class="rank-list q-mt-md">
-                  <div
-                    v-for="bucket in eventPreflopRankDistribution"
-                    :key="bucket.key"
-                    class="rank-row"
-                    :class="[getBucketClass(bucket), { 'rank-row--empty': bucket.count === 0 }]"
-                  >
-                    <div class="rank-row-header">
-                      <div class="rank-row-label">
-                        {{ bucket.label }}
+                <div class="rank-overview-card q-mt-md">
+                  <div class="rank-meter">
+                    <div
+                      v-for="bucket in eventRankSummary"
+                      :key="`meter-${bucket.key}`"
+                      class="rank-meter-segment"
+                      :class="getRankToneClass(bucket)"
+                      :style="getRankSegmentStyle(bucket)"
+                    >
+                      <span v-if="bucket.percent >= 12">{{ bucket.percent }}%</span>
+                    </div>
+                  </div>
+
+                  <div class="rank-list q-mt-md">
+                    <div v-for="bucket in eventRankSummary" :key="bucket.key" class="rank-list-row">
+                      <div class="rank-list-left">
+                        <span class="rank-dot" :class="getRankToneClass(bucket)" />
+
+                        <div>
+                          <div class="rank-list-label">{{ bucket.label }}</div>
+                          <div class="rank-list-sub">{{ bucket.description }}</div>
+                        </div>
                       </div>
 
-                      <div class="rank-row-count">{{ bucket.count }}개</div>
+                      <div class="rank-list-right">
+                        <strong>{{ bucket.count }}개</strong>
+                        <span>{{ bucket.percent }}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="pocket-chip-row q-mt-md">
+                    <div class="pocket-chip pocket-chip--high">
+                      <span>하이 포켓 TT+</span>
+                      <strong>{{ eventPocketSummary.highPocketCount }}개</strong>
+                      <em>{{ eventPocketSummary.highPocketPercent }}%</em>
                     </div>
 
-                    <div class="rank-row-bar">
-                      <div
-                        class="rank-row-bar-fill"
-                        :style="getBucketBarStyle(bucket, eventPreflopRankDistribution)"
-                      />
-                    </div>
-
-                    <div class="rank-row-sub">
-                      기록 핸드 중 {{ getBucketPercent(bucket, eventPreflopRankDistribution) }}%
+                    <div class="pocket-chip">
+                      <span>포켓 전체</span>
+                      <strong>{{ eventPocketSummary.pocketPairCount }}개</strong>
+                      <em>{{ eventPocketSummary.pocketPairPercent }}%</em>
                     </div>
                   </div>
                 </div>
@@ -315,12 +333,14 @@ import { useAlert } from 'src/composables/useAlert'
 
 import { useHandLogStore } from 'src/stores/handLog'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
-import { createPreflopRankDistribution } from 'src/utils/handLogHandAnalysis'
-
-const VPIP_ACTIONS = new Set(['LIMP', 'CALL', 'OPEN', 'THREE_BET', 'FOUR_BET_PLUS', 'BB_DEFENSE'])
-const PFR_ACTIONS = new Set(['OPEN', 'THREE_BET', 'FOUR_BET_PLUS'])
-const THREE_BET_PLUS_ACTIONS = new Set(['THREE_BET', 'FOUR_BET_PLUS'])
-const SHOWDOWN_RESULTS = new Set(['SHOWDOWN_WIN', 'SHOWDOWN_LOSS'])
+import {
+  createHandRankOverview,
+  getHandInputValue,
+  isPfrAction,
+  isShowdownResult,
+  isThreeBetPlusAction,
+  isVpipAction,
+} from 'src/utils/handLogHandAnalysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -363,11 +383,19 @@ const allHands = computed(() => {
 })
 
 const allHandNotations = computed(() => {
-  return allHands.value.map((hand) => getHandNotation(hand)).filter(Boolean)
+  return allHands.value.map((hand) => getHandInputValue(hand)).filter(Boolean)
 })
 
-const eventPreflopRankDistribution = computed(() => {
-  return createPreflopRankDistribution(allHandNotations.value)
+const eventRankOverview = computed(() => {
+  return createHandRankOverview(allHandNotations.value)
+})
+
+const eventRankSummary = computed(() => {
+  return eventRankOverview.value.rankSummary
+})
+
+const eventPocketSummary = computed(() => {
+  return eventRankOverview.value.pocketSummary
 })
 
 const totalHandCount = computed(() => {
@@ -546,61 +574,23 @@ const getLevelReviewCount = (level) => {
   return level.reviewRequiredCount ?? level.hands?.filter((hand) => isReviewHand(hand)).length ?? 0
 }
 
-const getHandNotation = (hand) => {
-  if (typeof hand === 'string') {
-    return hand
+const getRankToneClass = (bucket) => {
+  if (bucket.key === 'TOP') {
+    return 'rank-tone--top'
   }
 
-  return (
-    hand?.hand ||
-    hand?.holeCards ||
-    hand?.cards ||
-    hand?.startingHand ||
-    hand?.handCode ||
-    hand?.preflopHand ||
-    hand?.cardText ||
-    ''
-  )
-}
-
-const getDistributionTotal = (distribution) => {
-  return distribution.reduce((sum, bucket) => sum + Number(bucket.count || 0), 0)
-}
-
-const getBucketPercent = (bucket, distribution) => {
-  const total = getDistributionTotal(distribution)
-
-  if (!total) {
-    return 0
+  if (bucket.key === 'MIDDLE') {
+    return 'rank-tone--middle'
   }
 
-  return Math.round((Number(bucket.count || 0) / total) * 100)
+  return 'rank-tone--low'
 }
 
-const getBucketBarStyle = (bucket, distribution) => {
+const getRankSegmentStyle = (bucket) => {
   return {
-    width: `${getBucketPercent(bucket, distribution)}%`,
+    width: `${bucket.percent}%`,
+    minWidth: bucket.count > 0 ? '8px' : '0',
   }
-}
-
-const getBucketClass = (bucket) => {
-  if (bucket.key === 'P1_10' || bucket.key === 'P11_20') {
-    return 'rank-row--top'
-  }
-
-  if (bucket.key === 'P21_30' || bucket.key === 'P31_40') {
-    return 'rank-row--good'
-  }
-
-  if (bucket.key === 'P41_50' || bucket.key === 'P51_60') {
-    return 'rank-row--middle'
-  }
-
-  if (bucket.key === 'P61_70' || bucket.key === 'P71_80') {
-    return 'rank-row--low'
-  }
-
-  return 'rank-row--bottom'
 }
 
 const isReviewHand = (hand) => {
@@ -613,22 +603,6 @@ const getActionValue = (hand) => {
 
 const getResultValue = (hand) => {
   return hand?.resultType || ''
-}
-
-const isVpipAction = (action) => {
-  return VPIP_ACTIONS.has(action)
-}
-
-const isPfrAction = (action) => {
-  return PFR_ACTIONS.has(action)
-}
-
-const isThreeBetPlusAction = (action) => {
-  return THREE_BET_PLUS_ACTIONS.has(action)
-}
-
-const isShowdownResult = (result) => {
-  return SHOWDOWN_RESULTS.has(result)
 }
 </script>
 
@@ -704,111 +678,168 @@ const isShowdownResult = (result) => {
   padding-top: 18px;
 }
 
+.rank-overview-card {
+  border: 1px solid #ececef;
+  border-radius: 16px;
+  padding: 14px;
+  background: #fcfcfd;
+}
+
+.rank-meter {
+  display: flex;
+  width: 100%;
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eeeef2;
+}
+
+.rank-meter-segment {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 800;
+  color: #ffffff;
+  white-space: nowrap;
+  transition: width 0.15s ease;
+}
+
+.rank-meter-segment.rank-tone--top {
+  background: #673ab7;
+}
+
+.rank-meter-segment.rank-tone--middle {
+  background: #00897b;
+}
+
+.rank-meter-segment.rank-tone--low {
+  background: #fb8c00;
+}
+
 .rank-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.rank-row {
-  border: 1px solid #ececef;
-  border-radius: 12px;
-  padding: 11px 12px;
-  background: #ffffff;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease;
-}
-
-.rank-row--empty {
-  opacity: 0.58;
-}
-
-.rank-row-header {
+.rank-list-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f1f1f4;
 }
 
-.rank-row-label {
+.rank-list-row:last-child {
+  border-bottom: none;
+}
+
+.rank-list-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.rank-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.rank-dot.rank-tone--top {
+  background: #673ab7;
+}
+
+.rank-dot.rank-tone--middle {
+  background: #00897b;
+}
+
+.rank-dot.rank-tone--low {
+  background: #fb8c00;
+}
+
+.rank-list-label {
   font-size: 13px;
   font-weight: 800;
   color: #333;
 }
 
-.rank-row-count {
-  font-size: 13px;
-  font-weight: 800;
+.rank-list-sub {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #777;
+}
+
+.rank-list-right {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.rank-list-right strong {
+  font-size: 14px;
+  font-weight: 900;
   color: #111;
 }
 
-.rank-row-bar {
-  height: 7px;
-  margin-top: 8px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eeeef2;
-}
-
-.rank-row-bar-fill {
-  height: 100%;
-  min-width: 0;
-  border-radius: 999px;
-  background: #9e9e9e;
-  transition: width 0.15s ease;
-}
-
-.rank-row-sub {
-  margin-top: 5px;
-  font-size: 11px;
+.rank-list-right span {
+  font-size: 12px;
+  font-weight: 700;
   color: #777;
-  text-align: right;
 }
 
-.rank-row--top {
-  border-color: #d8ccff;
-  background: #fbf9ff;
+.pocket-chip-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-.rank-row--top .rank-row-bar-fill {
-  background: #673ab7;
-}
-
-.rank-row--good {
-  border-color: #cde8ff;
-  background: #f8fcff;
-}
-
-.rank-row--good .rank-row-bar-fill {
-  background: #1976d2;
-}
-
-.rank-row--middle {
-  border-color: #d9efe7;
-  background: #fbfffd;
-}
-
-.rank-row--middle .rank-row-bar-fill {
-  background: #00897b;
-}
-
-.rank-row--low {
-  border-color: #ffe0b2;
-  background: #fffaf3;
-}
-
-.rank-row--low .rank-row-bar-fill {
-  background: #fb8c00;
-}
-
-.rank-row--bottom {
-  border-color: #eeeeee;
+.pocket-chip {
+  display: grid;
+  grid-template-columns: 1fr auto 42px;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #ececef;
+  border-radius: 12px;
   background: #fafafa;
 }
 
-.rank-row--bottom .rank-row-bar-fill {
-  background: #757575;
+.pocket-chip span {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 800;
+  color: #555;
+}
+
+.pocket-chip strong {
+  font-size: 13px;
+  font-weight: 900;
+  color: #111;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pocket-chip em {
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  color: #777;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.pocket-chip--high {
+  border-color: #d8ccff;
+  background: #fbf9ff;
 }
 
 .level-add-btn,
@@ -831,6 +862,20 @@ const isShowdownResult = (result) => {
   .level-add-btn,
   .copy-btn {
     width: 100%;
+  }
+
+  .rank-overview-card {
+    padding: 12px;
+  }
+
+  .rank-list-row {
+    align-items: flex-start;
+  }
+
+  .rank-list-right {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 1px;
   }
 }
 </style>

@@ -43,6 +43,10 @@ const routes = [
         component: () => import('pages/mypoker/HandLogLevelDetailPage.vue'),
       },
       {
+        path: 'mypoker/hand-log/:eventId/levels/:levelId/hands/:handId',
+        component: () => import('pages/mypoker/HandLogHandDetailPage.vue'),
+      },
+      {
         path: 'mypoker/hand-review',
         component: () => import('src/pages/mypoker/MyPokerHandReviewPage.vue'),
       },

@@ -30,5 +30,31 @@ export const createHandLogHand = async (eventId, blindLevelId, payload) => {
     `/hand-log/events/${eventId}/blind-levels/${blindLevelId}/hands`,
     payload,
   )
+
+  return res.data.data
+}
+
+export const fetchHandLogHand = async (eventId, blindLevelId, handId) => {
+  const res = await api.get(
+    `/hand-log/events/${eventId}/blind-levels/${blindLevelId}/hands/${handId}`,
+  )
+
+  return res.data.data
+}
+
+export const updateHandLogHand = async (eventId, blindLevelId, handId, payload) => {
+  const res = await api.put(
+    `/hand-log/events/${eventId}/blind-levels/${blindLevelId}/hands/${handId}`,
+    payload,
+  )
+
+  return res.data.data
+}
+
+export const deleteHandLogHand = async (eventId, blindLevelId, handId) => {
+  const res = await api.delete(
+    `/hand-log/events/${eventId}/blind-levels/${blindLevelId}/hands/${handId}`,
+  )
+
   return res.data.data
 }
