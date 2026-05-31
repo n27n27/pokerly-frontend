@@ -446,4 +446,21 @@ const onSave = () => {
 .form-select-popup .q-item {
   min-height: 40px;
 }
+
+.move-dialog-card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 16px;
+}
+
+.move-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.move-warning-banner {
+  background: #f6f7fb;
+  color: #333;
+}
 </style>

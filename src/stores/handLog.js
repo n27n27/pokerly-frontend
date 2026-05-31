@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  copyHandLogBlindLevelsFromEvent,
   createHandLogBlindLevel,
   createHandLogEvent,
   createHandLogHand,
@@ -11,6 +12,7 @@ import {
   fetchHandLogEvent,
   fetchHandLogEvents,
   fetchHandLogHand,
+  moveHandLogHand,
   updateHandLogBlindLevel,
   updateHandLogHand,
 } from 'src/api/handLogApi'
@@ -497,6 +499,25 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
+  const copyBlindLevelsFromEvent = async (targetEventId, sourceEventId) => {
+    if (!targetEventId || !sourceEventId) {
+      return null
+    }
+
+    saving.value = true
+
+    try {
+      const copiedEvent = await copyHandLogBlindLevelsFromEvent(targetEventId, sourceEventId)
+      const normalized = upsertEvent(copiedEvent)
+
+      selectedEvent.value = normalized
+
+      return normalized
+    } finally {
+      saving.value = false
+    }
+  }
+
   const fetchBlindLevelDetail = async (eventId, blindLevelId) => {
     if (!eventId || !blindLevelId) {
       selectedBlindLevel.value = null
@@ -651,6 +672,33 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
+  const moveHandToBlindLevel = async (eventId, currentLevelId, handId, targetLevelId) => {
+    if (!eventId || !currentLevelId || !handId || !targetLevelId) {
+      return null
+    }
+
+    saving.value = true
+
+    try {
+      const movedHand = await moveHandLogHand(eventId, currentLevelId, handId, targetLevelId)
+      const normalizedHand = normalizeHand(movedHand)
+
+      // 이동 후 카운트/목록 동기화를 서버 기준으로 맞춤
+      await fetchEventDetail(eventId)
+
+      if (String(currentLevelId) !== String(targetLevelId)) {
+        await fetchBlindLevelDetail(eventId, currentLevelId)
+        await fetchBlindLevelDetail(eventId, targetLevelId)
+      }
+
+      selectedHand.value = normalizedHand
+
+      return normalizedHand
+    } finally {
+      saving.value = false
+    }
+  }
+
   const deleteHandFromBlindLevel = async (eventId, levelId, handId) => {
     if (!eventId || !levelId || !handId) {
       return false
@@ -704,11 +752,13 @@ export const useHandLogStore = defineStore('handLog', () => {
     addBlindLevel,
     updateBlindLevel,
     deleteBlindLevel,
+    copyBlindLevelsFromEvent,
     fetchBlindLevelDetail,
     addHandToBlindLevel,
 
     fetchHandDetail,
     updateHandInBlindLevel,
+    moveHandToBlindLevel,
     deleteHandFromBlindLevel,
 
     addLog,

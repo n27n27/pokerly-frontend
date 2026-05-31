@@ -45,9 +45,9 @@
           />
 
           <div class="row items-start justify-between q-col-gutter-md">
-            <div class="col-12 col-md">
+            <div class="col">
               <div class="row items-center q-gutter-sm">
-                <div class="text-h5 text-weight-bold">
+                <div class="text-h5 text-weight-bold hand-title">
                   {{ handTitle }}
                 </div>
 
@@ -68,61 +68,78 @@
               </div>
             </div>
 
-            <div class="col-12 col-md-auto">
-              <div class="row q-col-gutter-sm">
-                <div class="col-6 col-sm-auto">
-                  <q-btn
-                    class="action-btn"
-                    color="dark"
-                    outline
-                    icon="edit"
-                    label="수정"
-                    :disable="saving"
-                    @click="editDialog = true"
-                  />
-                </div>
+            <div class="col-auto">
+              <q-btn flat dense round icon="more_vert" color="grey-8" :disable="saving">
+                <q-menu auto-close anchor="bottom right" self="top right">
+                  <q-list dense class="hand-action-menu">
+                    <q-item clickable v-close-popup @click.stop="editDialog = true">
+                      <q-item-section avatar>
+                        <q-icon name="edit" size="18px" color="grey-8" />
+                      </q-item-section>
 
-                <div class="col-6 col-sm-auto">
-                  <q-btn
-                    class="action-btn"
-                    color="negative"
-                    outline
-                    icon="delete"
-                    label="삭제"
-                    :loading="saving"
-                    :disable="saving"
-                    @click="confirmDeleteHand"
-                  />
-                </div>
-              </div>
+                      <q-item-section>수정</q-item-section>
+                    </q-item>
+
+                    <q-item
+                      clickable
+                      v-close-popup
+                      :disable="movableLevelOptions.length === 0"
+                      @click.stop="openMoveDialog"
+                    >
+                      <q-item-section avatar>
+                        <q-icon
+                          name="swap_horiz"
+                          size="18px"
+                          :color="movableLevelOptions.length === 0 ? 'grey-5' : 'primary'"
+                        />
+                      </q-item-section>
+
+                      <q-item-section>
+                        <div :class="{ 'text-grey-5': movableLevelOptions.length === 0 }">
+                          레벨 이동
+                        </div>
+                      </q-item-section>
+                    </q-item>
+
+                    <q-separator />
+
+                    <q-item
+                      clickable
+                      v-close-popup
+                      class="delete-menu-item"
+                      @click.stop="confirmDeleteHand"
+                    >
+                      <q-item-section avatar>
+                        <q-icon name="delete" size="18px" color="negative" />
+                      </q-item-section>
+
+                      <q-item-section>삭제</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </div>
           </div>
         </div>
 
-        <!-- 핸드 요약 -->
+        <!-- 핸드 랭크 -->
         <q-card flat bordered class="section-card q-mb-md">
           <q-card-section>
-            <div class="section-title">핸드 요약</div>
+            <div class="section-title">핸드 랭크</div>
 
-            <div class="hand-summary-panel q-mt-md">
-              <div class="hand-summary-main">
-                <div>
-                  <div class="hand-summary-value">{{ handRankText }}</div>
+            <div class="hand-rank-panel q-mt-md">
+              <div class="hand-rank-main">
+                <div class="hand-rank-value">{{ handRankText }}</div>
+
+                <div class="hand-rank-percent">
+                  {{ handRankPercentText }}
                 </div>
-
-                <q-badge
-                  rounded
-                  class="rank-group-badge"
-                  color="grey-9"
-                  text-color="white"
-                  :label="handRankGroupText"
-                />
               </div>
             </div>
           </q-card-section>
         </q-card>
 
-        <!-- 핸드 정보 -->
+        <!-- 기록 정보 -->
         <q-card flat bordered class="section-card q-mb-md">
           <q-card-section>
             <div class="section-title">기록 정보</div>
@@ -174,6 +191,51 @@
       :edit-hand="hand"
       @save="updateHand"
     />
+
+    <q-dialog v-model="moveDialog" :persistent="saving">
+      <q-card class="move-dialog-card">
+        <q-card-section>
+          <div class="text-h6 text-weight-bold">레벨 이동</div>
+
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            이 핸드를 같은 대회의 다른 블라인드 구간으로 이동합니다.
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="move-form">
+          <q-select
+            v-model="targetBlindLevelId"
+            :options="movableLevelOptions"
+            outlined
+            emit-value
+            map-options
+            options-dense
+            label="이동할 레벨"
+            behavior="menu"
+            :disable="saving"
+          />
+
+          <q-banner dense rounded class="move-warning-banner">
+            이동 후 대상 레벨의 핸드 상세 화면으로 이동합니다.
+          </q-banner>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="취소" color="grey-8" :disable="saving" @click="closeMoveDialog" />
+
+          <q-btn
+            unelevated
+            color="primary"
+            label="이동"
+            :loading="saving"
+            :disable="!canMoveHand || saving"
+            @click="moveHand"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -202,6 +264,8 @@ const handLogStore = useHandLogStore()
 const { detailLoading, levelLoading, handLoading, saving } = storeToRefs(handLogStore)
 
 const editDialog = ref(false)
+const moveDialog = ref(false)
+const targetBlindLevelId = ref(null)
 
 const eventId = computed(() => route.params.eventId)
 const levelId = computed(() => route.params.levelId)
@@ -213,6 +277,10 @@ const event = computed(() => {
 
 const blindLevel = computed(() => {
   return handLogStore.getBlindLevelById(eventId.value, levelId.value)
+})
+
+const blindLevels = computed(() => {
+  return event.value?.blindLevels || []
 })
 
 const hand = computed(() => {
@@ -243,8 +311,12 @@ const handRankText = computed(() => {
   return `${handRankStat.value.rank}위`
 })
 
-const handRankGroupText = computed(() => {
-  return handRankStat.value.summaryLabel || '-'
+const handRankPercentText = computed(() => {
+  if (!handRankStat.value.percentile) {
+    return '상위 정보 없음'
+  }
+
+  return `상위 ${handRankStat.value.percentile}%`
 })
 
 const levelLabel = computed(() => {
@@ -253,6 +325,21 @@ const levelLabel = computed(() => {
   }
 
   return `L${blindLevel.value.levelNo} · ${formatBlind(blindLevel.value)}`
+})
+
+const movableLevelOptions = computed(() => {
+  return blindLevels.value
+    .filter((level) => {
+      return String(level.id) !== String(levelId.value)
+    })
+    .map((level) => ({
+      label: `L${level.levelNo} · ${formatBlind(level)}`,
+      value: level.id,
+    }))
+})
+
+const canMoveHand = computed(() => {
+  return Boolean(targetBlindLevelId.value)
 })
 
 watch(
@@ -293,6 +380,50 @@ const updateHand = async (payload) => {
     console.error(error)
 
     alert.show('핸드 기록을 수정하지 못했습니다.', 'error')
+  }
+}
+
+const openMoveDialog = () => {
+  targetBlindLevelId.value = null
+  moveDialog.value = true
+}
+
+const closeMoveDialog = () => {
+  if (saving.value) {
+    return
+  }
+
+  moveDialog.value = false
+  targetBlindLevelId.value = null
+}
+
+const moveHand = async () => {
+  if (!canMoveHand.value || saving.value) {
+    return
+  }
+
+  try {
+    const movedHand = await handLogStore.moveHandToBlindLevel(
+      eventId.value,
+      levelId.value,
+      handId.value,
+      targetBlindLevelId.value,
+    )
+
+    const nextLevelId = movedHand?.blindLevelId || targetBlindLevelId.value
+
+    moveDialog.value = false
+    targetBlindLevelId.value = null
+
+    alert.show('핸드를 다른 레벨로 이동했습니다.', 'positive')
+
+    router.replace(
+      `/app/mypoker/hand-log/${eventId.value}/levels/${nextLevelId}/hands/${handId.value}`,
+    )
+  } catch (error) {
+    console.error(error)
+
+    alert.show('핸드를 이동하지 못했습니다.', 'error')
   }
 }
 
@@ -392,68 +523,53 @@ const formatNumber = (value) => {
   background: #ffffff;
 }
 
+.hand-title {
+  line-height: 1.2;
+}
+
 .section-title {
   font-size: 16px;
   font-weight: 700;
 }
-.hand-summary-panel {
+
+.hand-action-menu {
+  min-width: 148px;
+}
+
+.delete-menu-item {
+  color: #c10015;
+}
+
+.hand-rank-panel {
   border: 1px solid #ececef;
   border-radius: 16px;
-  padding: 15px 16px;
+  padding: 16px;
   background: #fcfcfd;
 }
 
-.hand-summary-main {
+.hand-rank-main {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-.hand-summary-label {
-  font-size: 12px;
-  font-weight: 800;
-  color: #777;
-}
-
-.hand-summary-value {
-  margin-top: 3px;
-  font-size: 26px;
+.hand-rank-value {
+  font-size: 28px;
   font-weight: 900;
   line-height: 1.1;
   color: #111;
 }
 
-.rank-group-badge {
+.hand-rank-percent {
+  flex: 0 0 auto;
+  border: 1px solid #e5e7ee;
+  border-radius: 999px;
   padding: 6px 10px;
+  background: #ffffff;
   font-size: 12px;
   font-weight: 800;
-}
-
-.hand-summary-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.hand-summary-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.hand-summary-row span {
-  font-size: 13px;
-  font-weight: 700;
-  color: #666;
-}
-
-.hand-summary-row strong {
-  font-size: 14px;
-  font-weight: 900;
-  color: #222;
-  text-align: right;
+  color: #555;
 }
 
 .info-list {
@@ -512,15 +628,24 @@ const formatNumber = (value) => {
   background: #fafafa;
 }
 
-.action-btn {
-  min-width: 96px;
+.move-dialog-card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 16px;
+}
+
+.move-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.move-warning-banner {
+  background: #f6f7fb;
+  color: #333;
 }
 
 @media (max-width: 599px) {
-  .action-btn {
-    width: 100%;
-  }
-
   .info-row {
     align-items: flex-start;
     flex-direction: column;
@@ -529,6 +654,10 @@ const formatNumber = (value) => {
 
   .info-value {
     text-align: left;
+  }
+
+  .hand-rank-main {
+    align-items: center;
   }
 }
 </style>
