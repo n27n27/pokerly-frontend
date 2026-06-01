@@ -3,8 +3,8 @@
     <q-card class="dialog-card">
       <q-card-section class="row items-center justify-between">
         <div>
-          <div class="text-h6 text-weight-bold">대회 생성</div>
-          <div class="text-caption text-grey-7">핸드 로그를 기록할 대회를 만듭니다.</div>
+          <div class="text-h6 text-weight-bold">{{ dialogTitle }}</div>
+          <div class="text-caption text-grey-7">{{ dialogDescription }}</div>
         </div>
 
         <q-btn flat round dense icon="close" :disable="loading" v-close-popup />
@@ -33,7 +33,7 @@
         <q-btn
           color="dark"
           unelevated
-          label="생성"
+          :label="saveButtonLabel"
           :loading="loading"
           :disable="!canSave || loading"
           @click="onSave"
@@ -55,6 +55,15 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  mode: {
+    type: String,
+    default: 'create',
+    validator: (value) => ['create', 'edit'].includes(value),
+  },
+  initialEvent: {
+    type: Object,
+    default: null,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
@@ -68,15 +77,48 @@ const form = reactive({
   name: '',
 })
 
+const isEditMode = computed(() => props.mode === 'edit')
+
+const dialogTitle = computed(() => {
+  return isEditMode.value ? '대회 수정' : '대회 생성'
+})
+
+const dialogDescription = computed(() => {
+  return isEditMode.value ? '대회 정보를 수정합니다.' : '핸드 로그를 기록할 대회를 만듭니다.'
+})
+
+const saveButtonLabel = computed(() => {
+  return isEditMode.value ? '수정' : '생성'
+})
+
 const canSave = computed(() => {
   return form.name.trim().length > 0
 })
 
-watch(dialogModel, (value) => {
-  if (!value) {
+watch(
+  () => props.modelValue,
+  (value) => {
+    if (value) {
+      setForm()
+      return
+    }
+
     resetForm()
-  }
-})
+  },
+)
+
+watch(
+  () => props.initialEvent,
+  () => {
+    if (props.modelValue) {
+      setForm()
+    }
+  },
+)
+
+const setForm = () => {
+  form.name = props.initialEvent?.name || ''
+}
 
 const resetForm = () => {
   form.name = ''
