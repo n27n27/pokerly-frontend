@@ -1,16 +1,13 @@
 <template>
   <q-page class="hand-log-detail-page q-pa-md">
     <div class="page-container">
-      <!-- 상세 로딩 -->
       <q-card v-if="isInitialLoading" flat bordered class="empty-card">
         <q-card-section class="text-center q-py-xl">
           <q-spinner size="32px" color="primary" />
-
           <div class="text-body2 text-grey-7 q-mt-md">대회 정보를 불러오는 중입니다.</div>
         </q-card-section>
       </q-card>
 
-      <!-- 대회가 없을 때 -->
       <q-card v-else-if="!event" flat bordered class="empty-card">
         <q-card-section class="text-center q-py-xl">
           <q-icon name="error_outline" size="42px" color="grey-5" />
@@ -33,7 +30,6 @@
       </q-card>
 
       <template v-else>
-        <!-- 헤더 -->
         <div class="q-mb-md">
           <q-btn flat dense icon="arrow_back" label="대회 목록" class="q-mb-sm" @click="goList" />
 
@@ -57,7 +53,6 @@
           </div>
         </div>
 
-        <!-- 블라인드 구간 -->
         <q-card flat bordered class="section-card q-mb-md">
           <q-card-section>
             <div class="row items-start justify-between q-col-gutter-md q-mb-md">
@@ -184,7 +179,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- 블라인드 구조 불러오기 다이얼로그 -->
         <q-dialog v-model="blindImportDialog" :persistent="saving">
           <q-card class="blind-import-dialog-card">
             <q-card-section class="blind-import-header">
@@ -267,7 +261,6 @@
           </q-card>
         </q-dialog>
 
-        <!-- 대회 통계 -->
         <q-card flat bordered class="section-card">
           <q-card-section>
             <div class="section-title">대회 통계</div>
@@ -332,67 +325,13 @@
                 </div>
               </div>
 
-              <div class="rank-section q-mt-lg">
-                <div class="section-title">핸드 랭크 요약</div>
-
-                <div class="text-caption text-grey-7 q-mt-xs">
-                  169개 스타팅 핸드 고정 순위 기준입니다. 이 대회에서 좋은 핸드를 얼마나 받았는지
-                  빠르게 확인하는 용도입니다.
-                </div>
-
-                <div class="rank-overview-card q-mt-md">
-                  <div class="rank-meter">
-                    <div
-                      v-for="bucket in eventRankSummary"
-                      :key="`meter-${bucket.key}`"
-                      class="rank-meter-segment"
-                      :class="getRankToneClass(bucket)"
-                      :style="getRankSegmentStyle(bucket)"
-                    >
-                      <span v-if="bucket.percent >= 12">{{ bucket.percent }}%</span>
-                    </div>
-                  </div>
-
-                  <div class="rank-list q-mt-md">
-                    <div v-for="bucket in eventRankSummary" :key="bucket.key" class="rank-list-row">
-                      <div class="rank-list-left">
-                        <span class="rank-dot" :class="getRankToneClass(bucket)" />
-
-                        <div>
-                          <div class="rank-list-label">{{ bucket.label }}</div>
-                          <div class="rank-list-sub">{{ bucket.description }}</div>
-                        </div>
-                      </div>
-
-                      <div class="rank-list-right">
-                        <strong>{{ bucket.count }}개</strong>
-                        <span>{{ bucket.percent }}%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="pocket-chip-row q-mt-md">
-                    <div class="pocket-chip pocket-chip--high">
-                      <span>하이 포켓 TT+</span>
-                      <strong>{{ eventPocketSummary.highPocketCount }}개</strong>
-                      <em>{{ eventPocketSummary.highPocketPercent }}%</em>
-                    </div>
-
-                    <div class="pocket-chip">
-                      <span>포켓 전체</span>
-                      <strong>{{ eventPocketSummary.pocketPairCount }}개</strong>
-                      <em>{{ eventPocketSummary.pocketPairPercent }}%</em>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <StartingHandSummary class="q-mt-lg" :hands="allHands" @open-hand="openSummaryHand" />
             </template>
           </q-card-section>
         </q-card>
       </template>
     </div>
 
-    <!-- 레벨 추가/수정 다이얼로그 -->
     <q-dialog v-model="levelDialog" :persistent="saving">
       <q-card class="level-dialog-card">
         <q-card-section>
@@ -471,11 +410,10 @@ import { copyToClipboard, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlert } from 'src/composables/useAlert'
 
+import StartingHandSummary from 'src/components/hand-log/StartingHandSummary.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
 import {
-  createHandRankOverview,
-  getHandInputValue,
   isPfrAction,
   isShowdownResult,
   isThreeBetPlusAction,
@@ -494,35 +432,6 @@ const levelDialog = ref(false)
 const editingLevel = ref(null)
 const blindImportDialog = ref(false)
 const selectedSourceEventId = ref(null)
-
-const canImportBlindStructure = computed(() => {
-  return blindLevels.value.length === 0
-})
-
-const sourceEventOptions = computed(() => {
-  return handLogStore.eventItems
-    .filter((item) => String(item.id) !== String(eventId.value))
-    .filter((item) => {
-      return Number(item.levelCount || item.blindLevels?.length || 0) > 0
-    })
-    .map((item) => ({
-      value: item.id,
-      name: item.name,
-      levelCount: Number(item.levelCount || item.blindLevels?.length || 0),
-    }))
-})
-
-const selectedSourceEvent = computed(() => {
-  return (
-    sourceEventOptions.value.find(
-      (item) => String(item.value) === String(selectedSourceEventId.value),
-    ) || null
-  )
-})
-
-const canImportSelectedStructure = computed(() => {
-  return Boolean(selectedSourceEventId.value) && canImportBlindStructure.value
-})
 
 const levelForm = reactive({
   levelNo: '',
@@ -548,27 +457,20 @@ const blindLevels = computed(() => {
 const allHands = computed(() => {
   return blindLevels.value.reduce((acc, level) => {
     if (Array.isArray(level.hands)) {
-      acc.push(...level.hands)
+      const levelLabel = `L${level.levelNo}`
+
+      acc.push(
+        ...level.hands.map((hand) => ({
+          ...hand,
+          __levelId: level.id,
+          __levelNo: level.levelNo,
+          __levelLabel: levelLabel,
+        })),
+      )
     }
 
     return acc
   }, [])
-})
-
-const allHandNotations = computed(() => {
-  return allHands.value.map((hand) => getHandInputValue(hand)).filter(Boolean)
-})
-
-const eventRankOverview = computed(() => {
-  return createHandRankOverview(allHandNotations.value)
-})
-
-const eventRankSummary = computed(() => {
-  return eventRankOverview.value.rankSummary
-})
-
-const eventPocketSummary = computed(() => {
-  return eventRankOverview.value.pocketSummary
 })
 
 const totalHandCount = computed(() => {
@@ -603,6 +505,35 @@ const pfrPercent = computed(() => {
   return formatPercent(pfrCount.value, totalHandCount.value)
 })
 
+const canImportBlindStructure = computed(() => {
+  return blindLevels.value.length === 0
+})
+
+const sourceEventOptions = computed(() => {
+  return handLogStore.eventItems
+    .filter((item) => String(item.id) !== String(eventId.value))
+    .filter((item) => {
+      return Number(item.levelCount || item.blindLevels?.length || 0) > 0
+    })
+    .map((item) => ({
+      value: item.id,
+      name: item.name,
+      levelCount: Number(item.levelCount || item.blindLevels?.length || 0),
+    }))
+})
+
+const selectedSourceEvent = computed(() => {
+  return (
+    sourceEventOptions.value.find(
+      (item) => String(item.value) === String(selectedSourceEventId.value),
+    ) || null
+  )
+})
+
+const canImportSelectedStructure = computed(() => {
+  return Boolean(selectedSourceEventId.value) && canImportBlindStructure.value
+})
+
 const isLevelEditMode = computed(() => {
   return Boolean(editingLevel.value?.id)
 })
@@ -620,10 +551,6 @@ const levelDialogDescription = computed(() => {
 const levelSaveButtonLabel = computed(() => {
   return isLevelEditMode.value ? '수정' : '저장'
 })
-
-const notifyBlockedDeleteLevel = () => {
-  alert.show('이 레벨에 기록된 핸드가 있어 삭제할 수 없습니다.', 'warning')
-}
 
 const canSaveLevel = computed(() => {
   return (
@@ -786,6 +713,7 @@ const openLevel = (level) => {
 const getLevelKey = (level) => {
   return level.id
 }
+
 const copyEventReviewText = async () => {
   if (!event.value) {
     return
@@ -844,23 +772,19 @@ const levelHasHands = (level) => {
   return getLevelHandCount(level) > 0
 }
 
-const getRankToneClass = (bucket) => {
-  if (bucket.key === 'TOP') {
-    return 'rank-tone--top'
-  }
-
-  if (bucket.key === 'MIDDLE') {
-    return 'rank-tone--middle'
-  }
-
-  return 'rank-tone--low'
+const notifyBlockedDeleteLevel = () => {
+  alert.show('이 레벨에 기록된 핸드가 있어 삭제할 수 없습니다.', 'warning')
 }
 
-const getRankSegmentStyle = (bucket) => {
-  return {
-    width: `${bucket.percent}%`,
-    minWidth: bucket.count > 0 ? '8px' : '0',
+const openSummaryHand = (hand) => {
+  if (!hand?.id || !hand.__levelId) {
+    return
   }
+
+  router.push({
+    path: `/app/mypoker/hand-log/${eventId.value}/levels/${hand.__levelId}/hands/${hand.id}`,
+    query: { from: 'event' },
+  })
 }
 
 const isReviewHand = (hand) => {
@@ -988,7 +912,6 @@ const importBlindStructure = async () => {
   border-style: dashed;
 }
 
-/* Compact level list */
 .level-list {
   border: 1px solid #ececef;
   border-radius: 16px;
@@ -1044,175 +967,6 @@ const importBlindStructure = async () => {
   min-width: 138px;
 }
 
-.rank-section {
-  border-top: 1px solid #ececef;
-  padding-top: 18px;
-}
-
-.rank-overview-card {
-  border: 1px solid #ececef;
-  border-radius: 16px;
-  padding: 14px;
-  background: #fcfcfd;
-}
-
-.rank-meter {
-  display: flex;
-  width: 100%;
-  height: 18px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eeeef2;
-}
-
-.rank-meter-segment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  overflow: hidden;
-  font-size: 10px;
-  font-weight: 800;
-  color: #ffffff;
-  white-space: nowrap;
-  transition: width 0.15s ease;
-}
-
-.rank-meter-segment.rank-tone--top {
-  background: #673ab7;
-}
-
-.rank-meter-segment.rank-tone--middle {
-  background: #00897b;
-}
-
-.rank-meter-segment.rank-tone--low {
-  background: #fb8c00;
-}
-
-.rank-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rank-list-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid #f1f1f4;
-}
-
-.rank-list-row:last-child {
-  border-bottom: none;
-}
-
-.rank-list-left {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.rank-dot {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-}
-
-.rank-dot.rank-tone--top {
-  background: #673ab7;
-}
-
-.rank-dot.rank-tone--middle {
-  background: #00897b;
-}
-
-.rank-dot.rank-tone--low {
-  background: #fb8c00;
-}
-
-.rank-list-label {
-  font-size: 13px;
-  font-weight: 800;
-  color: #333;
-}
-
-.rank-list-sub {
-  margin-top: 2px;
-  font-size: 11px;
-  color: #777;
-}
-
-.rank-list-right {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  flex: 0 0 auto;
-}
-
-.rank-list-right strong {
-  font-size: 14px;
-  font-weight: 900;
-  color: #111;
-}
-
-.rank-list-right span {
-  font-size: 12px;
-  font-weight: 700;
-  color: #777;
-}
-
-.pocket-chip-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pocket-chip {
-  display: grid;
-  grid-template-columns: 1fr auto 42px;
-  align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 8px 12px;
-  border: 1px solid #ececef;
-  border-radius: 12px;
-  background: #fafafa;
-}
-
-.pocket-chip span {
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 800;
-  color: #555;
-}
-
-.pocket-chip strong {
-  font-size: 13px;
-  font-weight: 900;
-  color: #111;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.pocket-chip em {
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
-  color: #777;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.pocket-chip--high {
-  border-color: #d8ccff;
-  background: #fbf9ff;
-}
-
 .level-add-btn,
 .copy-btn {
   min-width: 132px;
@@ -1249,31 +1003,6 @@ const importBlindStructure = async () => {
   color: #c10015;
 }
 
-@media (max-width: 599px) {
-  .level-action-row {
-    width: 100%;
-    flex-direction: column;
-  }
-  .level-import-btn,
-  .level-add-btn,
-  .copy-btn {
-    width: 100%;
-  }
-
-  .rank-overview-card {
-    padding: 12px;
-  }
-
-  .rank-list-row {
-    align-items: flex-start;
-  }
-
-  .rank-list-right {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
-  }
-}
 .level-action-row {
   display: flex;
   gap: 8px;
@@ -1376,106 +1105,6 @@ const importBlindStructure = async () => {
   padding: 2px 2px 0;
 }
 
-.blind-import-dialog-card {
-  width: 100%;
-  max-width: 520px;
-  border-radius: 22px;
-  overflow: hidden;
-  background: #ffffff;
-}
-
-.blind-import-header {
-  padding-bottom: 18px;
-}
-
-.blind-import-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-top: 18px;
-}
-
-.blind-empty-box {
-  border: 1px dashed #d8dbe2;
-  border-radius: 16px;
-  padding: 24px 16px;
-  text-align: center;
-  background: #fafafa;
-}
-
-.blind-source-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.blind-source-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 14px;
-  border: 1px solid #e5e7ee;
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease,
-    box-shadow 0.12s ease;
-}
-
-.blind-source-item:hover {
-  border-color: #cfd6e6;
-  background: #fafbff;
-}
-
-.blind-source-item--selected {
-  border-color: #3367e8;
-  background: #f6f8ff;
-  box-shadow: 0 0 0 1px rgba(51, 103, 232, 0.06);
-}
-
-.blind-source-main {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.blind-source-name {
-  font-size: 15px;
-  font-weight: 800;
-  color: #111;
-  line-height: 1.3;
-}
-
-.blind-source-meta {
-  margin-top: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #777;
-}
-
-.blind-selected-hint {
-  font-size: 13px;
-  font-weight: 700;
-  color: #555;
-  padding: 2px 2px 0;
-}
-
-@media (max-width: 599px) {
-  .blind-import-dialog-card {
-    max-width: 100%;
-    border-radius: 20px;
-  }
-
-  .blind-source-list {
-    max-height: 280px;
-  }
-}
 .import-preview-banner {
   background: #f6f7fb;
   color: #333;
@@ -1484,5 +1113,27 @@ const importBlindStructure = async () => {
 .import-warning-banner {
   background: #fff8e1;
   color: #6d4c00;
+}
+
+@media (max-width: 599px) {
+  .level-action-row {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .level-import-btn,
+  .level-add-btn,
+  .copy-btn {
+    width: 100%;
+  }
+
+  .blind-import-dialog-card {
+    max-width: 100%;
+    border-radius: 20px;
+  }
+
+  .blind-source-list {
+    max-height: 280px;
+  }
 }
 </style>

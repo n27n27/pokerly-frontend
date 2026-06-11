@@ -1,16 +1,13 @@
 <template>
   <q-page class="hand-log-level-page q-pa-md">
     <div class="page-container">
-      <!-- 상세 로딩 -->
       <q-card v-if="isInitialLoading" flat bordered class="empty-card">
         <q-card-section class="text-center q-py-xl">
           <q-spinner size="32px" color="primary" />
-
           <div class="text-body2 text-grey-7 q-mt-md">블라인드 구간을 불러오는 중입니다.</div>
         </q-card-section>
       </q-card>
 
-      <!-- 대회 또는 레벨이 없을 때 -->
       <q-card v-else-if="!event || !blindLevel" flat bordered class="empty-card">
         <q-card-section class="text-center q-py-xl">
           <q-icon name="error_outline" size="42px" color="grey-5" />
@@ -28,23 +25,15 @@
             color="dark"
             unelevated
             icon="arrow_back"
-            label="대회 상세로"
+            label="대회"
             @click="goEventDetail"
           />
         </q-card-section>
       </q-card>
 
       <template v-else>
-        <!-- 헤더 -->
         <div class="q-mb-md">
-          <q-btn
-            flat
-            dense
-            icon="arrow_back"
-            label="대회 상세"
-            class="q-mb-sm"
-            @click="goEventDetail"
-          />
+          <q-btn flat dense icon="arrow_back" label="대회" class="q-mb-sm" @click="goEventDetail" />
 
           <div class="row items-start justify-between q-col-gutter-md">
             <div class="col-12 col-md">
@@ -62,7 +51,7 @@
                     outline
                     icon="content_copy"
                     label="복사용 텍스트"
-                    :disable="saving"
+                    :disable="saving || bulkMoving"
                     @click="copyDialog = true"
                   />
                 </div>
@@ -74,7 +63,7 @@
                     unelevated
                     icon="add"
                     label="핸드 기록"
-                    :disable="saving"
+                    :disable="saving || bulkMoving"
                     @click="quickLogDialog = true"
                   />
                 </div>
@@ -83,11 +72,44 @@
           </div>
         </div>
 
-        <!-- 핸드 목록 -->
         <q-card flat bordered class="section-card q-mb-md">
           <q-card-section>
-            <div class="q-mb-md">
-              <div class="section-title">핸드 목록</div>
+            <div class="row items-center justify-between q-mb-md">
+              <div>
+                <div class="section-title">핸드 목록</div>
+
+                <div v-if="selectionMode" class="text-caption text-grey-7 q-mt-xs">
+                  이동할 핸드를 선택해 주세요.
+                </div>
+              </div>
+
+              <q-btn
+                v-if="levelHands.length > 0"
+                flat
+                dense
+                round
+                icon="more_vert"
+                color="grey-7"
+                :disable="saving || bulkMoving"
+              >
+                <q-menu auto-close anchor="bottom right" self="top right">
+                  <q-list dense class="hand-list-menu">
+                    <q-item clickable @click="toggleSelectionMode">
+                      <q-item-section avatar>
+                        <q-icon
+                          :name="selectionMode ? 'close' : 'checklist'"
+                          size="18px"
+                          color="grey-8"
+                        />
+                      </q-item-section>
+
+                      <q-item-section>
+                        {{ selectionMode ? '선택 취소' : '선택해서 이동' }}
+                      </q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </div>
 
             <q-card v-if="levelHands.length === 0" flat bordered class="empty-hand-card">
@@ -108,11 +130,24 @@
                 :key="hand.id"
                 flat
                 bordered
-                class="hand-card cursor-pointer"
-                @click="openHand(hand)"
+                class="hand-card"
+                :class="{
+                  'cursor-pointer': !selectionMode,
+                  'hand-card--selected': isHandSelected(hand.id),
+                }"
+                @click="handleHandCardClick(hand)"
               >
                 <q-card-section>
-                  <div class="row items-center justify-between q-col-gutter-md">
+                  <div class="row items-center justify-between q-col-gutter-md no-wrap">
+                    <div v-if="selectionMode" class="col-auto">
+                      <q-checkbox
+                        :model-value="isHandSelected(hand.id)"
+                        :disable="bulkMoving"
+                        @update:model-value="toggleHandSelection(hand.id)"
+                        @click.stop
+                      />
+                    </div>
+
                     <div class="col">
                       <div class="row items-center q-gutter-xs">
                         <div class="text-subtitle1 text-weight-bold">
@@ -151,7 +186,6 @@
           </q-card-section>
         </q-card>
 
-        <!-- 레벨 통계 -->
         <q-card v-if="levelHands.length > 0" flat bordered class="section-card">
           <q-card-section>
             <div class="section-title">레벨 통계</div>
@@ -205,60 +239,11 @@
               </div>
             </div>
 
-            <div class="rank-section q-mt-lg">
-              <div class="section-title">핸드 랭크 요약</div>
-
-              <div class="text-caption text-grey-7 q-mt-xs">
-                169개 스타팅 핸드 고정 순위 기준입니다. 이 레벨에서 좋은 핸드를 얼마나 받았는지
-                빠르게 확인하는 용도입니다.
-              </div>
-
-              <div class="rank-overview-card q-mt-md">
-                <div class="rank-meter">
-                  <div
-                    v-for="bucket in levelRankSummary"
-                    :key="`meter-${bucket.key}`"
-                    class="rank-meter-segment"
-                    :class="getRankToneClass(bucket)"
-                    :style="getRankSegmentStyle(bucket)"
-                  >
-                    <span v-if="bucket.percent >= 12">{{ bucket.percent }}%</span>
-                  </div>
-                </div>
-
-                <div class="rank-list q-mt-md">
-                  <div v-for="bucket in levelRankSummary" :key="bucket.key" class="rank-list-row">
-                    <div class="rank-list-left">
-                      <span class="rank-dot" :class="getRankToneClass(bucket)" />
-
-                      <div>
-                        <div class="rank-list-label">{{ bucket.label }}</div>
-                        <div class="rank-list-sub">{{ bucket.description }}</div>
-                      </div>
-                    </div>
-
-                    <div class="rank-list-right">
-                      <strong>{{ bucket.count }}개</strong>
-                      <span>{{ bucket.percent }}%</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="pocket-chip-row q-mt-md">
-                  <div class="pocket-chip pocket-chip--high">
-                    <span>하이 포켓 TT+</span>
-                    <strong>{{ levelPocketSummary.highPocketCount }}개</strong>
-                    <em>{{ levelPocketSummary.highPocketPercent }}%</em>
-                  </div>
-
-                  <div class="pocket-chip">
-                    <span>포켓 전체</span>
-                    <strong>{{ levelPocketSummary.pocketPairCount }}개</strong>
-                    <em>{{ levelPocketSummary.pocketPairPercent }}%</em>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <StartingHandSummary
+              class="q-mt-lg"
+              :hands="levelHandsForSummary"
+              @open-hand="openHand"
+            />
           </q-card-section>
         </q-card>
       </template>
@@ -279,15 +264,99 @@
       :hands="levelHands"
     />
 
-    <q-page-sticky v-if="event && blindLevel" position="bottom-right" :offset="[16, 16]">
+    <q-dialog v-model="bulkMoveDialog" :persistent="bulkMoving">
+      <q-card class="bulk-move-dialog-card">
+        <q-card-section>
+          <div class="text-h6 text-weight-bold">선택한 핸드 이동</div>
+
+          <div class="text-body2 text-grey-7 q-mt-xs">
+            선택한 {{ selectedHandIds.length }}개 핸드를 다른 블라인드 구간으로 이동합니다.
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="bulk-move-form">
+          <q-select
+            v-model="bulkTargetLevelId"
+            :options="bulkMovableLevelOptions"
+            outlined
+            emit-value
+            map-options
+            options-dense
+            label="이동할 레벨"
+            behavior="menu"
+            :disable="bulkMoving"
+          />
+
+          <q-banner dense rounded class="bulk-move-hint">
+            이동 후 현재 레벨 목록에서 해당 핸드들이 사라집니다.
+          </q-banner>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn
+            flat
+            label="취소"
+            color="grey-8"
+            :disable="bulkMoving"
+            @click="closeBulkMoveDialog"
+          />
+
+          <q-btn
+            unelevated
+            color="primary"
+            label="이동"
+            :loading="bulkMoving"
+            :disable="!canBulkMove || bulkMoving"
+            @click="moveSelectedHands"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <q-page-sticky
+      v-if="event && blindLevel && !selectionMode"
+      position="bottom-right"
+      :offset="[16, 16]"
+    >
       <q-btn
         round
         size="lg"
         color="primary"
         icon="add"
-        :disable="saving"
+        :disable="saving || bulkMoving"
         @click="quickLogDialog = true"
       />
+    </q-page-sticky>
+
+    <q-page-sticky v-if="event && blindLevel && selectionMode" position="bottom" :offset="[16, 16]">
+      <q-card class="bulk-action-bar">
+        <q-card-section class="bulk-action-section">
+          <div>
+            <div class="bulk-action-title">{{ selectedHandIds.length }}개 선택됨</div>
+            <div class="bulk-action-subtitle">선택한 핸드를 다른 레벨로 이동</div>
+          </div>
+
+          <div class="bulk-action-buttons">
+            <q-btn
+              flat
+              label="취소"
+              color="grey-8"
+              :disable="bulkMoving"
+              @click="exitSelectionMode"
+            />
+
+            <q-btn
+              unelevated
+              color="primary"
+              label="레벨 이동"
+              :disable="selectedHandIds.length === 0 || bulkMoving"
+              @click="openBulkMoveDialog"
+            />
+          </div>
+        </q-card-section>
+      </q-card>
     </q-page-sticky>
   </q-page>
 </template>
@@ -300,9 +369,9 @@ import { useRoute, useRouter } from 'vue-router'
 
 import QuickHandLogDialog from 'src/components/hand-log/QuickHandLogDialog.vue'
 import HandLogLevelCopyDialog from 'src/components/hand-log/HandLogLevelCopyDialog.vue'
+import StartingHandSummary from 'src/components/hand-log/StartingHandSummary.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import {
-  createHandRankOverview,
   getActionLabel,
   getHandInputValue,
   getHandStrength,
@@ -322,6 +391,11 @@ const copyDialog = ref(false)
 const { detailLoading, levelLoading, saving } = storeToRefs(handLogStore)
 
 const quickLogDialog = ref(false)
+const selectionMode = ref(false)
+const selectedHandIds = ref([])
+const bulkMoveDialog = ref(false)
+const bulkTargetLevelId = ref(null)
+const bulkMoving = ref(false)
 
 const eventId = computed(() => route.params.eventId)
 const levelId = computed(() => route.params.levelId)
@@ -332,6 +406,10 @@ const event = computed(() => {
 
 const blindLevel = computed(() => {
   return handLogStore.getBlindLevelById(eventId.value, levelId.value)
+})
+
+const blindLevels = computed(() => {
+  return event.value?.blindLevels || []
 })
 
 const isInitialLoading = computed(() => {
@@ -346,20 +424,13 @@ const levelHands = computed(() => {
   })
 })
 
-const levelHandNotations = computed(() => {
-  return levelHands.value.map((hand) => getHandInputValue(hand)).filter(Boolean)
-})
-
-const levelRankOverview = computed(() => {
-  return createHandRankOverview(levelHandNotations.value)
-})
-
-const levelRankSummary = computed(() => {
-  return levelRankOverview.value.rankSummary
-})
-
-const levelPocketSummary = computed(() => {
-  return levelRankOverview.value.pocketSummary
+const levelHandsForSummary = computed(() => {
+  return levelHands.value.map((hand) => ({
+    ...hand,
+    __levelId: levelId.value,
+    __levelNo: blindLevel.value?.levelNo || null,
+    __levelLabel: blindLevel.value ? `L${blindLevel.value.levelNo}` : '',
+  }))
 })
 
 const levelLabel = computed(() => {
@@ -398,6 +469,19 @@ const pfrPercent = computed(() => {
   return formatPercent(pfrCount.value, levelHands.value.length)
 })
 
+const bulkMovableLevelOptions = computed(() => {
+  return blindLevels.value
+    .filter((level) => String(level.id) !== String(levelId.value))
+    .map((level) => ({
+      label: `L${level.levelNo} · ${formatBlind(level)}`,
+      value: level.id,
+    }))
+})
+
+const canBulkMove = computed(() => {
+  return selectedHandIds.value.length > 0 && Boolean(bulkTargetLevelId.value)
+})
+
 watch(
   [eventId, levelId],
   async ([newEventId, newLevelId]) => {
@@ -408,6 +492,7 @@ watch(
     try {
       await handLogStore.fetchEventDetail(newEventId)
       await handLogStore.fetchBlindLevelDetail(newEventId, newLevelId)
+      resetBulkMoveState()
     } catch (error) {
       console.error(error)
 
@@ -426,7 +511,21 @@ const openHand = (hand) => {
     return
   }
 
-  router.push(`/app/mypoker/hand-log/${eventId.value}/levels/${levelId.value}/hands/${hand.id}`)
+  const targetLevelId = hand.__levelId || levelId.value
+
+  router.push({
+    path: `/app/mypoker/hand-log/${eventId.value}/levels/${targetLevelId}/hands/${hand.id}`,
+    query: { from: 'level' },
+  })
+}
+
+const handleHandCardClick = (hand) => {
+  if (selectionMode.value) {
+    toggleHandSelection(hand.id)
+    return
+  }
+
+  openHand(hand)
 }
 
 const addHand = async (payload) => {
@@ -446,6 +545,95 @@ const addHand = async (payload) => {
     console.error(error)
 
     alert.show('핸드를 기록하지 못했습니다.', 'error')
+  }
+}
+
+const toggleSelectionMode = () => {
+  selectionMode.value = !selectionMode.value
+
+  if (!selectionMode.value) {
+    selectedHandIds.value = []
+  }
+}
+
+const exitSelectionMode = () => {
+  selectionMode.value = false
+  selectedHandIds.value = []
+  closeBulkMoveDialog()
+}
+
+const toggleHandSelection = (handId) => {
+  if (!handId || bulkMoving.value) {
+    return
+  }
+
+  const index = selectedHandIds.value.indexOf(handId)
+
+  if (index >= 0) {
+    selectedHandIds.value.splice(index, 1)
+    return
+  }
+
+  selectedHandIds.value.push(handId)
+}
+
+const isHandSelected = (handId) => {
+  return selectedHandIds.value.includes(handId)
+}
+
+const openBulkMoveDialog = () => {
+  if (selectedHandIds.value.length === 0) {
+    return
+  }
+
+  bulkTargetLevelId.value = null
+  bulkMoveDialog.value = true
+}
+
+const closeBulkMoveDialog = () => {
+  if (bulkMoving.value) {
+    return
+  }
+
+  bulkMoveDialog.value = false
+  bulkTargetLevelId.value = null
+}
+
+const resetBulkMoveState = () => {
+  selectionMode.value = false
+  selectedHandIds.value = []
+  bulkMoveDialog.value = false
+  bulkTargetLevelId.value = null
+  bulkMoving.value = false
+}
+
+const moveSelectedHands = async () => {
+  if (!canBulkMove.value || bulkMoving.value) {
+    return
+  }
+
+  bulkMoving.value = true
+
+  const targetLevelId = bulkTargetLevelId.value
+  const handIds = [...selectedHandIds.value]
+
+  try {
+    for (const handId of handIds) {
+      await handLogStore.moveHandToBlindLevel(eventId.value, levelId.value, handId, targetLevelId)
+    }
+
+    alert.show(`${handIds.length}개 핸드를 이동했습니다.`, 'positive')
+
+    await handLogStore.fetchEventDetail(eventId.value)
+    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
+
+    resetBulkMoveState()
+  } catch (error) {
+    console.error(error)
+
+    alert.show('선택한 핸드를 이동하지 못했습니다.', 'error')
+  } finally {
+    bulkMoving.value = false
   }
 }
 
@@ -504,25 +692,6 @@ const getHandMetaText = (hand) => {
   return parts.join(' · ')
 }
 
-const getRankToneClass = (bucket) => {
-  if (bucket.key === 'TOP') {
-    return 'rank-tone--top'
-  }
-
-  if (bucket.key === 'MIDDLE') {
-    return 'rank-tone--middle'
-  }
-
-  return 'rank-tone--low'
-}
-
-const getRankSegmentStyle = (bucket) => {
-  return {
-    width: `${bucket.percent}%`,
-    minWidth: bucket.count > 0 ? '8px' : '0',
-  }
-}
-
 const isReviewHand = (hand) => {
   return Boolean(hand?.reviewRequired)
 }
@@ -544,7 +713,7 @@ const getResultValue = (hand) => {
 .page-container {
   max-width: 1080px;
   margin: 0 auto;
-  padding-bottom: 48px;
+  padding-bottom: 96px;
 }
 
 .empty-card,
@@ -584,10 +753,16 @@ const getResultValue = (hand) => {
   border-style: dashed;
 }
 
+.hand-list-menu {
+  min-width: 144px;
+}
+
 .hand-card {
   transition:
     transform 0.12s ease,
-    box-shadow 0.12s ease;
+    box-shadow 0.12s ease,
+    border-color 0.12s ease,
+    background 0.12s ease;
 }
 
 .hand-card:hover {
@@ -595,179 +770,15 @@ const getResultValue = (hand) => {
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
 }
 
+.hand-card--selected {
+  border-color: #3367e8;
+  background: #f7f9ff;
+}
+
 .hand-card-side {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.rank-section {
-  border-top: 1px solid #ececef;
-  padding-top: 18px;
-}
-
-.rank-overview-card {
-  border: 1px solid #ececef;
-  border-radius: 16px;
-  padding: 14px;
-  background: #fcfcfd;
-}
-
-.rank-meter {
-  display: flex;
-  width: 100%;
-  height: 18px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: #eeeef2;
-}
-
-.rank-meter-segment {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  overflow: hidden;
-  font-size: 10px;
-  font-weight: 800;
-  color: #ffffff;
-  white-space: nowrap;
-  transition: width 0.15s ease;
-}
-
-.rank-meter-segment.rank-tone--top {
-  background: #673ab7;
-}
-
-.rank-meter-segment.rank-tone--middle {
-  background: #00897b;
-}
-
-.rank-meter-segment.rank-tone--low {
-  background: #fb8c00;
-}
-
-.rank-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.rank-list-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0;
-  border-bottom: 1px solid #f1f1f4;
-}
-
-.rank-list-row:last-child {
-  border-bottom: none;
-}
-
-.rank-list-left {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-}
-
-.rank-dot {
-  width: 9px;
-  height: 9px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-}
-
-.rank-dot.rank-tone--top {
-  background: #673ab7;
-}
-
-.rank-dot.rank-tone--middle {
-  background: #00897b;
-}
-
-.rank-dot.rank-tone--low {
-  background: #fb8c00;
-}
-
-.rank-list-label {
-  font-size: 13px;
-  font-weight: 800;
-  color: #333;
-}
-
-.rank-list-sub {
-  margin-top: 2px;
-  font-size: 11px;
-  color: #777;
-}
-
-.rank-list-right {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  flex: 0 0 auto;
-}
-
-.rank-list-right strong {
-  font-size: 14px;
-  font-weight: 900;
-  color: #111;
-}
-
-.rank-list-right span {
-  font-size: 12px;
-  font-weight: 700;
-  color: #777;
-}
-
-.pocket-chip-row {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.pocket-chip {
-  display: grid;
-  grid-template-columns: 1fr auto 42px;
-  align-items: center;
-  gap: 10px;
-  min-height: 38px;
-  padding: 8px 12px;
-  border: 1px solid #ececef;
-  border-radius: 12px;
-  background: #fafafa;
-}
-
-.pocket-chip span {
-  min-width: 0;
-  font-size: 12px;
-  font-weight: 800;
-  color: #555;
-}
-
-.pocket-chip strong {
-  font-size: 13px;
-  font-weight: 900;
-  color: #111;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.pocket-chip em {
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
-  color: #777;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.pocket-chip--high {
-  border-color: #d8ccff;
-  background: #fbf9ff;
 }
 
 .hand-add-btn {
@@ -778,24 +789,70 @@ const getResultValue = (hand) => {
   min-width: 132px;
 }
 
+.bulk-action-bar {
+  width: min(640px, calc(100vw - 32px));
+  border-radius: 18px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
+}
+
+.bulk-action-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+}
+
+.bulk-action-title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #111;
+}
+
+.bulk-action-subtitle {
+  margin-top: 2px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #777;
+}
+
+.bulk-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.bulk-move-dialog-card {
+  width: 100%;
+  max-width: 520px;
+  border-radius: 18px;
+}
+
+.bulk-move-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bulk-move-hint {
+  background: #f6f7fb;
+  color: #333;
+}
+
 @media (max-width: 599px) {
   .hand-add-btn,
   .copy-btn {
     width: 100%;
   }
 
-  .rank-overview-card {
-    padding: 12px;
-  }
-
-  .rank-list-row {
-    align-items: flex-start;
-  }
-
-  .rank-list-right {
+  .bulk-action-section {
+    align-items: stretch;
     flex-direction: column;
-    align-items: flex-end;
-    gap: 1px;
+  }
+
+  .bulk-action-buttons {
+    justify-content: flex-end;
   }
 }
 </style>

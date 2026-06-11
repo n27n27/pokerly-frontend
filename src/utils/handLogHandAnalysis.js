@@ -8,7 +8,6 @@ const PLAYABLE_HANDS = new Set([
   '88',
   '77',
 
-  // Playable broadway / high-card hands
   'AJo',
   'KJs',
   'KQo',
@@ -19,8 +18,6 @@ const PLAYABLE_HANDS = new Set([
   'T9s',
   '98s',
 
-  // Wheel suited aces
-  // A blocker + nut flush + wheel straight potential
   'A5s',
   'A4s',
   'A3s',
@@ -28,26 +25,22 @@ const PLAYABLE_HANDS = new Set([
 ])
 
 const SPECULATIVE_HANDS = new Set([
-  // Small pocket pairs
   '66',
   '55',
   '44',
   '33',
   '22',
 
-  // Other suited aces
   'A9s',
   'A8s',
   'A7s',
   'A6s',
 
-  // Suited connectors
   '87s',
   '76s',
   '65s',
   '54s',
 
-  // Suited one-gappers
   'T8s',
   '97s',
   '86s',
@@ -56,19 +49,16 @@ const SPECULATIVE_HANDS = new Set([
 ])
 
 const MARGINAL_HANDS = new Set([
-  // Offsuit aces that can be played in late position or specific spots
   'ATo',
   'A9o',
   'A8o',
 
-  // Offsuit broadway hands
   'KJo',
   'KTo',
   'QJo',
   'QTo',
   'JTo',
 
-  // Borderline suited high-card hands
   'K9s',
   'K8s',
   'K7s',
@@ -77,7 +67,6 @@ const MARGINAL_HANDS = new Set([
   'J9s',
   'J8s',
 
-  // Borderline suited/gapped hands
   'T7s',
   '96s',
   '85s',
@@ -169,7 +158,6 @@ export const RESULT_LABEL_MAP = RESULT_OPTIONS.reduce(
     return acc
   },
   {
-    // 기존 데이터 호환용
     FOLD: '폴드',
   },
 )
@@ -252,9 +240,6 @@ export const PREFLOP_RANK_SUMMARY_BUCKETS = [
   },
 ]
 
-// 169개 스타팅 핸드 고정 순위.
-// 목적: "이번 대회/레벨에서 내가 얼마나 좋은 핸드를 받았는가"를 보기 위한 통계.
-// 티어 배지와는 별개로 사용한다.
 export const PREFLOP_169_RANKING = [
   'AA',
   'KK',
@@ -276,7 +261,6 @@ export const PREFLOP_169_RANKING = [
   'AQo',
   'A9s',
   'KQo',
-
   '88',
   'K9s',
   'T9s',
@@ -297,7 +281,6 @@ export const PREFLOP_169_RANKING = [
   'T8s',
   'A2s',
   '98s',
-
   'J8s',
   'ATo',
   'Q8s',
@@ -318,7 +301,6 @@ export const PREFLOP_169_RANKING = [
   'K4s',
   'K3s',
   'K2s',
-
   'Q7s',
   '86s',
   '65s',
@@ -339,7 +321,6 @@ export const PREFLOP_169_RANKING = [
   '85s',
   'J6s',
   'J9o',
-
   'K9o',
   'J5s',
   'Q9o',
@@ -360,7 +341,6 @@ export const PREFLOP_169_RANKING = [
   'T2s',
   '98o',
   'T8o',
-
   'A5o',
   'A7o',
   '73s',
@@ -381,7 +361,6 @@ export const PREFLOP_169_RANKING = [
   '82s',
   '97o',
   '72s',
-
   '76o',
   'K7o',
   '65o',
@@ -402,7 +381,6 @@ export const PREFLOP_169_RANKING = [
   '53o',
   '85o',
   'T6o',
-
   'Q5o',
   '43o',
   'Q4o',
@@ -423,7 +401,6 @@ export const PREFLOP_169_RANKING = [
   'T4o',
   '32o',
   'T3o',
-
   '73o',
   'T2o',
   '62o',
@@ -736,4 +713,208 @@ export const createHandTierDistribution = (hands = []) => {
   })
 
   return distribution
+}
+
+export const STARTING_HAND_RUN_BUCKETS = [
+  {
+    key: 'TOP_10',
+    label: '상위 10%',
+    description: '1~17위',
+    minRank: 1,
+    maxRank: 17,
+    tone: 'premium',
+  },
+  {
+    key: 'TOP_11_25',
+    label: '상위 11~25%',
+    description: '18~42위',
+    minRank: 18,
+    maxRank: 42,
+    tone: 'strong',
+  },
+  {
+    key: 'MID_26_60',
+    label: '중위 26~60%',
+    description: '43~102위',
+    minRank: 43,
+    maxRank: 102,
+    tone: 'middle',
+  },
+  {
+    key: 'LOW_61_100',
+    label: '하위 61~100%',
+    description: '103~169위',
+    minRank: 103,
+    maxRank: 169,
+    tone: 'low',
+  },
+]
+
+export const createStartingHandRunSummary = (hands = []) => {
+  const normalizedHands = hands
+    .map((item) => normalizeHand(getHandInputValue(item)))
+    .filter(Boolean)
+
+  const total = normalizedHands.length
+
+  const buckets = STARTING_HAND_RUN_BUCKETS.map((bucket) => ({
+    ...bucket,
+    count: 0,
+    percent: 0,
+  }))
+
+  normalizedHands.forEach((hand) => {
+    const rank = PREFLOP_RANK_MAP.get(hand)
+
+    if (!rank) {
+      return
+    }
+
+    const bucket = buckets.find((item) => {
+      return rank >= item.minRank && rank <= item.maxRank
+    })
+
+    if (bucket) {
+      bucket.count += 1
+    }
+  })
+
+  buckets.forEach((bucket) => {
+    bucket.percent = total ? Math.round((bucket.count / total) * 100) : 0
+  })
+
+  return {
+    total,
+    buckets,
+  }
+}
+
+export const STARTING_HAND_GROUPS = [
+  {
+    key: 'PREMIUM',
+    label: '프리미엄',
+    description: 'AA~TT, AK, AQs',
+    hands: ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AKo', 'AQs'],
+  },
+  {
+    key: 'STRONG',
+    label: '강한 핸드',
+    description: '99~77, AJs+, AQo+, KQs',
+    hands: ['99', '88', '77', 'AJs', 'ATs', 'AQo', 'AJo', 'KQs'],
+  },
+  {
+    key: 'POCKET_PAIR',
+    label: '포켓페어',
+    description: 'AA~22',
+    matcher: (hand) => isPocketPair(hand),
+  },
+  {
+    key: 'BROADWAY',
+    label: '브로드웨이',
+    description: 'T 이상 카드 조합',
+    matcher: (hand) => isBroadwayHand(hand),
+  },
+  {
+    key: 'AX_SUITED',
+    label: 'AXs',
+    description: 'AKs~A2s',
+    matcher: (hand) => isSuitedAce(hand),
+  },
+]
+
+export const isBroadwayHand = (hand) => {
+  const normalized = normalizeHand(hand)
+
+  if (!normalized || normalized.length < 3) {
+    return false
+  }
+
+  const broadwayRanks = new Set(['A', 'K', 'Q', 'J', 'T'])
+
+  return broadwayRanks.has(normalized[0]) && broadwayRanks.has(normalized[1])
+}
+
+export const isSuitedAce = (hand) => {
+  const normalized = normalizeHand(hand)
+
+  return Boolean(normalized && normalized[0] === 'A' && normalized.endsWith('s'))
+}
+
+const belongsToStartingHandGroup = (hand, group) => {
+  if (Array.isArray(group.hands)) {
+    return group.hands.includes(hand)
+  }
+
+  if (typeof group.matcher === 'function') {
+    return group.matcher(hand)
+  }
+
+  return false
+}
+
+export const createStartingHandSummary = (hands = []) => {
+  const normalizedItems = hands
+    .map((item) => {
+      const normalizedHand = normalizeHand(getHandInputValue(item))
+
+      if (!normalizedHand) {
+        return null
+      }
+
+      return {
+        ...item,
+        normalizedHand,
+      }
+    })
+    .filter(Boolean)
+
+  const total = normalizedItems.length
+
+  const groups = STARTING_HAND_GROUPS.map((group) => {
+    const handMap = new Map()
+
+    normalizedItems.forEach((item) => {
+      const hand = item.normalizedHand
+
+      if (!belongsToStartingHandGroup(hand, group)) {
+        return
+      }
+
+      if (!handMap.has(hand)) {
+        handMap.set(hand, {
+          hand,
+          count: 0,
+          hands: [],
+        })
+      }
+
+      const target = handMap.get(hand)
+
+      target.count += 1
+      target.hands.push(item)
+    })
+
+    const items = [...handMap.values()].sort((a, b) => {
+      const aRank = PREFLOP_RANK_MAP.get(a.hand) || 999
+      const bRank = PREFLOP_RANK_MAP.get(b.hand) || 999
+
+      return aRank - bRank
+    })
+
+    const count = items.reduce((sum, item) => sum + item.count, 0)
+
+    return {
+      key: group.key,
+      label: group.label,
+      description: group.description,
+      count,
+      percent: total ? Math.round((count / total) * 100) : 0,
+      items,
+    }
+  })
+
+  return {
+    total,
+    groups,
+  }
 }

@@ -26,8 +26,8 @@
             color="dark"
             unelevated
             icon="arrow_back"
-            label="레벨 상세로"
-            @click="goLevelDetail"
+            :label="backLabel"
+            @click="goBack"
           />
         </q-card-section>
       </q-card>
@@ -35,14 +35,7 @@
       <template v-else>
         <!-- 헤더 -->
         <div class="q-mb-md">
-          <q-btn
-            flat
-            dense
-            icon="arrow_back"
-            label="레벨 상세"
-            class="q-mb-sm"
-            @click="goLevelDetail"
-          />
+          <q-btn flat dense icon="arrow_back" :label="backLabel" class="q-mb-sm" @click="goBack" />
 
           <div class="row items-start justify-between q-col-gutter-md">
             <div class="col">
@@ -362,7 +355,12 @@ watch(
   { immediate: true },
 )
 
-const goLevelDetail = () => {
+const goBack = () => {
+  if (fromPage.value === 'event') {
+    router.push(`/app/mypoker/hand-log/${eventId.value}`)
+    return
+  }
+
   router.push(`/app/mypoker/hand-log/${eventId.value}/levels/${levelId.value}`)
 }
 
@@ -456,7 +454,7 @@ const deleteHand = async () => {
     await handLogStore.deleteHandFromBlindLevel(eventId.value, levelId.value, handId.value)
 
     alert.show('핸드 기록을 삭제했습니다.', 'positive')
-    goLevelDetail()
+    goBack()
   } catch (error) {
     console.error(error)
 
@@ -505,6 +503,13 @@ const formatBlind = (level) => {
 const formatNumber = (value) => {
   return Number(value || 0).toLocaleString('ko-KR')
 }
+const fromPage = computed(() => {
+  return route.query.from || 'level'
+})
+
+const backLabel = computed(() => {
+  return fromPage.value === 'event' ? '대회 통계' : '핸드 목록'
+})
 </script>
 
 <style scoped>
