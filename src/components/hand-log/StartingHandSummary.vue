@@ -1,13 +1,13 @@
 <template>
   <div class="starting-hand-summary">
-    <div class="section-title">시작 핸드 요약</div>
+    <div class="section-title">핸드 요약</div>
 
     <div class="text-caption text-grey-7 q-mt-xs">
-      카드 런은 169개 스타팅 핸드 순위 기준, 주요 그룹은 실전 분류 기준입니다.
+      169개 스타팅 핸드 순위 기준, 주요 그룹은 실전 분류 기준입니다.
     </div>
 
     <div class="run-card q-mt-md">
-      <div class="summary-subtitle">카드 런</div>
+      <div class="summary-subtitle"></div>
 
       <div class="run-meter q-mt-sm">
         <div
