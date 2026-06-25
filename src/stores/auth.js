@@ -7,85 +7,150 @@ export const useAuthStore = defineStore('auth', () => {
   const loading = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
+  const onboardingRequired = computed(() => {
+    if (!user.value) return false
+    return user.value.socialLinked === false || user.value.termsAgreed === false
+  })
 
-  // 공통: ApiResponse<T> 이든 T 이든 둘 다 처리
   const unwrap = (res) => {
     const raw = res.data
     return raw && typeof raw === 'object' && 'data' in raw ? raw.data : raw
   }
 
-  // 회원가입
-  const register = async ({ nickname, password }) => {
-    await api.post('/users/register', { nickname, password })
+  const saveAuthPayload = (payload) => {
+    const { accessToken, refreshToken, user: userPayload } = payload
+
+    localStorage.setItem('accessToken', accessToken)
+
+    if (refreshToken) {
+      localStorage.setItem('refreshToken', refreshToken)
+    } else {
+      localStorage.removeItem('refreshToken')
+    }
+
+    user.value = userPayload
+
+    return payload
   }
 
-  // 로그인
+  // 기존 회원 전환용 Local 로그인
   const login = async ({ nickname, password }) => {
     loading.value = true
     try {
       const res = await api.post('/auth/login', { nickname, password })
-      const payload = unwrap(res) // { accessToken, refreshToken, user }
-
-      const { accessToken, refreshToken, user: userPayload } = payload
-
-      // 🔥 axios 부트에서 쓰는 키와 동일해야 함
-      localStorage.setItem('accessToken', accessToken)
-      if (refreshToken) {
-        localStorage.setItem('refreshToken', refreshToken)
-      } else {
-        localStorage.removeItem('refreshToken')
-      }
-
-      user.value = userPayload
+      return saveAuthPayload(unwrap(res))
     } finally {
       loading.value = false
     }
+  }
+
+  // 기존 local 회원가입. 정식 전환 후에는 제거 예정
+  const register = async ({ nickname, password }) => {
+    await api.post('/users/register', { nickname, password })
+  }
+
+  // Google 로그인/가입
+  const loginWithGoogle = async ({ idToken, language = 'ko', timezone = 'Asia/Seoul' }) => {
+    loading.value = true
+    try {
+      const res = await api.post('/auth/oauth/google', {
+        idToken,
+        language,
+        timezone,
+      })
+      return saveAuthPayload(unwrap(res))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // Apple 로그인/가입
+  const loginWithApple = async ({ idToken, language = 'ko', timezone = 'Asia/Seoul' }) => {
+    loading.value = true
+    try {
+      const res = await api.post('/auth/oauth/apple', {
+        idToken,
+        language,
+        timezone,
+      })
+      return saveAuthPayload(unwrap(res))
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 기존 계정에 Google 연결
+  const linkGoogle = async ({ idToken }) => {
+    const res = await api.post('/auth/link/google', { idToken })
+    user.value = unwrap(res)
+    return user.value
+  }
+
+  // 기존 계정에 Apple 연결
+  const linkApple = async ({ idToken }) => {
+    const res = await api.post('/auth/link/apple', { idToken })
+    user.value = unwrap(res)
+    return user.value
+  }
+
+  // 온보딩 완료
+  const completeOnboarding = async ({
+    nickname,
+    language,
+    timezone,
+    termsAgreed,
+    privacyAgreed,
+  }) => {
+    const res = await api.post('/users/me/onboarding', {
+      nickname,
+      language,
+      timezone,
+      termsAgreed,
+      privacyAgreed,
+    })
+
+    user.value = unwrap(res)
+    return user.value
   }
 
   // /me로 유저 정보 복구
   const fetchMe = async () => {
     try {
       const res = await api.get('/users/me')
-      const payload = unwrap(res) // UserResponse
-      user.value = payload
+      user.value = unwrap(res)
     } catch (e) {
-      // 🔥 여기서 에러를 던지면 boot 단계가 죽을 수 있으니 절대 throw 하지 않음
-      console.warn('fetchMe 실패 (무시 가능한 에러)', e)
-      user.value = null
-      // 토큰이 이미 axios 인터셉터에서 clear + /login redirect 됐을 수 있음
-    }
-  }
-
-  // 로그아웃 (백엔드 + 로컬 둘 다 정리)
-  const logout = async () => {
-    try {
-      await api.post('/auth/logout')
-    } catch (e) {
-      // 토큰 만료 등으로 실패해도 상관 없으니 로그만
-      console.error('logout error (ignored)', e)
-    } finally {
-      clearTokens() // 🔥 axios 부트와 동일한 방식으로 토큰 제거
+      console.warn('fetchMe 실패', e)
       user.value = null
     }
   }
 
-  // ADMIN 전용 테스트 호출 예시
-  const callAdminOnly = async () => {
-    const res = await api.get('/admin-only')
+  const checkNickname = async (nickname) => {
+    const res = await api.get('/users/nickname/check', {
+      params: { nickname },
+    })
     return unwrap(res)
   }
 
+  const logout = async () => {
+    clearTokens()
+    user.value = null
+  }
   return {
-    // state
     user,
     loading,
-    // getters
+
     isAuthenticated,
-    // actions
+    onboardingRequired,
+
     register,
     login,
+    loginWithGoogle,
+    loginWithApple,
+    linkGoogle,
+    linkApple,
+    completeOnboarding,
     fetchMe,
+    checkNickname,
     logout,
-    callAdminOnly,
   }
 })

@@ -1,30 +1,28 @@
 <template>
   <q-page class="auth-page">
     <main class="auth-shell">
-      <section class="login-block">
+      <div class="top-nav">
+        <button type="button" class="back-btn" aria-label="로그인으로 돌아가기" @click="logout">
+          <q-icon name="arrow_back" size="24px" />
+        </button>
+      </div>
+
+      <section class="connect-block">
         <div class="auth-header">
           <q-img src="~assets/logo.png" alt="Pokerly Logo" class="auth-logo" />
 
-          <h1 class="auth-title">Pokerly</h1>
+          <h1 class="auth-title">계정 연결</h1>
+
+          <p class="auth-subtitle">
+            <strong>{{ auth.user?.nickname || '현재' }}</strong> 계정의 기존 기록을 유지하려면<br />
+            Google 계정을 연결해주세요.
+          </p>
         </div>
 
-        <section class="login-actions">
+        <section class="connect-actions">
           <div ref="googleButtonRef" class="google-button-wrap"></div>
 
-          <div class="divider">
-            <span></span>
-            <em>또는</em>
-            <span></span>
-          </div>
-
-          <q-btn
-            no-caps
-            unelevated
-            outline
-            class="legacy-btn"
-            label="기존 계정으로 로그인"
-            @click="goLegacyLogin"
-          />
+          <q-btn flat no-caps class="logout-btn" label="로그아웃" @click="logout" />
         </section>
 
         <p class="brand-copy">Record. Review. Improve.</p>
@@ -65,22 +63,9 @@ const loadGoogleScript = () => {
   })
 }
 
-const handleAuthResult = async (payload) => {
-  if (payload.nextStep === 'LINK_SOCIAL') {
-    router.replace('/link-social')
-    return
-  }
-
-  if (payload.nextStep === 'ONBOARDING') {
-    router.replace('/onboarding')
-    return
-  }
-
-  router.replace('/app/dashboard')
-}
-
-const goLegacyLogin = () => {
-  router.push('/legacy-login')
+const logout = async () => {
+  await auth.logout()
+  router.replace('/login')
 }
 
 onMounted(async () => {
@@ -97,25 +82,32 @@ onMounted(async () => {
       loading.value = 'google'
 
       try {
-        const payload = await auth.loginWithGoogle({
+        await auth.linkGoogle({
           idToken: response.credential,
-          language: navigator.language?.startsWith('en') ? 'en' : 'ko',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
         })
 
-        await handleAuthResult(payload)
+        alert.show('계정 연결이 완료되었습니다.', 'success')
+        router.replace('/app/dashboard')
       } catch (e) {
         console.error(e)
 
         const code = e?.response?.data?.error?.code
         const message = e?.response?.data?.error?.message
 
+        if (code === 'SOCIAL_ALREADY_LINKED') {
+          alert.show(
+            '이미 다른 Pokerly 계정에 연결된 Google 계정입니다. 다른 Google 계정을 선택해주세요.',
+            'warning',
+          )
+          return
+        }
+
         if (code === 'GOOGLE_TOKEN_INVALID') {
           alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
           return
         }
 
-        alert.show(message || 'Google 로그인에 실패했습니다.', 'negative')
+        alert.show(message || '계정 연결에 실패했습니다.', 'negative')
       } finally {
         loading.value = null
       }
@@ -126,9 +118,9 @@ onMounted(async () => {
     type: 'standard',
     theme: 'outline',
     size: 'large',
-    text: 'signin_with',
+    text: 'continue_with',
     shape: 'pill',
-    width: 292,
+    width: 312,
   })
 })
 </script>
@@ -151,9 +143,28 @@ onMounted(async () => {
   flex-direction: column;
 }
 
-.login-block {
+.top-nav {
   width: 100%;
-  margin-top: 88px;
+  max-width: 312px;
+  margin: 0 auto;
+}
+
+.back-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+  color: #111827;
+  padding: 0;
+  cursor: pointer;
+}
+
+.connect-block {
+  width: 100%;
+  margin-top: 72px;
 }
 
 .auth-header {
@@ -169,62 +180,53 @@ onMounted(async () => {
 
 .auth-title {
   margin: 0;
-  font-size: 42px;
-  line-height: 1.05;
+  font-size: 30px;
+  line-height: 1.12;
   font-weight: 900;
   color: #111827;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.055em;
 }
 
-.login-actions {
+.auth-subtitle {
+  margin: 28px auto 0;
+  color: #737373;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.65;
+  letter-spacing: -0.025em;
+  word-break: keep-all;
+}
+
+.auth-subtitle strong {
+  color: #111827;
+  font-weight: 800;
+}
+
+.connect-actions {
   width: 100%;
-  max-width: 292px;
-  margin: 50px auto 0;
+  max-width: 312px;
+  margin: 46px auto 0;
 }
 
 .google-button-wrap {
-  width: 292px;
+  width: 312px;
   max-width: 100%;
   min-height: 44px;
   display: flex;
   justify-content: center;
 }
 
-.divider {
+.logout-btn {
   width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 13px;
-  margin: 20px 0;
-  color: #a3a3a3;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.divider span {
-  flex: 1;
-  height: 1px;
-  background: #dedede;
-}
-
-.divider em {
-  font-style: normal;
-}
-
-.legacy-btn {
-  width: 100%;
-  height: 42px;
-  border-radius: 4px;
-  color: #111827;
-  border-color: #111827;
-  background: transparent;
-  font-size: 15px;
+  height: 38px;
+  margin-top: 18px;
+  color: #777;
+  font-size: 13px;
   font-weight: 800;
-  letter-spacing: -0.02em;
 }
 
 .brand-copy {
-  margin: 54px 0 0;
+  margin: 56px 0 0;
   text-align: center;
   color: #a3a3a3;
   font-size: 12px;
@@ -241,17 +243,29 @@ onMounted(async () => {
     min-height: calc(100dvh - 68px);
   }
 
-  .login-block {
-    margin-top: 78px;
+  .top-nav,
+  .connect-actions {
+    max-width: 304px;
   }
 
-  .login-actions {
-    max-width: 292px;
-    margin-top: 46px;
+  .connect-block {
+    margin-top: 62px;
   }
 
   .google-button-wrap {
-    width: 292px;
+    width: 304px;
+  }
+
+  .auth-title {
+    font-size: 30px;
+  }
+
+  .auth-subtitle {
+    margin-top: 26px;
+  }
+
+  .connect-actions {
+    margin-top: 40px;
   }
 
   .brand-copy {
@@ -260,16 +274,20 @@ onMounted(async () => {
 }
 
 @media (max-height: 700px) {
-  .login-block {
-    margin-top: 44px;
-  }
-
-  .login-actions {
+  .connect-block {
     margin-top: 34px;
   }
 
+  .auth-subtitle {
+    margin-top: 18px;
+  }
+
+  .connect-actions {
+    margin-top: 30px;
+  }
+
   .brand-copy {
-    margin-top: 32px;
+    margin-top: 30px;
   }
 }
 </style>

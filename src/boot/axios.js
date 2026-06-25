@@ -100,7 +100,11 @@ api.interceptors.response.use(
     const { status, config } = error.response
 
     // 로그인/리프레시 요청 자체에서 401 나면 재시도 X
-    const isAuthUrl = config?.url?.includes('/auth/login') || config?.url?.includes('/auth/refresh')
+    const isAuthUrl =
+      config?.url?.includes('/auth/login') ||
+      config?.url?.includes('/auth/refresh') ||
+      config?.url?.includes('/auth/oauth/google') ||
+      config?.url?.includes('/auth/oauth/apple')
 
     if (status !== 401 || originalRequest._retry || isAuthUrl) {
       return Promise.reject(error)

@@ -6,11 +6,28 @@ const routes = [
     children: [{ path: '', component: () => import('pages/LoginView.vue') }],
   },
   {
+    path: '/legacy-login',
+    component: () => import('layouts/AuthLayout.vue'),
+    children: [{ path: '', component: () => import('pages/LegacyLoginView.vue') }],
+  },
+  {
     path: '/signup',
     component: () => import('layouts/AuthLayout.vue'),
     children: [{ path: '', component: () => import('pages/SignupView.vue') }],
   },
 
+  {
+    path: '/onboarding',
+    component: () => import('layouts/AuthLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('pages/OnboardingView.vue') }],
+  },
+  {
+    path: '/link-social',
+    component: () => import('layouts/AuthLayout.vue'),
+    meta: { requiresAuth: true },
+    children: [{ path: '', component: () => import('pages/LinkSocialView.vue') }],
+  },
   { path: '/', redirect: '/login' },
 
   // 🔹 인증 필요한 페이지 (MainLayout 사용)

@@ -100,7 +100,27 @@ export default route(function () {
       return next({ path: '/login', query: { redirect: to.fullPath } })
     }
 
-    // 🔸 E. 역할 가드: meta.role 이 있고 불일치하면 홈으로
+    // 🔸 D-1. 소셜 미연동 기존 계정은 /link-social 강제
+    if (
+      auth.user &&
+      auth.user.socialLinked === false &&
+      to.path !== '/link-social' &&
+      to.path !== '/login'
+    ) {
+      return next('/link-social')
+    }
+
+    // 🔸 D-2. 백엔드가 온보딩 필요하다고 판단한 경우만 /onboarding 강제
+    if (auth.user && auth.user.onboardingRequired === true && to.path !== '/onboarding') {
+      return next('/onboarding')
+    }
+
+    // 🔸 D-3. 이미 소셜 연결된 사용자는 /link-social 접근 방지
+    if (auth.user && auth.user.socialLinked === true && to.path === '/link-social') {
+      return next('/app/dashboard')
+    }
+
+    // 🔸 E. 역할 가드
     if (requiredRole && auth.user && auth.user.role !== requiredRole) {
       return next('/')
     }

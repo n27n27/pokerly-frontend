@@ -1,9 +1,34 @@
-/* 숫자 입력 필드의 위/아래 스핀 버튼 제거 (모든 브라우저) */
+@import 'pretendard/dist/web/static/pretendard.css';
+
+html,
+body,
+#q-app {
+  min-height: 100%;
+  margin: 0;
+  background: #f7f7f8;
+}
+
+body,
+button,
+input,
+textarea,
+select,
+.q-field,
+.q-btn {
+  font-family:
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+}
+
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type='number'] {
-  -moz-appearance: textfield; /* Firefox */
+  -moz-appearance: textfield;
 }

@@ -1,5 +1,4 @@
 <template>
-  <div class="q-pa-md"></div>
   <router-view />
   <GlobalAlert ref="alert" />
 </template>
