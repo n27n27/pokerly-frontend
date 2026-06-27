@@ -52,7 +52,7 @@
                     icon="content_copy"
                     label="복사용 텍스트"
                     :disable="saving || bulkMoving"
-                    @click="copyDialog = true"
+                    @click="copyLevelReviewText"
                   />
                 </div>
 
@@ -71,6 +71,59 @@
             </div>
           </div>
         </div>
+
+        <q-card flat bordered class="section-card q-mb-md">
+          <q-card-section>
+            <div class="row items-start justify-between q-col-gutter-sm">
+              <div class="col">
+                <div class="section-title">레벨 정보</div>
+                <div class="text-caption text-grey-7 q-mt-xs">
+                  이 구간의 시작/마감 스택과 운영 메모입니다.
+                </div>
+              </div>
+
+              <div class="col-auto">
+                <q-btn
+                  flat
+                  dense
+                  icon="edit"
+                  :disable="saving || bulkMoving"
+                  @click="openLevelInfoDialog"
+                />
+              </div>
+            </div>
+
+            <div class="row q-col-gutter-sm q-mt-sm">
+              <div class="col-6 col-sm-4">
+                <div class="stat-box">
+                  <div class="stat-value">{{ formatOptionalStack(blindLevel.startStack) }}</div>
+                  <div class="stat-label">시작 스택</div>
+                </div>
+              </div>
+
+              <div class="col-6 col-sm-4">
+                <div class="stat-box">
+                  <div class="stat-value">{{ formatOptionalStack(blindLevel.endStack) }}</div>
+                  <div class="stat-label">마감 스택</div>
+                </div>
+              </div>
+
+              <div class="col-12 col-sm-4">
+                <div class="stat-box">
+                  <div class="stat-value">{{ formatOptionalStack(blindLevel.averageStack) }}</div>
+                  <div class="stat-label">에버 스택</div>
+                </div>
+              </div>
+            </div>
+
+            <div v-if="blindLevel.memo" class="level-memo-box q-mt-md">
+              <div class="level-memo-title">레벨 메모</div>
+              <div class="level-memo-text">{{ blindLevel.memo }}</div>
+            </div>
+
+            <div v-else class="empty-level-memo q-mt-md">레벨 메모가 없습니다.</div>
+          </q-card-section>
+        </q-card>
 
         <q-card flat bordered class="section-card q-mb-md">
           <q-card-section>
@@ -257,12 +310,77 @@
       @save="addHand"
     />
 
-    <HandLogLevelCopyDialog
-      v-model="copyDialog"
-      :event="event"
-      :blind-level="blindLevel"
-      :hands="levelHands"
-    />
+    <q-dialog v-model="levelInfoDialog" :maximized="$q.screen.lt.sm" :persistent="saving">
+      <q-card class="dialog-card">
+        <q-card-section>
+          <div class="text-h6 text-weight-bold">레벨 정보 수정</div>
+
+          <div class="text-caption text-grey-7 q-mt-xs">
+            L{{ blindLevel?.levelNo || '-' }} · {{ blindLevel ? formatBlind(blindLevel) : '' }}
+          </div>
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-section class="form-section">
+          <q-input
+            v-model="levelInfoForm.startStack"
+            outlined
+            dense
+            inputmode="numeric"
+            label="시작 스택"
+            placeholder="예: 52000"
+            :disable="saving"
+          />
+
+          <q-input
+            v-model="levelInfoForm.endStack"
+            outlined
+            dense
+            inputmode="numeric"
+            label="마감 스택"
+            placeholder="예: 34000"
+            :disable="saving"
+          />
+
+          <q-input
+            v-model="levelInfoForm.averageStack"
+            outlined
+            dense
+            inputmode="numeric"
+            label="에버 스택"
+            placeholder="예: 79000"
+            :disable="saving"
+          />
+
+          <q-input
+            v-model="levelInfoForm.memo"
+            outlined
+            dense
+            type="textarea"
+            autogrow
+            label="레벨 메모"
+            placeholder="예: 레마 직전, 카드 안 들어옴, 콜이 너무 많음"
+            :disable="saving"
+          />
+        </q-card-section>
+
+        <q-separator />
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn flat label="취소" color="grey-8" :disable="saving" v-close-popup />
+
+          <q-btn
+            color="dark"
+            unelevated
+            label="저장"
+            :loading="saving"
+            :disable="saving"
+            @click="saveLevelInfo"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
 
     <q-dialog v-model="bulkMoveDialog" :persistent="bulkMoving">
       <q-card class="bulk-move-dialog-card">
@@ -362,15 +480,16 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { copyToClipboard } from 'quasar'
 import { useAlert } from 'src/composables/useAlert'
 import { useRoute, useRouter } from 'vue-router'
 
 import QuickHandLogDialog from 'src/components/hand-log/QuickHandLogDialog.vue'
-import HandLogLevelCopyDialog from 'src/components/hand-log/HandLogLevelCopyDialog.vue'
 import StartingHandSummary from 'src/components/hand-log/StartingHandSummary.vue'
 import { useHandLogStore } from 'src/stores/handLog'
+import { buildLevelReviewText } from 'src/utils/handLogExportText'
 import {
   getActionLabel,
   getHandInputValue,
@@ -386,7 +505,6 @@ const route = useRoute()
 const router = useRouter()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
-const copyDialog = ref(false)
 
 const { detailLoading, levelLoading, saving } = storeToRefs(handLogStore)
 
@@ -396,6 +514,14 @@ const selectedHandIds = ref([])
 const bulkMoveDialog = ref(false)
 const bulkTargetLevelId = ref(null)
 const bulkMoving = ref(false)
+const levelInfoDialog = ref(false)
+
+const levelInfoForm = reactive({
+  startStack: '',
+  endStack: '',
+  averageStack: '',
+  memo: '',
+})
 
 const eventId = computed(() => route.params.eventId)
 const levelId = computed(() => route.params.levelId)
@@ -504,6 +630,66 @@ watch(
 
 const goEventDetail = () => {
   router.push(`/app/mypoker/hand-log/${eventId.value}`)
+}
+
+const openLevelInfoDialog = () => {
+  if (!blindLevel.value) {
+    return
+  }
+
+  levelInfoForm.startStack = blindLevel.value.startStack ?? ''
+  levelInfoForm.endStack = blindLevel.value.endStack ?? ''
+  levelInfoForm.averageStack = blindLevel.value.averageStack ?? ''
+  levelInfoForm.memo = blindLevel.value.memo ?? ''
+
+  levelInfoDialog.value = true
+}
+
+const saveLevelInfo = async () => {
+  if (!blindLevel.value || saving.value) {
+    return
+  }
+
+  try {
+    await handLogStore.updateBlindLevel(eventId.value, levelId.value, {
+      levelNo: blindLevel.value.levelNo,
+      smallBlind: blindLevel.value.smallBlind,
+      bigBlind: blindLevel.value.bigBlind,
+      ante: blindLevel.value.ante,
+      startStack: toNullableNumber(levelInfoForm.startStack),
+      endStack: toNullableNumber(levelInfoForm.endStack),
+      averageStack: toNullableNumber(levelInfoForm.averageStack),
+      memo: String(levelInfoForm.memo || '').trim() || null,
+    })
+
+    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
+
+    alert.show('레벨 정보를 저장했습니다.', 'positive')
+    levelInfoDialog.value = false
+  } catch (error) {
+    console.error(error)
+    alert.show('레벨 정보를 저장하지 못했습니다.', 'error')
+  }
+}
+
+const copyLevelReviewText = async () => {
+  if (!event.value || !blindLevel.value) {
+    return
+  }
+
+  const text = buildLevelReviewText({
+    event: event.value,
+    blindLevel: blindLevel.value,
+    hands: levelHands.value,
+  })
+
+  try {
+    await copyToClipboard(text)
+    alert.show('레벨 복기 텍스트를 복사했습니다.', 'positive')
+  } catch (error) {
+    console.error(error)
+    alert.show('복사에 실패했습니다.', 'error')
+  }
 }
 
 const openHand = (hand) => {
@@ -647,6 +833,28 @@ const formatNumber = (value) => {
   return Number(value || 0).toLocaleString('ko-KR')
 }
 
+const formatOptionalStack = (value) => {
+  if (value === null || value === undefined || value === '') {
+    return '-'
+  }
+
+  return formatNumber(value)
+}
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return null
+  }
+
+  const numberValue = Number(value)
+
+  if (Number.isNaN(numberValue)) {
+    return null
+  }
+
+  return numberValue
+}
+
 const formatPercent = (count, total) => {
   if (!total) {
     return '0%'
@@ -747,6 +955,50 @@ const getResultValue = (hand) => {
   margin-top: 4px;
   font-size: 12px;
   color: #777;
+}
+
+.level-memo-box {
+  border: 1px solid #ececef;
+  border-radius: 14px;
+  padding: 14px;
+  background: #fafafa;
+}
+
+.level-memo-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #555;
+}
+
+.level-memo-text {
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #222;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.empty-level-memo {
+  border: 1px dashed #dedee3;
+  border-radius: 14px;
+  padding: 12px;
+  background: #fafafa;
+  font-size: 13px;
+  font-weight: 600;
+  color: #888;
+}
+
+.dialog-card {
+  width: 100%;
+  max-width: 560px;
+  border-radius: 18px;
+}
+
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .empty-hand-card {

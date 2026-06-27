@@ -412,6 +412,10 @@ export const useHandLogStore = defineStore('handLog', () => {
         smallBlind: Number(payload.smallBlind),
         bigBlind: Number(payload.bigBlind),
         ante: Number(payload.ante || 0),
+        startStack: payload.startStack ?? null,
+        endStack: payload.endStack ?? null,
+        averageStack: payload.averageStack ?? null,
+        memo: payload.memo ?? null,
       })
 
       const normalizedLevel = normalizeBlindLevel(saved)
@@ -455,6 +459,10 @@ export const useHandLogStore = defineStore('handLog', () => {
         smallBlind: Number(payload.smallBlind),
         bigBlind: Number(payload.bigBlind),
         ante: Number(payload.ante || 0),
+        startStack: payload.startStack ?? null,
+        endStack: payload.endStack ?? null,
+        averageStack: payload.averageStack ?? null,
+        memo: payload.memo ?? null,
       })
 
       const normalizedLevel = normalizeBlindLevel(saved)

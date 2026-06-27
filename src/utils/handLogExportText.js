@@ -113,14 +113,7 @@ const formatHandBlock = (hand, index) => {
   return [header, ...metaLines].join('\n')
 }
 
-export const buildLevelReviewText = ({
-  event,
-  blindLevel,
-  hands,
-  heroStack,
-  averageStack,
-  note,
-}) => {
+export const buildLevelReviewText = ({ event, blindLevel, hands }) => {
   const orderedHands = sortByCreatedAtAsc(hands)
 
   const lines = [
@@ -130,20 +123,29 @@ export const buildLevelReviewText = ({
     `구간: L${blindLevel?.levelNo || '-'} · ${formatBlind(blindLevel)}`,
   ]
 
-  if (heroStack || averageStack) {
-    lines.push('스택 기준: 해당 레벨 마감 시점')
+  const startStack = blindLevel?.startStack
+  const endStack = blindLevel?.endStack
+  const averageStackValue = blindLevel?.averageStack
+  const levelMemo = blindLevel?.memo
+
+  if (startStack || endStack || averageStackValue || levelMemo) {
+    lines.push('스택 기준: 해당 레벨 기준')
   }
 
-  if (heroStack) {
-    lines.push(`내 스택: ${formatNumber(heroStack)}`)
+  if (startStack) {
+    lines.push(`시작 스택: ${formatNumber(startStack)}`)
   }
 
-  if (averageStack) {
-    lines.push(`에버 스택: ${formatNumber(averageStack)}`)
+  if (endStack) {
+    lines.push(`마감 스택: ${formatNumber(endStack)}`)
   }
 
-  if (note?.trim()) {
-    lines.push(`추가 메모: ${note.trim()}`)
+  if (averageStackValue) {
+    lines.push(`에버 스택: ${formatNumber(averageStackValue)}`)
+  }
+
+  if (levelMemo?.trim()) {
+    lines.push(`레벨 메모: ${levelMemo.trim()}`)
   }
 
   lines.push('', `기록 핸드: ${orderedHands.length}개`, '')
