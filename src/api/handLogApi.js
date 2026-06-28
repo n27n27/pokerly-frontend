@@ -1,7 +1,13 @@
 import { api } from 'boot/axios'
 
-export const fetchHandLogEvents = async () => {
-  const res = await api.get('/hand-log/events')
+export const fetchHandLogEvents = async ({ page = 0, size = 10 } = {}) => {
+  const res = await api.get('/hand-log/events', {
+    params: {
+      page,
+      size,
+    },
+  })
+
   return res.data.data
 }
 

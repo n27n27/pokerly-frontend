@@ -1,157 +1,146 @@
 <template>
-  <q-dialog v-model="dialogModel" :maximized="$q.screen.lt.sm" :persistent="loading">
-    <q-card class="dialog-card">
-      <q-card-section>
-        <div class="text-h6 text-weight-bold">{{ dialogTitle }}</div>
+  <BaseDialog
+    v-model="dialogModel"
+    :title="dialogTitle"
+    :description="levelLabel || '현재 레벨에 기록합니다.'"
+    :maximized="$q.screen.lt.sm"
+    :persistent="loading"
+  >
+    <div class="form-section">
+      <div>
+        <div class="field-label">핸드</div>
 
-        <div class="text-caption text-grey-7 q-mt-xs">
-          {{ levelLabel || '현재 레벨에 기록합니다.' }}
+        <div class="hand-picker-row">
+          <q-select
+            v-model="form.firstRank"
+            :options="CARD_RANK_OPTIONS"
+            class="rank-select"
+            outlined
+            dense
+            options-dense
+            emit-value
+            map-options
+            label="카드 1"
+            behavior="menu"
+            popup-content-class="rank-select-popup"
+            :disable="loading"
+          />
+
+          <q-select
+            v-model="form.secondRank"
+            :options="CARD_RANK_OPTIONS"
+            class="rank-select"
+            outlined
+            dense
+            options-dense
+            emit-value
+            map-options
+            label="카드 2"
+            behavior="menu"
+            popup-content-class="rank-select-popup"
+            :disable="loading"
+          />
+
+          <q-toggle
+            v-model="form.suited"
+            color="primary"
+            label="수딧"
+            :disable="isPair || loading"
+          />
+
+          <q-badge v-if="selectedHand" color="dark" class="hand-preview">
+            {{ selectedHand }}
+          </q-badge>
         </div>
-      </q-card-section>
+      </div>
 
-      <q-separator />
+      <q-select
+        v-model="form.position"
+        :options="POSITION_OPTIONS"
+        outlined
+        dense
+        options-dense
+        emit-value
+        map-options
+        label="포지션"
+        behavior="menu"
+        popup-content-class="form-select-popup"
+        :disable="loading"
+      />
 
-      <q-card-section class="form-section">
-        <!-- 핸드 -->
-        <div>
-          <div class="field-label">핸드</div>
+      <q-select
+        v-model="form.actionType"
+        :options="ACTION_OPTIONS"
+        outlined
+        dense
+        options-dense
+        emit-value
+        map-options
+        label="프리플랍 액션"
+        behavior="menu"
+        popup-content-class="form-select-popup"
+        :disable="loading"
+      />
 
-          <div class="hand-picker-row">
-            <q-select
-              v-model="form.firstRank"
-              :options="CARD_RANK_OPTIONS"
-              class="rank-select"
-              outlined
-              dense
-              options-dense
-              emit-value
-              map-options
-              label="카드 1"
-              behavior="menu"
-              popup-content-class="rank-select-popup"
-              :disable="loading"
-            />
+      <q-toggle
+        v-if="canMarkPreflopAllIn"
+        v-model="form.preflopAllIn"
+        color="negative"
+        label="올인으로 실행"
+        :disable="loading"
+      />
 
-            <q-select
-              v-model="form.secondRank"
-              :options="CARD_RANK_OPTIONS"
-              class="rank-select"
-              outlined
-              dense
-              options-dense
-              emit-value
-              map-options
-              label="카드 2"
-              behavior="menu"
-              popup-content-class="rank-select-popup"
-              :disable="loading"
-            />
+      <q-select
+        v-model="form.resultType"
+        :options="RESULT_OPTIONS"
+        outlined
+        dense
+        options-dense
+        emit-value
+        map-options
+        label="결과"
+        behavior="menu"
+        popup-content-class="form-select-popup"
+        :disable="loading"
+      />
 
-            <q-toggle
-              v-model="form.suited"
-              color="primary"
-              label="수딧"
-              :disable="isPair || loading"
-            />
+      <q-toggle
+        v-model="form.reviewRequired"
+        color="amber-8"
+        label="복기 필요"
+        :disable="loading"
+      />
 
-            <q-badge v-if="selectedHand" color="dark" class="hand-preview">
-              {{ selectedHand }}
-            </q-badge>
-          </div>
-        </div>
+      <q-input
+        v-model="form.memo"
+        outlined
+        dense
+        type="textarea"
+        autogrow
+        label="간단 메모"
+        placeholder="예: 오픈 후 3벳 콜, 플랍 미스 후 폴드, BB 옵션 체크 후 한방 플러쉬"
+        :disable="loading"
+      />
+    </div>
 
-        <!-- 포지션 -->
-        <q-select
-          v-model="form.position"
-          :options="POSITION_OPTIONS"
-          outlined
-          dense
-          options-dense
-          emit-value
-          map-options
-          label="포지션"
-          behavior="menu"
-          popup-content-class="form-select-popup"
-          :disable="loading"
-        />
+    <template #actions>
+      <q-btn flat label="취소" color="grey-8" :disable="loading" @click="dialogModel = false" />
 
-        <!-- 액션 -->
-        <q-select
-          v-model="form.actionType"
-          :options="ACTION_OPTIONS"
-          outlined
-          dense
-          options-dense
-          emit-value
-          map-options
-          label="프리플랍 액션"
-          behavior="menu"
-          popup-content-class="form-select-popup"
-          :disable="loading"
-        />
-
-        <q-toggle
-          v-if="canMarkPreflopAllIn"
-          v-model="form.preflopAllIn"
-          color="negative"
-          label="올인으로 실행"
-          :disable="loading"
-        />
-
-        <!-- 결과 -->
-        <q-select
-          v-model="form.resultType"
-          :options="RESULT_OPTIONS"
-          outlined
-          dense
-          options-dense
-          emit-value
-          map-options
-          label="결과"
-          behavior="menu"
-          popup-content-class="form-select-popup"
-          :disable="loading"
-        />
-
-        <q-toggle
-          v-model="form.reviewRequired"
-          color="amber-8"
-          label="복기 필요"
-          :disable="loading"
-        />
-
-        <q-input
-          v-model="form.memo"
-          outlined
-          dense
-          type="textarea"
-          autogrow
-          label="간단 메모"
-          placeholder="예: 오픈 후 3벳 콜, 플랍 미스 후 폴드, BB 옵션 체크 후 한방 플러쉬"
-          :disable="loading"
-        />
-      </q-card-section>
-
-      <q-separator />
-
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="취소" color="grey-8" :disable="loading" v-close-popup />
-
-        <q-btn
-          color="dark"
-          unelevated
-          :label="saveButtonLabel"
-          :loading="loading"
-          :disable="!canSave || loading"
-          @click="onSave"
-        />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+      <q-btn
+        color="dark"
+        unelevated
+        :label="saveButtonLabel"
+        :loading="loading"
+        :disable="!canSave || loading"
+        @click="onSave"
+      />
+    </template>
+  </BaseDialog>
 </template>
 
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import BaseDialog from 'components/common/BaseDialog.vue'
 
 import {
   ACTION_OPTIONS,
@@ -381,12 +370,6 @@ const onSave = () => {
 </script>
 
 <style scoped>
-.dialog-card {
-  width: 100%;
-  max-width: 560px;
-  border-radius: 18px;
-}
-
 .form-section {
   display: flex;
   flex-direction: column;
@@ -397,7 +380,7 @@ const onSave = () => {
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #333;
+  color: #333333;
 }
 
 .hand-picker-row {
@@ -461,6 +444,6 @@ const onSave = () => {
 
 .move-warning-banner {
   background: #f6f7fb;
-  color: #333;
+  color: #333333;
 }
 </style>

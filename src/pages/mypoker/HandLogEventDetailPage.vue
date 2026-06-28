@@ -332,74 +332,72 @@
       </template>
     </div>
 
-    <q-dialog v-model="levelDialog" :persistent="saving">
-      <q-card class="level-dialog-card">
-        <q-card-section>
-          <div class="text-h6 text-weight-bold">{{ levelDialogTitle }}</div>
+    <BaseDialog
+      v-model="levelDialog"
+      :title="levelDialogTitle"
+      :description="levelDialogDescription"
+      :maximized="$q.screen.lt.sm"
+      :persistent="saving"
+    >
+      <div class="level-form">
+        <q-input
+          v-model="levelForm.levelNo"
+          type="number"
+          outlined
+          dense
+          label="레벨"
+          placeholder="예: 4"
+          min="1"
+          :disable="saving"
+        />
 
-          <div class="text-body2 text-grey-7 q-mt-xs">
-            {{ levelDialogDescription }}
-          </div>
-        </q-card-section>
+        <q-input
+          v-model="levelForm.smallBlind"
+          type="number"
+          outlined
+          dense
+          label="스몰 블라인드"
+          placeholder="예: 300"
+          min="0"
+          :disable="saving"
+        />
 
-        <q-separator />
+        <q-input
+          v-model="levelForm.bigBlind"
+          type="number"
+          outlined
+          dense
+          label="빅 블라인드"
+          placeholder="예: 600"
+          min="0"
+          :disable="saving"
+        />
 
-        <q-card-section class="level-form">
-          <q-input
-            v-model="levelForm.levelNo"
-            type="number"
-            outlined
-            label="레벨"
-            placeholder="예: 4"
-            min="1"
-            :disable="saving"
-          />
+        <q-input
+          v-model="levelForm.ante"
+          type="number"
+          outlined
+          dense
+          label="앤티"
+          placeholder="예: 600"
+          min="0"
+          :disable="saving"
+        />
+      </div>
 
-          <q-input
-            v-model="levelForm.smallBlind"
-            type="number"
-            outlined
-            label="스몰 블라인드"
-            placeholder="예: 300"
-            min="0"
-            :disable="saving"
-          />
+      <template #actions>
+        <q-btn flat label="취소" color="grey-8" :disable="saving" @click="closeLevelDialog" />
 
-          <q-input
-            v-model="levelForm.bigBlind"
-            type="number"
-            outlined
-            label="빅 블라인드"
-            placeholder="예: 600"
-            min="0"
-            :disable="saving"
-          />
-
-          <q-input
-            v-model="levelForm.ante"
-            type="number"
-            outlined
-            label="앤티"
-            placeholder="예: 600"
-            min="0"
-            :disable="saving"
-          />
-        </q-card-section>
-
-        <q-card-actions align="right" class="q-pa-md">
-          <q-btn flat label="취소" color="grey-8" :disable="saving" @click="closeLevelDialog" />
-
-          <q-btn
-            unelevated
-            :label="levelSaveButtonLabel"
-            color="primary"
-            :loading="saving"
-            :disable="!canSaveLevel || saving"
-            @click="saveLevel"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
+        <q-btn
+          unelevated
+          :label="levelSaveButtonLabel"
+          color="dark"
+          :loading="saving"
+          :disable="!canSaveLevel || saving"
+          @click="saveLevel"
+        />
+      </template>
+    </BaseDialog>
   </q-page>
 </template>
 
@@ -410,6 +408,7 @@ import { copyToClipboard, useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlert } from 'src/composables/useAlert'
 
+import BaseDialog from 'components/common/BaseDialog.vue'
 import StartingHandSummary from 'src/components/hand-log/StartingHandSummary.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
@@ -865,8 +864,7 @@ const importBlindStructure = async () => {
 
 .empty-card,
 .section-card,
-.empty-level-card,
-.level-dialog-card {
+.empty-level-card {
   border-radius: 16px;
   background: #ffffff;
 }
@@ -972,15 +970,10 @@ const importBlindStructure = async () => {
   min-width: 132px;
 }
 
-.level-dialog-card {
-  width: 100%;
-  max-width: 460px;
-}
-
 .level-form {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .blocked-delete-item {

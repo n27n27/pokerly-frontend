@@ -25,6 +25,9 @@
         <HandLogEventList
           v-else
           :events="eventItems"
+          :has-next="eventHasNext"
+          :loading-more="loadingMoreEvents"
+          :on-load-more="loadMoreEvents"
           @create-event="openCreateEventDialog"
           @open-event="goEventDetail"
           @edit-event="openEditEventDialog"
@@ -94,7 +97,7 @@ const router = useRouter()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
 
-const { eventItems, loading, saving } = storeToRefs(handLogStore)
+const { eventItems, loading, saving, eventHasNext, loadingMoreEvents } = storeToRefs(handLogStore)
 
 const eventDialog = ref(false)
 const eventDialogMode = ref('create')
@@ -263,6 +266,16 @@ const handleDeleteEvent = async () => {
 
 const goEventDetail = (eventId) => {
   router.push(`/app/mypoker/hand-log/${eventId}`)
+}
+
+const loadMoreEvents = async () => {
+  try {
+    await handLogStore.fetchMoreEvents()
+  } catch (error) {
+    console.error(error)
+
+    alert.show('이전 대회를 불러오지 못했습니다.', 'error')
+  }
 }
 </script>
 

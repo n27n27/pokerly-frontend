@@ -30,6 +30,11 @@ export const useHandLogStore = defineStore('handLog', () => {
   const levelLoading = ref(false)
   const handLoading = ref(false)
   const saving = ref(false)
+  const eventPage = ref(0)
+  const eventSize = ref(10)
+  const eventHasNext = ref(false)
+  const loadingMoreEvents = ref(false)
+  let fetchingMoreEvents = false
 
   // 예전 코드 호환용. 새 구조에서는 사용하지 않음.
   const logs = ref([])
@@ -300,15 +305,57 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
-  const fetchEvents = async () => {
-    loading.value = true
+  const fetchEvents = async ({ reset = true } = {}) => {
+    if (reset) {
+      loading.value = true
+      eventPage.value = 0
+      eventHasNext.value = false
+    } else {
+      loadingMoreEvents.value = true
+    }
 
     try {
-      const data = await fetchHandLogEvents()
-      events.value = Array.isArray(data) ? data.map(normalizeEvent).filter(Boolean) : []
+      const data = await fetchHandLogEvents({
+        page: reset ? 0 : eventPage.value + 1,
+        size: eventSize.value,
+      })
+
+      const content = Array.isArray(data?.content) ? data.content : []
+      const normalizedEvents = content.map(normalizeEvent).filter(Boolean)
+
+      if (reset) {
+        events.value = normalizedEvents
+      } else {
+        const existingIds = new Set(events.value.map((event) => String(event.id)))
+        const appended = normalizedEvents.filter((event) => !existingIds.has(String(event.id)))
+
+        events.value = [...events.value, ...appended]
+      }
+
+      eventPage.value = Number(data?.page ?? 0)
+      eventHasNext.value = Boolean(data?.hasNext)
+
       return events.value
     } finally {
-      loading.value = false
+      if (reset) {
+        loading.value = false
+      } else {
+        loadingMoreEvents.value = false
+      }
+    }
+  }
+
+  const fetchMoreEvents = async () => {
+    if (fetchingMoreEvents || loadingMoreEvents.value || !eventHasNext.value) {
+      return events.value
+    }
+
+    fetchingMoreEvents = true
+
+    try {
+      return await fetchEvents({ reset: false })
+    } finally {
+      fetchingMoreEvents = false
     }
   }
 
@@ -576,6 +623,14 @@ export const useHandLogStore = defineStore('handLog', () => {
     saving.value = true
 
     try {
+      console.info('[HAND_CREATE_START]', {
+        eventId,
+        levelId,
+        hand: handValue,
+        actionType: payload.actionType || null,
+        resultType: payload.resultType || 'NOT_RECORDED',
+      })
+
       const saved = await createHandLogHand(eventId, levelId, {
         holeCards: payload.holeCards?.trim() || handValue,
         hand: payload.hand || handValue,
@@ -602,12 +657,41 @@ export const useHandLogStore = defineStore('handLog', () => {
         handStrengthColor: payload.handStrengthColor || handStrength.color,
       })
 
+      console.info('[HAND_CREATE_SUCCESS]', {
+        eventId,
+        levelId,
+        handId: saved?.id,
+      })
+
       const normalizedHand = upsertHandToLevelState(eventId, levelId, saved)
 
-      // 대회 상세의 handCount/reviewRequiredCount를 서버 기준으로 다시 맞춤
-      await fetchEventDetail(eventId)
+      try {
+        await fetchEventDetail(eventId)
+      } catch (syncError) {
+        console.warn('[HAND_CREATE_SYNC_FAILED]', {
+          eventId,
+          levelId,
+          handId: saved?.id,
+          message: syncError?.message,
+          code: syncError?.code,
+          status: syncError?.response?.status,
+          data: syncError?.response?.data,
+        })
+      }
 
       return normalizedHand
+    } catch (error) {
+      console.error('[HAND_CREATE_FAILED]', {
+        eventId,
+        levelId,
+        hand: handValue,
+        message: error?.message,
+        code: error?.code,
+        status: error?.response?.status,
+        data: error?.response?.data,
+      })
+
+      throw error
     } finally {
       saving.value = false
     }
@@ -771,5 +855,8 @@ export const useHandLogStore = defineStore('handLog', () => {
 
     addLog,
     saveReview,
+    eventHasNext,
+    loadingMoreEvents,
+    fetchMoreEvents,
   }
 })
