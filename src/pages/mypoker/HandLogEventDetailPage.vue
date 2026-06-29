@@ -72,7 +72,7 @@
                     outline
                     icon="file_download"
                     label="구조 불러오기"
-                    :disable="saving || sourceEventOptions.length === 0"
+                    :disable="saving"
                     @click="openBlindImportDialog"
                   />
 
@@ -179,87 +179,48 @@
           </q-card-section>
         </q-card>
 
-        <q-dialog v-model="blindImportDialog" :persistent="saving">
-          <q-card class="blind-import-dialog-card">
-            <q-card-section class="blind-import-header">
-              <div class="text-h5 text-weight-bold">블라인드 구조 불러오기</div>
+        <BaseDialog
+          v-model="blindImportDialog"
+          title="블라인드 구조 불러오기"
+          description="기존 대회의 블라인드 구조를 현재 대회에 생성합니다."
+          :maximized="$q.screen.lt.sm"
+          :persistent="saving"
+        >
+          <div class="blind-import-content">
+            <q-select
+              v-model="selectedSourceEventId"
+              outlined
+              dense
+              emit-value
+              map-options
+              label="기준 대회"
+              behavior="menu"
+              :options="sourceEventOptions"
+              :disable="saving"
+              option-value="value"
+              option-label="name"
+            />
+          </div>
 
-              <div class="text-body1 text-grey-7 q-mt-sm">
-                기존 대회의 블라인드 구조를 현재 대회에 한 번에 생성합니다.
-              </div>
-            </q-card-section>
+          <template #actions>
+            <q-btn
+              flat
+              label="취소"
+              color="grey-8"
+              :disable="saving"
+              @click="closeBlindImportDialog"
+            />
 
-            <q-separator />
-
-            <q-card-section class="blind-import-section">
-              <div v-if="sourceEventOptions.length === 0" class="blind-empty-box">
-                <q-icon name="inventory_2" size="30px" color="grey-5" />
-
-                <div class="text-subtitle2 text-weight-bold q-mt-sm">
-                  불러올 수 있는 대회가 없습니다
-                </div>
-
-                <div class="text-body2 text-grey-7 q-mt-xs">
-                  블라인드 구간이 등록된 다른 대회가 있어야 합니다.
-                </div>
-              </div>
-
-              <div v-else class="blind-source-list">
-                <button
-                  v-for="item in sourceEventOptions"
-                  :key="item.value"
-                  type="button"
-                  class="blind-source-item"
-                  :class="{
-                    'blind-source-item--selected':
-                      String(selectedSourceEventId) === String(item.value),
-                  }"
-                  @click="selectedSourceEventId = item.value"
-                >
-                  <div class="blind-source-main">
-                    <div class="blind-source-name">{{ item.name }}</div>
-                    <div class="blind-source-meta">{{ item.levelCount }}레벨</div>
-                  </div>
-
-                  <q-icon
-                    :name="
-                      String(selectedSourceEventId) === String(item.value)
-                        ? 'radio_button_checked'
-                        : 'radio_button_unchecked'
-                    "
-                    size="20px"
-                    :color="
-                      String(selectedSourceEventId) === String(item.value) ? 'primary' : 'grey-5'
-                    "
-                  />
-                </button>
-              </div>
-
-              <div v-if="selectedSourceEvent" class="blind-selected-hint">
-                선택됨: {{ selectedSourceEvent.name }} · {{ selectedSourceEvent.levelCount }}레벨
-              </div>
-            </q-card-section>
-
-            <q-card-actions align="right" class="q-pa-md">
-              <q-btn
-                flat
-                label="취소"
-                color="grey-8"
-                :disable="saving"
-                @click="closeBlindImportDialog"
-              />
-
-              <q-btn
-                unelevated
-                color="dark"
-                label="불러오기"
-                :loading="saving"
-                :disable="!canImportSelectedStructure || saving"
-                @click="importBlindStructure"
-              />
-            </q-card-actions>
-          </q-card>
-        </q-dialog>
+            <q-btn
+              unelevated
+              color="dark"
+              label="불러오기"
+              :loading="saving"
+              :disable="!canImportSelectedStructure || saving"
+              @click="importBlindStructure"
+            />
+          </template>
+        </BaseDialog>
 
         <q-card flat bordered class="section-card">
           <q-card-section>
@@ -511,22 +472,11 @@ const canImportBlindStructure = computed(() => {
 const sourceEventOptions = computed(() => {
   return handLogStore.eventItems
     .filter((item) => String(item.id) !== String(eventId.value))
-    .filter((item) => {
-      return Number(item.levelCount || item.blindLevels?.length || 0) > 0
-    })
+    .filter((item) => Number(item.blindLevelCount || 0) > 0)
     .map((item) => ({
       value: item.id,
-      name: item.name,
-      levelCount: Number(item.levelCount || item.blindLevels?.length || 0),
+      name: `${item.name} · ${item.blindLevelCount}레벨`,
     }))
-})
-
-const selectedSourceEvent = computed(() => {
-  return (
-    sourceEventOptions.value.find(
-      (item) => String(item.value) === String(selectedSourceEventId.value),
-    ) || null
-  )
 })
 
 const canImportSelectedStructure = computed(() => {
@@ -568,7 +518,6 @@ watch(
 
     try {
       await handLogStore.fetchEventDetail(value)
-      await handLogStore.fetchEvents()
     } catch (error) {
       console.error(error)
 
@@ -807,19 +756,18 @@ const getErrorMessage = (error, fallback) => {
   )
 }
 
-const openBlindImportDialog = async () => {
+const openBlindImportDialog = () => {
   if (!canImportBlindStructure.value) {
     alert.show('이미 등록된 블라인드 구간이 있어 불러올 수 없습니다.', 'warning')
     return
   }
 
-  try {
-    await handLogStore.fetchEvents()
-  } catch (error) {
-    console.error(error)
+  if (sourceEventOptions.value.length === 0) {
+    alert.show('불러올 다른 대회가 없습니다.', 'warning')
+    return
   }
 
-  selectedSourceEventId.value = null
+  selectedSourceEventId.value = sourceEventOptions.value[0]?.value || null
   blindImportDialog.value = true
 }
 
@@ -970,7 +918,8 @@ const importBlindStructure = async () => {
   min-width: 132px;
 }
 
-.level-form {
+.level-form,
+.blind-import-content {
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -1008,96 +957,6 @@ const importBlindStructure = async () => {
   min-width: 132px;
 }
 
-.blind-import-dialog-card {
-  width: 100%;
-  max-width: 520px;
-  border-radius: 22px;
-  overflow: hidden;
-  background: #ffffff;
-}
-
-.blind-import-header {
-  padding-bottom: 18px;
-}
-
-.blind-import-section {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding-top: 18px;
-}
-
-.blind-empty-box {
-  border: 1px dashed #d8dbe2;
-  border-radius: 16px;
-  padding: 24px 16px;
-  text-align: center;
-  background: #fafafa;
-}
-
-.blind-source-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.blind-source-item {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 14px;
-  border: 1px solid #e5e7ee;
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    border-color 0.12s ease,
-    background 0.12s ease,
-    box-shadow 0.12s ease;
-}
-
-.blind-source-item:hover {
-  border-color: #cfd6e6;
-  background: #fafbff;
-}
-
-.blind-source-item--selected {
-  border-color: #3367e8;
-  background: #f6f8ff;
-  box-shadow: 0 0 0 1px rgba(51, 103, 232, 0.06);
-}
-
-.blind-source-main {
-  min-width: 0;
-  flex: 1 1 auto;
-}
-
-.blind-source-name {
-  font-size: 15px;
-  font-weight: 800;
-  color: #111;
-  line-height: 1.3;
-}
-
-.blind-source-meta {
-  margin-top: 4px;
-  font-size: 13px;
-  font-weight: 600;
-  color: #777;
-}
-
-.blind-selected-hint {
-  font-size: 13px;
-  font-weight: 700;
-  color: #555;
-  padding: 2px 2px 0;
-}
-
 .import-preview-banner {
   background: #f6f7fb;
   color: #333;
@@ -1118,15 +977,6 @@ const importBlindStructure = async () => {
   .level-add-btn,
   .copy-btn {
     width: 100%;
-  }
-
-  .blind-import-dialog-card {
-    max-width: 100%;
-    border-radius: 20px;
-  }
-
-  .blind-source-list {
-    max-height: 280px;
   }
 }
 </style>
