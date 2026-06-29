@@ -2,6 +2,7 @@ import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
 
 import {
+  bulkMoveHandLogHands,
   copyHandLogBlindLevelsFromEvent,
   createHandLogBlindLevel,
   createHandLogEvent,
@@ -36,7 +37,6 @@ export const useHandLogStore = defineStore('handLog', () => {
   const loadingMoreEvents = ref(false)
   let fetchingMoreEvents = false
 
-  // 예전 코드 호환용. 새 구조에서는 사용하지 않음.
   const logs = ref([])
 
   const eventItems = computed(() => {
@@ -45,42 +45,32 @@ export const useHandLogStore = defineStore('handLog', () => {
         ...event,
         handCount: event.handCount ?? 0,
         reviewRequiredCount: event.reviewRequiredCount ?? 0,
-
-        // 예전 프론트 코드 호환용 alias
         importantCount: event.importantCount ?? event.reviewRequiredCount ?? 0,
-
         levelCount: event.levelCount ?? event.blindLevels?.length ?? 0,
+        blindLevelCount:
+          event.blindLevelCount ?? event.levelCount ?? event.blindLevels?.length ?? 0,
       }))
       .sort((a, b) => {
         const eventAtCompare = String(b.eventAt || '').localeCompare(String(a.eventAt || ''))
 
-        if (eventAtCompare !== 0) {
-          return eventAtCompare
-        }
+        if (eventAtCompare !== 0) return eventAtCompare
 
         return String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
       })
   })
 
   const normalizeHand = (hand) => {
-    if (!hand) {
-      return null
-    }
+    if (!hand) return null
 
     const holeCards = hand.holeCards || hand.hand || ''
     const handStrength = getHandStrength(holeCards)
 
     return {
       ...hand,
-
       holeCards,
       hand: hand.hand || holeCards,
-
       reviewRequired: Boolean(hand.reviewRequired),
-
-      // 기존 화면에서 아직 hand.important를 보는 곳이 있을 수 있어서 임시 alias 유지
       important: Boolean(hand.reviewRequired),
-
       handStrengthTier: hand.handStrengthTier || handStrength.tier,
       handStrengthLabel: hand.handStrengthLabel || handStrength.label,
       handStrengthColor: hand.handStrengthColor || handStrength.color,
@@ -88,35 +78,26 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const normalizeBlindLevel = (level) => {
-    if (!level) {
-      return null
-    }
+    if (!level) return null
 
     const hands = Array.isArray(level.hands) ? level.hands.map(normalizeHand).filter(Boolean) : []
-
     const reviewRequiredCount =
       level.reviewRequiredCount ?? hands.filter((hand) => hand.reviewRequired).length
 
     return {
       ...level,
-
       hands,
-
       handCount: level.handCount ?? hands.length,
       reviewRequiredCount,
+      editableStartStack: Boolean(level.editableStartStack),
     }
   }
 
   const formatDateOnly = (value) => {
-    if (!value) {
-      return ''
-    }
+    if (!value) return ''
 
     const date = new Date(value)
-
-    if (Number.isNaN(date.getTime())) {
-      return ''
-    }
+    if (Number.isNaN(date.getTime())) return ''
 
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
@@ -126,9 +107,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const normalizeEvent = (event) => {
-    if (!event) {
-      return null
-    }
+    if (!event) return null
 
     const blindLevels = Array.isArray(event.blindLevels)
       ? event.blindLevels.map(normalizeBlindLevel).filter(Boolean)
@@ -136,66 +115,46 @@ export const useHandLogStore = defineStore('handLog', () => {
 
     const handCount =
       event.handCount ??
-      blindLevels.reduce((sum, level) => {
-        return sum + (level.handCount ?? level.hands?.length ?? 0)
-      }, 0)
+      blindLevels.reduce((sum, level) => sum + (level.handCount ?? level.hands?.length ?? 0), 0)
 
     const reviewRequiredCount =
       event.reviewRequiredCount ??
-      blindLevels.reduce((sum, level) => {
-        return sum + (level.reviewRequiredCount ?? 0)
-      }, 0)
+      blindLevels.reduce((sum, level) => sum + (level.reviewRequiredCount ?? 0), 0)
 
     return {
       ...event,
-
-      // 기존 리스트 컴포넌트 호환용
-      // 현재는 생성 시점의 eventAt을 대회 날짜로 사용
       date: event.date || formatDateOnly(event.eventAt || event.createdAt),
-
       blindLevels,
-
       handCount,
       reviewRequiredCount,
-
       importantCount: event.importantCount ?? reviewRequiredCount,
-
       levelCount: event.levelCount ?? blindLevels.length,
+      blindLevelCount: event.blindLevelCount ?? event.levelCount ?? blindLevels.length,
     }
   }
 
   const sortBlindLevels = (levels) => {
     return [...levels].sort((a, b) => {
       const levelCompare = Number(a.levelNo || 0) - Number(b.levelNo || 0)
-
-      if (levelCompare !== 0) {
-        return levelCompare
-      }
-
+      if (levelCompare !== 0) return levelCompare
       return String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
     })
   }
 
   const sortHands = (hands) => {
-    return [...hands].sort((a, b) => {
-      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
-    })
+    return [...hands].sort((a, b) =>
+      String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
+    )
   }
 
   const upsertEvent = (event) => {
     const normalized = normalizeEvent(event)
-
-    if (!normalized) {
-      return null
-    }
+    if (!normalized) return null
 
     const index = events.value.findIndex((item) => String(item.id) === String(normalized.id))
 
-    if (index >= 0) {
-      events.value[index] = normalized
-    } else {
-      events.value.unshift(normalized)
-    }
+    if (index >= 0) events.value[index] = normalized
+    else events.value.unshift(normalized)
 
     if (selectedEvent.value && String(selectedEvent.value.id) === String(normalized.id)) {
       selectedEvent.value = normalized
@@ -205,13 +164,12 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const updateEventCountsFromLevels = (event) => {
-    if (!event) {
-      return null
-    }
+    if (!event) return null
 
     const blindLevels = Array.isArray(event.blindLevels) ? event.blindLevels : []
 
     event.levelCount = blindLevels.length
+    event.blindLevelCount = blindLevels.length
     event.handCount = blindLevels.reduce((sum, level) => sum + (level.handCount ?? 0), 0)
     event.reviewRequiredCount = blindLevels.reduce(
       (sum, level) => sum + (level.reviewRequiredCount ?? 0),
@@ -224,10 +182,7 @@ export const useHandLogStore = defineStore('handLog', () => {
 
   const upsertHandToLevelState = (eventId, levelId, hand) => {
     const normalizedHand = normalizeHand(hand)
-
-    if (!normalizedHand) {
-      return null
-    }
+    if (!normalizedHand) return null
 
     const level = getBlindLevelById(eventId, levelId)
 
@@ -235,16 +190,12 @@ export const useHandLogStore = defineStore('handLog', () => {
       const hands = Array.isArray(level.hands) ? [...level.hands] : []
       const handIndex = hands.findIndex((item) => String(item.id) === String(normalizedHand.id))
 
-      if (handIndex >= 0) {
-        hands[handIndex] = normalizedHand
-      } else {
-        hands.push(normalizedHand)
-      }
+      if (handIndex >= 0) hands[handIndex] = normalizedHand
+      else hands.push(normalizedHand)
 
       level.hands = sortHands(hands)
       level.handCount = level.hands.length
       level.reviewRequiredCount = level.hands.filter((item) => item.reviewRequired).length
-
       selectedBlindLevel.value = normalizeBlindLevel(level)
     }
 
@@ -254,9 +205,7 @@ export const useHandLogStore = defineStore('handLog', () => {
       const levels = Array.isArray(event.blindLevels) ? [...event.blindLevels] : []
       const levelIndex = levels.findIndex((item) => String(item.id) === String(levelId))
 
-      if (levelIndex >= 0) {
-        levels[levelIndex] = normalizeBlindLevel(level)
-      }
+      if (levelIndex >= 0) levels[levelIndex] = normalizeBlindLevel(level)
 
       event.blindLevels = sortBlindLevels(levels)
       updateEventCountsFromLevels(event)
@@ -266,7 +215,6 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
 
     selectedHand.value = normalizedHand
-
     return normalizedHand
   }
 
@@ -279,7 +227,6 @@ export const useHandLogStore = defineStore('handLog', () => {
       level.hands = hands.filter((hand) => String(hand.id) !== String(handId))
       level.handCount = level.hands.length
       level.reviewRequiredCount = level.hands.filter((hand) => hand.reviewRequired).length
-
       selectedBlindLevel.value = normalizeBlindLevel(level)
     }
 
@@ -289,9 +236,7 @@ export const useHandLogStore = defineStore('handLog', () => {
       const levels = Array.isArray(event.blindLevels) ? [...event.blindLevels] : []
       const levelIndex = levels.findIndex((item) => String(item.id) === String(levelId))
 
-      if (levelIndex >= 0) {
-        levels[levelIndex] = normalizeBlindLevel(level)
-      }
+      if (levelIndex >= 0) levels[levelIndex] = normalizeBlindLevel(level)
 
       event.blindLevels = sortBlindLevels(levels)
       updateEventCountsFromLevels(event)
@@ -328,7 +273,6 @@ export const useHandLogStore = defineStore('handLog', () => {
       } else {
         const existingIds = new Set(events.value.map((event) => String(event.id)))
         const appended = normalizedEvents.filter((event) => !existingIds.has(String(event.id)))
-
         events.value = [...events.value, ...appended]
       }
 
@@ -337,11 +281,8 @@ export const useHandLogStore = defineStore('handLog', () => {
 
       return events.value
     } finally {
-      if (reset) {
-        loading.value = false
-      } else {
-        loadingMoreEvents.value = false
-      }
+      if (reset) loading.value = false
+      else loadingMoreEvents.value = false
     }
   }
 
@@ -360,15 +301,14 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const createEvent = async (payload) => {
-    if (!payload?.name?.trim()) {
-      return null
-    }
+    if (!payload?.name?.trim()) return null
 
     saving.value = true
 
     try {
       const saved = await createHandLogEvent({
         name: payload.name.trim(),
+        startingStack: payload.startingStack ?? null,
       })
 
       const normalized = upsertEvent(saved)
@@ -407,14 +347,8 @@ export const useHandLogStore = defineStore('handLog', () => {
     return events.value.find((event) => String(event.id) === String(eventId)) || null
   }
 
-  const getLogsByEventId = () => {
-    return []
-  }
-
-  const getBlindLevelsByEventId = (eventId) => {
-    const event = getEventById(eventId)
-    return event?.blindLevels || []
-  }
+  const getLogsByEventId = () => []
+  const getBlindLevelsByEventId = (eventId) => getEventById(eventId)?.blindLevels || []
 
   const getBlindLevelById = (eventId, levelId) => {
     if (
@@ -425,9 +359,9 @@ export const useHandLogStore = defineStore('handLog', () => {
       return selectedBlindLevel.value
     }
 
-    const blindLevels = getBlindLevelsByEventId(eventId)
-
-    return blindLevels.find((level) => String(level.id) === String(levelId)) || null
+    return (
+      getBlindLevelsByEventId(eventId).find((level) => String(level.id) === String(levelId)) || null
+    )
   }
 
   const getHandById = (eventId, levelId, handId) => {
@@ -447,9 +381,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const addBlindLevel = async (eventId, payload) => {
-    if (!eventId) {
-      return null
-    }
+    if (!eventId) return null
 
     saving.value = true
 
@@ -472,11 +404,8 @@ export const useHandLogStore = defineStore('handLog', () => {
         const levels = Array.isArray(event.blindLevels) ? [...event.blindLevels] : []
         const index = levels.findIndex((level) => String(level.id) === String(normalizedLevel.id))
 
-        if (index >= 0) {
-          levels[index] = normalizedLevel
-        } else {
-          levels.push(normalizedLevel)
-        }
+        if (index >= 0) levels[index] = normalizedLevel
+        else levels.push(normalizedLevel)
 
         event.blindLevels = sortBlindLevels(levels)
         updateEventCountsFromLevels(event)
@@ -494,9 +423,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const updateBlindLevel = async (eventId, blindLevelId, payload) => {
-    if (!eventId || !blindLevelId) {
-      return null
-    }
+    if (!eventId || !blindLevelId) return null
 
     saving.value = true
 
@@ -530,9 +457,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const deleteBlindLevel = async (eventId, blindLevelId) => {
-    if (!eventId || !blindLevelId) {
-      return false
-    }
+    if (!eventId || !blindLevelId) return false
 
     saving.value = true
 
@@ -547,7 +472,6 @@ export const useHandLogStore = defineStore('handLog', () => {
       }
 
       await fetchEventDetail(eventId)
-
       return true
     } finally {
       saving.value = false
@@ -555,9 +479,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const copyBlindLevelsFromEvent = async (targetEventId, sourceEventId) => {
-    if (!targetEventId || !sourceEventId) {
-      return null
-    }
+    if (!targetEventId || !sourceEventId) return null
 
     saving.value = true
 
@@ -566,7 +488,6 @@ export const useHandLogStore = defineStore('handLog', () => {
       const normalized = upsertEvent(copiedEvent)
 
       selectedEvent.value = normalized
-
       return normalized
     } finally {
       saving.value = false
@@ -593,11 +514,8 @@ export const useHandLogStore = defineStore('handLog', () => {
         const levels = Array.isArray(event.blindLevels) ? [...event.blindLevels] : []
         const index = levels.findIndex((level) => String(level.id) === String(normalizedLevel.id))
 
-        if (index >= 0) {
-          levels[index] = normalizedLevel
-        } else {
-          levels.push(normalizedLevel)
-        }
+        if (index >= 0) levels[index] = normalizedLevel
+        else levels.push(normalizedLevel)
 
         event.blindLevels = sortBlindLevels(levels)
         updateEventCountsFromLevels(event)
@@ -613,9 +531,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const addHandToBlindLevel = async (eventId, levelId, payload) => {
-    if (!eventId || !levelId) {
-      return null
-    }
+    if (!eventId || !levelId) return null
 
     const handValue = payload.hand || payload.holeCards?.trim() || ''
     const handStrength = getHandStrength(handValue)
@@ -623,44 +539,23 @@ export const useHandLogStore = defineStore('handLog', () => {
     saving.value = true
 
     try {
-      console.info('[HAND_CREATE_START]', {
-        eventId,
-        levelId,
-        hand: handValue,
-        actionType: payload.actionType || null,
-        resultType: payload.resultType || 'NOT_RECORDED',
-      })
-
       const saved = await createHandLogHand(eventId, levelId, {
         holeCards: payload.holeCards?.trim() || handValue,
         hand: payload.hand || handValue,
-
         firstRank: payload.firstRank || null,
         secondRank: payload.secondRank || null,
         suited: Boolean(payload.suited),
-
         position: payload.position || null,
-
         actionType: payload.actionType || null,
         actionLabel: payload.actionLabel || '',
         preflopAllIn: Boolean(payload.preflopAllIn),
-
         resultType: payload.resultType || 'NOT_RECORDED',
         resultLabel: payload.resultLabel || '',
-
         reviewRequired: Boolean(payload.reviewRequired),
-
         memo: payload.memo || '',
-
         handStrengthTier: payload.handStrengthTier || handStrength.tier,
         handStrengthLabel: payload.handStrengthLabel || handStrength.label,
         handStrengthColor: payload.handStrengthColor || handStrength.color,
-      })
-
-      console.info('[HAND_CREATE_SUCCESS]', {
-        eventId,
-        levelId,
-        handId: saved?.id,
       })
 
       const normalizedHand = upsertHandToLevelState(eventId, levelId, saved)
@@ -668,30 +563,10 @@ export const useHandLogStore = defineStore('handLog', () => {
       try {
         await fetchEventDetail(eventId)
       } catch (syncError) {
-        console.warn('[HAND_CREATE_SYNC_FAILED]', {
-          eventId,
-          levelId,
-          handId: saved?.id,
-          message: syncError?.message,
-          code: syncError?.code,
-          status: syncError?.response?.status,
-          data: syncError?.response?.data,
-        })
+        console.warn('[HAND_CREATE_SYNC_FAILED]', syncError)
       }
 
       return normalizedHand
-    } catch (error) {
-      console.error('[HAND_CREATE_FAILED]', {
-        eventId,
-        levelId,
-        hand: handValue,
-        message: error?.message,
-        code: error?.code,
-        status: error?.response?.status,
-        data: error?.response?.data,
-      })
-
-      throw error
     } finally {
       saving.value = false
     }
@@ -717,9 +592,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const updateHandInBlindLevel = async (eventId, levelId, handId, payload) => {
-    if (!eventId || !levelId || !handId) {
-      return null
-    }
+    if (!eventId || !levelId || !handId) return null
 
     const handValue = payload.hand || payload.holeCards?.trim() || ''
     const handStrength = getHandStrength(handValue)
@@ -730,32 +603,23 @@ export const useHandLogStore = defineStore('handLog', () => {
       const saved = await updateHandLogHand(eventId, levelId, handId, {
         holeCards: payload.holeCards?.trim() || handValue,
         hand: payload.hand || handValue,
-
         firstRank: payload.firstRank || null,
         secondRank: payload.secondRank || null,
         suited: Boolean(payload.suited),
-
         position: payload.position || null,
-
         actionType: payload.actionType || null,
         actionLabel: payload.actionLabel || '',
         preflopAllIn: Boolean(payload.preflopAllIn),
-
         resultType: payload.resultType || 'NOT_RECORDED',
         resultLabel: payload.resultLabel || '',
-
         reviewRequired: Boolean(payload.reviewRequired),
-
         memo: payload.memo || '',
-
         handStrengthTier: payload.handStrengthTier || handStrength.tier,
         handStrengthLabel: payload.handStrengthLabel || handStrength.label,
         handStrengthColor: payload.handStrengthColor || handStrength.color,
       })
 
       const normalizedHand = upsertHandToLevelState(eventId, levelId, saved)
-
-      // 카운트 동기화용
       await fetchEventDetail(eventId)
 
       return normalizedHand
@@ -765,9 +629,7 @@ export const useHandLogStore = defineStore('handLog', () => {
   }
 
   const moveHandToBlindLevel = async (eventId, currentLevelId, handId, targetLevelId) => {
-    if (!eventId || !currentLevelId || !handId || !targetLevelId) {
-      return null
-    }
+    if (!eventId || !currentLevelId || !handId || !targetLevelId) return null
 
     saving.value = true
 
@@ -775,12 +637,11 @@ export const useHandLogStore = defineStore('handLog', () => {
       const movedHand = await moveHandLogHand(eventId, currentLevelId, handId, targetLevelId)
       const normalizedHand = normalizeHand(movedHand)
 
-      // 이동 후 카운트/목록 동기화를 서버 기준으로 맞춤
-      await fetchEventDetail(eventId)
-
       if (String(currentLevelId) !== String(targetLevelId)) {
-        await fetchBlindLevelDetail(eventId, currentLevelId)
-        await fetchBlindLevelDetail(eventId, targetLevelId)
+        removeHandFromLevelState(eventId, currentLevelId, handId)
+        upsertHandToLevelState(eventId, targetLevelId, movedHand)
+      } else {
+        upsertHandToLevelState(eventId, currentLevelId, movedHand)
       }
 
       selectedHand.value = normalizedHand
@@ -791,19 +652,40 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
-  const deleteHandFromBlindLevel = async (eventId, levelId, handId) => {
-    if (!eventId || !levelId || !handId) {
-      return false
+  const moveHandsToBlindLevel = async (eventId, currentLevelId, handIds, targetLevelId) => {
+    if (
+      !eventId ||
+      !currentLevelId ||
+      !Array.isArray(handIds) ||
+      handIds.length === 0 ||
+      !targetLevelId
+    ) {
+      return []
     }
 
     saving.value = true
 
     try {
+      await bulkMoveHandLogHands(eventId, currentLevelId, handIds, targetLevelId)
+
+      handIds.forEach((handId) => {
+        removeHandFromLevelState(eventId, currentLevelId, handId)
+      })
+
+      return handIds
+    } finally {
+      saving.value = false
+    }
+  }
+
+  const deleteHandFromBlindLevel = async (eventId, levelId, handId) => {
+    if (!eventId || !levelId || !handId) return false
+
+    saving.value = true
+
+    try {
       await deleteHandLogHand(eventId, levelId, handId)
-
       removeHandFromLevelState(eventId, levelId, handId)
-
-      // 카운트 동기화용
       await fetchEventDetail(eventId)
 
       return true
@@ -812,7 +694,6 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
-  // 예전 구조 호환용. 새 hand-log 구조에서는 사용하지 않음.
   const addLog = () => {}
   const saveReview = () => {}
 
@@ -851,6 +732,7 @@ export const useHandLogStore = defineStore('handLog', () => {
     fetchHandDetail,
     updateHandInBlindLevel,
     moveHandToBlindLevel,
+    moveHandsToBlindLevel,
     deleteHandFromBlindLevel,
 
     addLog,

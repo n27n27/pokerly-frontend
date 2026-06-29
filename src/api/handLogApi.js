@@ -94,6 +94,17 @@ export const moveHandLogHand = async (eventId, blindLevelId, handId, targetBlind
   return res.data.data
 }
 
+export const bulkMoveHandLogHands = async (eventId, blindLevelId, handIds, targetBlindLevelId) => {
+  const res = await api.patch(
+    `/hand-log/events/${eventId}/blind-levels/${blindLevelId}/hands/bulk-move`,
+    {
+      handIds,
+      targetBlindLevelId,
+    },
+  )
+
+  return res.data.data
+}
 export const updateHandLogBlindLevel = async (eventId, blindLevelId, payload) => {
   const res = await api.put(`/hand-log/events/${eventId}/blind-levels/${blindLevelId}`, payload)
   return res.data.data

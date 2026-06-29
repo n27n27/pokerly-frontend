@@ -11,15 +11,12 @@
       <q-card v-else-if="!event || !blindLevel" flat bordered class="empty-card">
         <q-card-section class="text-center q-py-xl">
           <q-icon name="error_outline" size="42px" color="grey-5" />
-
           <div class="text-subtitle1 text-weight-bold q-mt-md">
             블라인드 구간을 찾을 수 없습니다
           </div>
-
           <div class="text-body2 text-grey-7 q-mt-xs">
             삭제되었거나 접근할 수 없는 구간일 수 있습니다.
           </div>
-
           <q-btn
             class="q-mt-md"
             color="dark"
@@ -79,7 +76,6 @@
                   size="24px"
                   color="grey-8"
                 />
-
                 <div class="section-title">레벨 정보</div>
               </div>
 
@@ -98,7 +94,9 @@
             <div v-if="levelInfoExpanded" class="level-info-body">
               <div class="level-stat-grid">
                 <div class="stat-box">
-                  <div class="stat-value">{{ formatOptionalStack(blindLevel.startStack) }}</div>
+                  <div class="stat-value">
+                    {{ formatOptionalStack(displayStartStackValue) }}
+                  </div>
                   <div class="stat-label">시작 스택</div>
                 </div>
 
@@ -150,7 +148,6 @@
                           color="grey-8"
                         />
                       </q-item-section>
-
                       <q-item-section>
                         {{ selectionMode ? '선택 취소' : '선택해서 이동' }}
                       </q-item-section>
@@ -163,9 +160,7 @@
             <q-card v-if="levelHands.length === 0" flat bordered class="empty-hand-card">
               <q-card-section class="text-center q-py-lg">
                 <q-icon name="style" size="36px" color="grey-5" />
-
                 <div class="text-subtitle2 text-weight-bold q-mt-md">기록된 핸드가 없습니다</div>
-
                 <div class="text-body2 text-grey-7 q-mt-xs">
                   상단의 핸드 기록 버튼으로 이 구간의 핸드를 추가해 주세요.
                 </div>
@@ -308,8 +303,12 @@
           inputmode="numeric"
           label="시작 스택"
           placeholder="예: 52000"
-          :disable="saving"
-        />
+          :disable="saving || !canEditStartStack"
+        >
+          <template #hint>
+            {{ startStackHint }}
+          </template>
+        </q-input>
 
         <q-input
           v-model="levelInfoForm.endStack"
@@ -367,7 +366,6 @@
       <q-card class="bulk-move-dialog-card">
         <q-card-section>
           <div class="text-h6 text-weight-bold">선택한 핸드 이동</div>
-
           <div class="text-body2 text-grey-7 q-mt-xs">
             선택한 {{ selectedHandIds.length }}개 핸드를 다른 블라인드 구간으로 이동합니다.
           </div>
@@ -513,6 +511,14 @@ const event = computed(() => handLogStore.getEventById(eventId.value))
 const blindLevel = computed(() => handLogStore.getBlindLevelById(eventId.value, levelId.value))
 const blindLevels = computed(() => event.value?.blindLevels || [])
 
+const displayStartStackValue = computed(() => {
+  return blindLevel.value?.displayStartStack ?? blindLevel.value?.startStack ?? null
+})
+
+const canEditStartStack = computed(() => {
+  return Boolean(blindLevel.value?.editableStartStack)
+})
+
 const isInitialLoading = computed(() => {
   return (detailLoading.value || levelLoading.value) && (!event.value || !blindLevel.value)
 })
@@ -597,7 +603,7 @@ const goEventDetail = () => {
 const openLevelInfoDialog = () => {
   if (!blindLevel.value) return
 
-  levelInfoForm.startStack = blindLevel.value.startStack ?? ''
+  levelInfoForm.startStack = displayStartStackValue.value ?? ''
   levelInfoForm.endStack = blindLevel.value.endStack ?? ''
   levelInfoForm.averageStack = blindLevel.value.averageStack ?? ''
   levelInfoForm.memo = blindLevel.value.memo ?? ''
@@ -614,7 +620,7 @@ const saveLevelInfo = async () => {
       smallBlind: blindLevel.value.smallBlind,
       bigBlind: blindLevel.value.bigBlind,
       ante: blindLevel.value.ante,
-      startStack: toNullableNumber(levelInfoForm.startStack),
+      startStack: canEditStartStack.value ? toNullableNumber(levelInfoForm.startStack) : null,
       endStack: toNullableNumber(levelInfoForm.endStack),
       averageStack: toNullableNumber(levelInfoForm.averageStack),
       memo: String(levelInfoForm.memo || '').trim() || null,
@@ -682,7 +688,6 @@ const addHand = async (payload) => {
     quickLogDialog.value = false
   } catch (error) {
     console.error(error)
-
     alert.show('핸드를 기록하지 못했습니다.', 'error')
   }
 }
@@ -749,14 +754,9 @@ const moveSelectedHands = async () => {
   const handIds = [...selectedHandIds.value]
 
   try {
-    for (const handId of handIds) {
-      await handLogStore.moveHandToBlindLevel(eventId.value, levelId.value, handId, targetLevelId)
-    }
+    await handLogStore.moveHandsToBlindLevel(eventId.value, levelId.value, handIds, targetLevelId)
 
     alert.show(`${handIds.length}개 핸드를 이동했습니다.`, 'positive')
-
-    await handLogStore.fetchEventDetail(eventId.value)
-    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
 
     resetBulkMoveState()
   } catch (error) {
@@ -966,6 +966,15 @@ const getResultValue = (hand) => hand?.resultType || ''
   font-size: 12px;
   font-weight: 500;
   color: #777777;
+  letter-spacing: -0.2px;
+}
+
+.stat-caption {
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #999999;
+  line-height: 1.25;
   letter-spacing: -0.2px;
 }
 

@@ -1,50 +1,53 @@
 <template>
-  <q-dialog v-model="dialogModel" :maximized="$q.screen.lt.sm" :persistent="loading">
-    <q-card class="dialog-card">
-      <q-card-section class="row items-center justify-between">
-        <div>
-          <div class="text-h6 text-weight-bold">{{ dialogTitle }}</div>
-          <div class="text-caption text-grey-7">{{ dialogDescription }}</div>
-        </div>
+  <BaseDialog
+    v-model="dialogModel"
+    :title="dialogTitle"
+    :description="dialogDescription"
+    :maximized="$q.screen.lt.sm"
+    :persistent="loading"
+  >
+    <div class="form-section">
+      <q-input
+        v-model="form.name"
+        outlined
+        dense
+        label="대회명"
+        placeholder="예: 키키 그랑프리"
+        autofocus
+        :disable="loading"
+        @keyup.enter="onSave"
+      />
 
-        <q-btn flat round dense icon="close" :disable="loading" v-close-popup />
-      </q-card-section>
+      <q-input
+        v-model="form.startingStack"
+        outlined
+        dense
+        inputmode="numeric"
+        label="대회 시작 스택"
+        placeholder="예: 30000"
+        :disable="loading"
+        @keyup.enter="onSave"
+      />
+    </div>
 
-      <q-separator />
+    <template #actions>
+      <q-btn flat label="취소" color="grey-8" :disable="loading" v-close-popup />
 
-      <q-card-section class="q-gutter-y-md">
-        <q-input
-          v-model="form.name"
-          outlined
-          dense
-          label="대회명"
-          placeholder="예: 키키 그랑프리"
-          autofocus
-          :disable="loading"
-          @keyup.enter="onSave"
-        />
-      </q-card-section>
-
-      <q-separator />
-
-      <q-card-actions align="right" class="q-pa-md">
-        <q-btn flat label="취소" color="grey-8" :disable="loading" v-close-popup />
-
-        <q-btn
-          color="dark"
-          unelevated
-          :label="saveButtonLabel"
-          :loading="loading"
-          :disable="!canSave || loading"
-          @click="onSave"
-        />
-      </q-card-actions>
-    </q-card>
-  </q-dialog>
+      <q-btn
+        color="dark"
+        unelevated
+        :label="saveButtonLabel"
+        :loading="loading"
+        :disable="!canSave || loading"
+        @click="onSave"
+      />
+    </template>
+  </BaseDialog>
 </template>
 
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import BaseDialog from 'components/common/BaseDialog.vue'
 
 const props = defineProps({
   modelValue: {
@@ -75,6 +78,7 @@ const dialogModel = computed({
 
 const form = reactive({
   name: '',
+  startingStack: '',
 })
 
 const isEditMode = computed(() => props.mode === 'edit')
@@ -118,10 +122,12 @@ watch(
 
 const setForm = () => {
   form.name = props.initialEvent?.name || ''
+  form.startingStack = props.initialEvent?.startingStack ?? ''
 }
 
 const resetForm = () => {
   form.name = ''
+  form.startingStack = ''
 }
 
 const onSave = () => {
@@ -131,14 +137,29 @@ const onSave = () => {
 
   emit('save', {
     name: form.name.trim(),
+    startingStack: toNullableNumber(form.startingStack),
   })
+}
+
+const toNullableNumber = (value) => {
+  if (value === null || value === undefined || String(value).trim() === '') {
+    return null
+  }
+
+  const numberValue = Number(value)
+
+  if (Number.isNaN(numberValue)) {
+    return null
+  }
+
+  return numberValue
 }
 </script>
 
 <style scoped>
-.dialog-card {
-  width: 100%;
-  max-width: 420px;
-  border-radius: 18px;
+.form-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 </style>

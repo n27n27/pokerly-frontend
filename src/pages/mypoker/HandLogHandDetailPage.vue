@@ -343,12 +343,19 @@ watch(
     }
 
     try {
-      await handLogStore.fetchEventDetail(newEventId)
-      await handLogStore.fetchBlindLevelDetail(newEventId, newLevelId)
-      await handLogStore.fetchHandDetail(newEventId, newLevelId, newHandId)
+      if (!handLogStore.getEventById(newEventId)) {
+        await handLogStore.fetchEventDetail(newEventId)
+      }
+
+      if (!handLogStore.getBlindLevelById(newEventId, newLevelId)) {
+        await handLogStore.fetchBlindLevelDetail(newEventId, newLevelId)
+      }
+
+      if (!handLogStore.getHandById(newEventId, newLevelId, newHandId)) {
+        await handLogStore.fetchHandDetail(newEventId, newLevelId, newHandId)
+      }
     } catch (error) {
       console.error(error)
-
       alert.show('핸드 기록을 불러오지 못했습니다.', 'error')
     }
   },
