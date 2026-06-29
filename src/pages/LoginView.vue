@@ -9,18 +9,17 @@
         </div>
 
         <section class="login-actions">
-          <div ref="googleButtonRef" class="google-button-wrap"></div>
-
-          <div class="divider">
-            <span></span>
-            <em>또는</em>
-            <span></span>
+          <div class="google-slot">
+            <div
+              ref="googleButtonRef"
+              class="google-button-wrap"
+              :class="{ ready: googleReady }"
+            ></div>
           </div>
 
           <q-btn
             no-caps
             unelevated
-            outline
             class="legacy-btn"
             label="기존 계정으로 로그인"
             @click="goLegacyLogin"
@@ -34,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useAlert } from 'src/composables/useAlert'
@@ -45,6 +44,7 @@ const alert = useAlert()
 
 const loading = ref(null)
 const googleButtonRef = ref(null)
+const googleReady = ref(false)
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
@@ -52,6 +52,16 @@ const loadGoogleScript = () => {
   return new Promise((resolve, reject) => {
     if (window.google?.accounts?.id) {
       resolve()
+      return
+    }
+
+    const existingScript = document.querySelector(
+      'script[src="https://accounts.google.com/gsi/client"]',
+    )
+
+    if (existingScript) {
+      existingScript.addEventListener('load', resolve, { once: true })
+      existingScript.addEventListener('error', reject, { once: true })
       return
     }
 
@@ -83,53 +93,70 @@ const goLegacyLogin = () => {
   router.push('/legacy-login')
 }
 
-onMounted(async () => {
+const initGoogleLogin = async () => {
   if (!GOOGLE_CLIENT_ID) {
     alert.show('Google 로그인 설정이 누락되었습니다.', 'negative')
     return
   }
 
-  await loadGoogleScript()
+  try {
+    await loadGoogleScript()
+    await nextTick()
 
-  window.google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: async (response) => {
-      loading.value = 'google'
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        loading.value = 'google'
 
-      try {
-        const payload = await auth.loginWithGoogle({
-          idToken: response.credential,
-          language: navigator.language?.startsWith('en') ? 'en' : 'ko',
-          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
-        })
+        try {
+          const payload = await auth.loginWithGoogle({
+            idToken: response.credential,
+            language: navigator.language?.startsWith('en') ? 'en' : 'ko',
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
+          })
 
-        await handleAuthResult(payload)
-      } catch (e) {
-        console.error(e)
+          await handleAuthResult(payload)
+        } catch (e) {
+          console.error(e)
 
-        const code = e?.response?.data?.error?.code
-        const message = e?.response?.data?.error?.message
+          const code = e?.response?.data?.error?.code
+          const message = e?.response?.data?.error?.message
 
-        if (code === 'GOOGLE_TOKEN_INVALID') {
-          alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
-          return
+          if (code === 'GOOGLE_TOKEN_INVALID') {
+            alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
+            return
+          }
+
+          alert.show(message || 'Google 로그인에 실패했습니다.', 'negative')
+        } finally {
+          loading.value = null
         }
+      },
+    })
 
-        alert.show(message || 'Google 로그인에 실패했습니다.', 'negative')
-      } finally {
-        loading.value = null
-      }
-    },
-  })
+    if (!googleButtonRef.value) return
 
-  window.google.accounts.id.renderButton(googleButtonRef.value, {
-    type: 'standard',
-    theme: 'outline',
-    size: 'large',
-    text: 'signin_with',
-    shape: 'pill',
-    width: 292,
-  })
+    googleButtonRef.value.innerHTML = ''
+
+    window.google.accounts.id.renderButton(googleButtonRef.value, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'signin_with',
+      shape: 'pill',
+      width: 320,
+    })
+
+    googleReady.value = true
+  } catch (e) {
+    console.error(e)
+    googleReady.value = false
+    alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'negative')
+  }
+}
+
+onMounted(() => {
+  initGoogleLogin()
 })
 </script>
 
@@ -153,7 +180,7 @@ onMounted(async () => {
 
 .login-block {
   width: 100%;
-  margin-top: 88px;
+  margin-top: 82px;
 }
 
 .auth-header {
@@ -161,70 +188,73 @@ onMounted(async () => {
 }
 
 .auth-logo {
-  width: 62px;
-  height: 62px;
-  border-radius: 16px;
-  margin: 0 auto 14px;
+  width: 70px;
+  height: 70px;
+  border-radius: 18px;
+  margin: 0 auto 15px;
 }
 
 .auth-title {
   margin: 0;
   font-size: 42px;
   line-height: 1.05;
-  font-weight: 900;
+  font-weight: 800;
   color: #111827;
-  letter-spacing: -0.06em;
+  letter-spacing: -0.055em;
 }
 
 .login-actions {
   width: 100%;
-  max-width: 292px;
-  margin: 50px auto 0;
+  max-width: 320px;
+  margin: 42px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
-.google-button-wrap {
-  width: 292px;
-  max-width: 100%;
-  min-height: 44px;
+.google-slot {
+  width: 100%;
+  height: 44px;
   display: flex;
+  align-items: center;
   justify-content: center;
 }
 
-.divider {
-  width: 100%;
+.google-button-wrap {
+  width: 320px;
+  max-width: 100%;
+  height: 44px;
+  min-height: 44px;
   display: flex;
-  align-items: center;
-  gap: 13px;
-  margin: 20px 0;
-  color: #a3a3a3;
-  font-size: 12px;
-  font-weight: 600;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 140ms ease;
 }
 
-.divider span {
-  flex: 1;
-  height: 1px;
-  background: #dedede;
-}
-
-.divider em {
-  font-style: normal;
+.google-button-wrap.ready {
+  opacity: 1;
 }
 
 .legacy-btn {
   width: 100%;
-  height: 42px;
-  border-radius: 4px;
-  color: #111827;
-  border-color: #111827;
-  background: transparent;
+  height: 44px;
+  min-height: 44px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid #d7dbe2;
+  background: #ffffff;
+  color: #374151;
   font-size: 15px;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: -0.02em;
 }
 
+.legacy-btn :deep(.q-btn__content) {
+  min-height: 44px;
+}
+
 .brand-copy {
-  margin: 54px 0 0;
+  margin: 46px 0 0;
   text-align: center;
   color: #a3a3a3;
   font-size: 12px;
@@ -242,34 +272,34 @@ onMounted(async () => {
   }
 
   .login-block {
-    margin-top: 78px;
+    margin-top: 72px;
   }
 
   .login-actions {
-    max-width: 292px;
-    margin-top: 46px;
+    max-width: 320px;
+    margin-top: 38px;
   }
 
   .google-button-wrap {
-    width: 292px;
+    width: 320px;
   }
 
   .brand-copy {
-    margin-top: 48px;
+    margin-top: 42px;
   }
 }
 
 @media (max-height: 700px) {
   .login-block {
-    margin-top: 44px;
+    margin-top: 42px;
   }
 
   .login-actions {
-    margin-top: 34px;
+    margin-top: 30px;
   }
 
   .brand-copy {
-    margin-top: 32px;
+    margin-top: 30px;
   }
 }
 </style>
