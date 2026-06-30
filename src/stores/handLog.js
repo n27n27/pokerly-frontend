@@ -14,7 +14,8 @@ import {
   fetchHandLogEvents,
   fetchHandLogHand,
   moveHandLogHand,
-  updateHandLogBlindLevel,
+  updateHandLogBlindLevelStructure,
+  updateHandLogBlindLevelInfo,
   updateHandLogHand,
 } from 'src/api/handLogApi'
 
@@ -330,6 +331,7 @@ export const useHandLogStore = defineStore('handLog', () => {
 
     try {
       const data = await fetchHandLogEvent(eventId)
+
       const normalized = upsertEvent(data)
 
       selectedEvent.value = normalized
@@ -422,17 +424,43 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
-  const updateBlindLevel = async (eventId, blindLevelId, payload) => {
+  const updateBlindLevelStructure = async (eventId, blindLevelId, payload) => {
     if (!eventId || !blindLevelId) return null
 
     saving.value = true
 
     try {
-      const saved = await updateHandLogBlindLevel(eventId, blindLevelId, {
+      const saved = await updateHandLogBlindLevelStructure(eventId, blindLevelId, {
         levelNo: Number(payload.levelNo),
         smallBlind: Number(payload.smallBlind),
         bigBlind: Number(payload.bigBlind),
         ante: Number(payload.ante || 0),
+      })
+
+      const normalizedLevel = normalizeBlindLevel(saved)
+
+      if (
+        selectedBlindLevel.value &&
+        String(selectedBlindLevel.value.id) === String(blindLevelId)
+      ) {
+        selectedBlindLevel.value = normalizedLevel
+      }
+
+      await fetchEventDetail(eventId)
+
+      return normalizedLevel
+    } finally {
+      saving.value = false
+    }
+  }
+
+  const updateBlindLevelInfo = async (eventId, blindLevelId, payload) => {
+    if (!eventId || !blindLevelId) return null
+
+    saving.value = true
+
+    try {
+      const saved = await updateHandLogBlindLevelInfo(eventId, blindLevelId, {
         startStack: payload.startStack ?? null,
         endStack: payload.endStack ?? null,
         averageStack: payload.averageStack ?? null,
@@ -723,7 +751,8 @@ export const useHandLogStore = defineStore('handLog', () => {
     getHandById,
 
     addBlindLevel,
-    updateBlindLevel,
+    updateBlindLevelStructure,
+    updateBlindLevelInfo,
     deleteBlindLevel,
     copyBlindLevelsFromEvent,
     fetchBlindLevelDetail,

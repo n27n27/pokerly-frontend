@@ -570,23 +570,24 @@ const saveLevel = async () => {
     return
   }
 
+  const payload = {
+    levelNo: toNumber(levelForm.levelNo),
+    smallBlind: toNumber(levelForm.smallBlind),
+    bigBlind: toNumber(levelForm.bigBlind),
+    ante: toNumber(levelForm.ante),
+  }
+
+  console.log('levelForm', { ...levelForm })
+  console.log('editingLevel', editingLevel.value)
+  console.log('updateBlindLevel payload', payload)
+
   try {
     if (isLevelEditMode.value) {
-      await handLogStore.updateBlindLevel(eventId.value, editingLevel.value.id, {
-        levelNo: toNumber(levelForm.levelNo),
-        smallBlind: toNumber(levelForm.smallBlind),
-        bigBlind: toNumber(levelForm.bigBlind),
-        ante: toNumber(levelForm.ante),
-      })
+      await handLogStore.updateBlindLevelStructure(eventId.value, editingLevel.value.id, payload)
 
       alert.show('레벨을 수정했습니다.', 'positive')
     } else {
-      await handLogStore.addBlindLevel(eventId.value, {
-        levelNo: toNumber(levelForm.levelNo),
-        smallBlind: toNumber(levelForm.smallBlind),
-        bigBlind: toNumber(levelForm.bigBlind),
-        ante: toNumber(levelForm.ante),
-      })
+      await handLogStore.addBlindLevel(eventId.value, payload)
 
       alert.show('레벨을 추가했습니다.', 'positive')
     }

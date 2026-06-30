@@ -95,18 +95,22 @@
               <div class="level-stat-grid">
                 <div class="stat-box">
                   <div class="stat-value">
-                    {{ formatOptionalStack(displayStartStackValue) }}
+                    {{ formatStackWithBb(displayStartStackValue) }}
                   </div>
                   <div class="stat-label">시작 스택</div>
                 </div>
 
                 <div class="stat-box">
-                  <div class="stat-value">{{ formatOptionalStack(blindLevel.endStack) }}</div>
+                  <div class="stat-value">
+                    {{ formatStackWithBb(blindLevel.endStack) }}
+                  </div>
                   <div class="stat-label">마감 스택</div>
                 </div>
 
                 <div class="stat-box">
-                  <div class="stat-value">{{ formatOptionalStack(blindLevel.averageStack) }}</div>
+                  <div class="stat-value">
+                    {{ formatStackWithBb(blindLevel.averageStack) }}
+                  </div>
                   <div class="stat-label">에버 스택</div>
                 </div>
               </div>
@@ -615,17 +619,12 @@ const saveLevelInfo = async () => {
   if (!blindLevel.value || saving.value) return
 
   try {
-    await handLogStore.updateBlindLevel(eventId.value, levelId.value, {
-      levelNo: blindLevel.value.levelNo,
-      smallBlind: blindLevel.value.smallBlind,
-      bigBlind: blindLevel.value.bigBlind,
-      ante: blindLevel.value.ante,
+    await handLogStore.updateBlindLevelInfo(eventId.value, levelId.value, {
       startStack: canEditStartStack.value ? toNullableNumber(levelInfoForm.startStack) : null,
       endStack: toNullableNumber(levelInfoForm.endStack),
       averageStack: toNullableNumber(levelInfoForm.averageStack),
       memo: String(levelInfoForm.memo || '').trim() || null,
     })
-
     await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
 
     alert.show('레벨 정보를 저장했습니다.', 'positive')
@@ -775,11 +774,6 @@ const formatBlind = (level) => {
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR')
 
-const formatOptionalStack = (value) => {
-  if (value === null || value === undefined || value === '') return '-'
-  return formatNumber(value)
-}
-
 const toNullableNumber = (value) => {
   if (value === null || value === undefined || String(value).trim() === '') return null
 
@@ -813,6 +807,22 @@ const getHandMetaText = (hand) => {
   if (resultText) parts.push(resultText)
 
   return parts.join(' · ')
+}
+
+const formatStackWithBb = (stack) => {
+  if (stack === null || stack === undefined || stack === '') return '-'
+
+  const stackText = formatNumber(stack)
+
+  const bb = Number(blindLevel.value?.bigBlind || 0)
+
+  if (!bb) {
+    return stackText
+  }
+
+  const bbValue = Math.round(Number(stack) / bb)
+
+  return `${stackText} (${bbValue}bb)`
 }
 
 const isReviewHand = (hand) => Boolean(hand?.reviewRequired)
@@ -954,13 +964,13 @@ const getResultValue = (hand) => hand?.resultType || ''
 }
 
 .stat-value {
-  font-size: 18px;
+  font-size: 17px;
   font-weight: 600;
   line-height: 1.2;
   color: #111111;
   letter-spacing: -0.3px;
+  word-break: keep-all;
 }
-
 .stat-label {
   margin-top: 5px;
   font-size: 12px;
