@@ -87,7 +87,7 @@ onMounted(async () => {
         })
 
         alert.show('계정 연결이 완료되었습니다.', 'success')
-        router.replace('/app/dashboard')
+        router.replace('/app/home')
       } catch (e) {
         console.error(e)
 

@@ -94,7 +94,7 @@ const onLogin = async () => {
       return
     }
 
-    router.replace('/app/dashboard')
+    router.replace('/app/home')
   } catch (e) {
     console.error(e)
     const msg = e?.response?.data?.message || '아이디 또는 비밀번호가 올바르지 않습니다.'

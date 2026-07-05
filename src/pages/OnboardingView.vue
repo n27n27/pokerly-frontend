@@ -234,7 +234,7 @@ const complete = async () => {
     })
 
     alert.show('설정이 완료되었습니다.', 'success')
-    router.replace('/app/dashboard')
+    router.replace('/app/home')
   } catch (e) {
     const msg = e?.response?.data?.error?.message || '설정을 완료하지 못했습니다.'
     alert.show(msg, 'error')

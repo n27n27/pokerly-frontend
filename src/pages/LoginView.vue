@@ -86,7 +86,7 @@ const handleAuthResult = async (payload) => {
     return
   }
 
-  router.replace('/app/dashboard')
+  router.replace('/app/home')
 }
 
 const goLegacyLogin = () => {

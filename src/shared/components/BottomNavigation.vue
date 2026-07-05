@@ -1,0 +1,74 @@
+<template>
+  <q-footer class="bottom-nav">
+    <nav class="bottom-nav-inner">
+      <button
+        v-for="item in items"
+        :key="item.name"
+        type="button"
+        class="nav-item"
+        :class="{ active: route.name === item.name }"
+        @click="go(item.to)"
+      >
+        <q-icon :name="item.icon" size="22px" />
+        <span>{{ item.label }}</span>
+      </button>
+    </nav>
+  </q-footer>
+</template>
+
+<script setup>
+import { useRoute, useRouter } from 'vue-router'
+
+const route = useRoute()
+const router = useRouter()
+
+const items = [
+  { name: 'home', label: 'Home', icon: 'home', to: '/app/home' },
+  { name: 'statistics', label: 'Statistics', icon: 'query_stats', to: '/app/statistics' },
+  { name: 'tools', label: 'Tools', icon: 'construction', to: '/app/tools' },
+  { name: 'my', label: 'My', icon: 'person', to: '/app/my' },
+]
+
+const go = (to) => {
+  if (route.path !== to) router.push(to)
+}
+</script>
+
+<style scoped>
+.bottom-nav {
+  background: transparent;
+  box-shadow: none;
+}
+
+.bottom-nav-inner {
+  height: 68px;
+  margin: 0 14px 10px;
+  padding: 8px;
+  border-radius: 22px;
+  background: #ffffff;
+  border: 1px solid #ece9f5;
+  box-shadow: 0 10px 30px rgba(31, 24, 64, 0.08);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.nav-item {
+  border: 0;
+  background: transparent;
+  border-radius: 16px;
+  color: #9a95a8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.nav-item.active {
+  background: #f1ecff;
+  color: #6d45e8;
+}
+</style>
