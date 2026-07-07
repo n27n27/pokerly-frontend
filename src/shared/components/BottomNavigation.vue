@@ -23,10 +23,10 @@ const route = useRoute()
 const router = useRouter()
 
 const items = [
-  { name: 'home', label: 'Home', icon: 'home', to: '/app/home' },
-  { name: 'statistics', label: 'Statistics', icon: 'query_stats', to: '/app/statistics' },
-  { name: 'tools', label: 'Tools', icon: 'construction', to: '/app/tools' },
-  { name: 'my', label: 'My', icon: 'person', to: '/app/my' },
+  { name: 'home', label: '홈', icon: 'home', to: '/app/home' },
+  { name: 'statistics', label: '통계', icon: 'query_stats', to: '/app/statistics' },
+  { name: 'tools', label: '도구', icon: 'construction', to: '/app/tools' },
+  { name: 'my', label: '마이', icon: 'person', to: '/app/my' },
 ]
 
 const go = (to) => {
@@ -44,7 +44,7 @@ const go = (to) => {
   height: 68px;
   margin: 0 14px 10px;
   padding: 8px;
-  border-radius: 22px;
+  border-radius: 16px;
   background: #ffffff;
   border: 1px solid #ece9f5;
   box-shadow: 0 10px 30px rgba(31, 24, 64, 0.08);
@@ -56,7 +56,7 @@ const go = (to) => {
 .nav-item {
   border: 0;
   background: transparent;
-  border-radius: 16px;
+  border-radius: 10px;
   color: #9a95a8;
   display: flex;
   flex-direction: column;
@@ -64,7 +64,7 @@ const go = (to) => {
   justify-content: center;
   gap: 3px;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 430;
 }
 
 .nav-item.active {

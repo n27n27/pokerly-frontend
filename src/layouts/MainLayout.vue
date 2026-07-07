@@ -1,6 +1,6 @@
 <template>
   <q-layout view="lHh Lpr lFf" class="app-layout">
-    <AppHeader />
+    <AppHeader v-if="!route.meta.hideHeader" />
 
     <q-page-container class="app-page-container">
       <router-view />
@@ -11,8 +11,12 @@
 </template>
 
 <script setup>
+import { useRoute } from 'vue-router'
+
 import AppHeader from 'src/shared/components/AppHeader.vue'
 import BottomNavigation from 'src/shared/components/BottomNavigation.vue'
+
+const route = useRoute()
 </script>
 
 <style scoped>
