@@ -17,6 +17,8 @@
             ></div>
           </div>
 
+          <p v-if="googleError" class="google-error">Google 로그인 버튼을 불러오지 못했습니다.</p>
+
           <q-btn
             no-caps
             unelevated
@@ -45,8 +47,10 @@ const alert = useAlert()
 const loading = ref(null)
 const googleButtonRef = ref(null)
 const googleReady = ref(false)
+const googleError = ref(false)
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
 
 const loadGoogleScript = () => {
   return new Promise((resolve, reject) => {
@@ -55,9 +59,7 @@ const loadGoogleScript = () => {
       return
     }
 
-    const existingScript = document.querySelector(
-      'script[src="https://accounts.google.com/gsi/client"]',
-    )
+    const existingScript = document.querySelector(`script[src="${GOOGLE_SCRIPT_SRC}"]`)
 
     if (existingScript) {
       existingScript.addEventListener('load', resolve, { once: true })
@@ -66,7 +68,7 @@ const loadGoogleScript = () => {
     }
 
     const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
+    script.src = GOOGLE_SCRIPT_SRC
     script.async = true
     script.defer = true
     script.onload = resolve
@@ -94,7 +96,11 @@ const goLegacyLogin = () => {
 }
 
 const initGoogleLogin = async () => {
+  googleReady.value = false
+  googleError.value = false
+
   if (!GOOGLE_CLIENT_ID) {
+    googleError.value = true
     alert.show('Google 로그인 설정이 누락되었습니다.', 'negative')
     return
   }
@@ -102,6 +108,10 @@ const initGoogleLogin = async () => {
   try {
     await loadGoogleScript()
     await nextTick()
+
+    if (!window.google?.accounts?.id || !googleButtonRef.value) {
+      throw new Error('Google Identity Services is not ready')
+    }
 
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
@@ -134,8 +144,6 @@ const initGoogleLogin = async () => {
       },
     })
 
-    if (!googleButtonRef.value) return
-
     googleButtonRef.value.innerHTML = ''
 
     window.google.accounts.id.renderButton(googleButtonRef.value, {
@@ -147,10 +155,15 @@ const initGoogleLogin = async () => {
       width: 320,
     })
 
-    googleReady.value = true
+    setTimeout(() => {
+      const hasRendered = googleButtonRef.value?.children?.length > 0
+      googleReady.value = hasRendered
+      googleError.value = !hasRendered
+    }, 300)
   } catch (e) {
     console.error(e)
     googleReady.value = false
+    googleError.value = true
     alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'negative')
   }
 }
@@ -233,6 +246,15 @@ onMounted(() => {
 
 .google-button-wrap.ready {
   opacity: 1;
+}
+
+.google-error {
+  margin: -4px 0 0;
+  text-align: center;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .legacy-btn {

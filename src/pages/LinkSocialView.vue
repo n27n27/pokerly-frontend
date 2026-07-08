@@ -20,7 +20,15 @@
         </div>
 
         <section class="connect-actions">
-          <div ref="googleButtonRef" class="google-button-wrap"></div>
+          <div class="google-slot">
+            <div
+              ref="googleButtonRef"
+              class="google-button-wrap"
+              :class="{ ready: googleReady }"
+            ></div>
+          </div>
+
+          <p v-if="googleError" class="google-error">Google 연결 버튼을 불러오지 못했습니다.</p>
 
           <q-btn flat no-caps class="logout-btn" label="로그아웃" @click="logout" />
         </section>
@@ -32,7 +40,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useAlert } from 'src/composables/useAlert'
@@ -43,8 +51,11 @@ const alert = useAlert()
 
 const loading = ref(null)
 const googleButtonRef = ref(null)
+const googleReady = ref(false)
+const googleError = ref(false)
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+const GOOGLE_SCRIPT_SRC = 'https://accounts.google.com/gsi/client'
 
 const loadGoogleScript = () => {
   return new Promise((resolve, reject) => {
@@ -53,8 +64,16 @@ const loadGoogleScript = () => {
       return
     }
 
+    const existingScript = document.querySelector(`script[src="${GOOGLE_SCRIPT_SRC}"]`)
+
+    if (existingScript) {
+      existingScript.addEventListener('load', resolve, { once: true })
+      existingScript.addEventListener('error', reject, { once: true })
+      return
+    }
+
     const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
+    script.src = GOOGLE_SCRIPT_SRC
     script.async = true
     script.defer = true
     script.onload = resolve
@@ -68,60 +87,88 @@ const logout = async () => {
   router.replace('/login')
 }
 
-onMounted(async () => {
+const initGoogleLink = async () => {
+  googleReady.value = false
+  googleError.value = false
+
   if (!GOOGLE_CLIENT_ID) {
+    googleError.value = true
     alert.show('Google 로그인 설정이 누락되었습니다.', 'negative')
     return
   }
 
-  await loadGoogleScript()
+  try {
+    await loadGoogleScript()
+    await nextTick()
 
-  window.google.accounts.id.initialize({
-    client_id: GOOGLE_CLIENT_ID,
-    callback: async (response) => {
-      loading.value = 'google'
+    if (!window.google?.accounts?.id || !googleButtonRef.value) {
+      throw new Error('Google Identity Services is not ready')
+    }
 
-      try {
-        await auth.linkGoogle({
-          idToken: response.credential,
-        })
+    window.google.accounts.id.initialize({
+      client_id: GOOGLE_CLIENT_ID,
+      callback: async (response) => {
+        loading.value = 'google'
 
-        alert.show('계정 연결이 완료되었습니다.', 'success')
-        router.replace('/app/dashboard')
-      } catch (e) {
-        console.error(e)
+        try {
+          await auth.linkGoogle({
+            idToken: response.credential,
+          })
 
-        const code = e?.response?.data?.error?.code
-        const message = e?.response?.data?.error?.message
+          alert.show('계정 연결이 완료되었습니다.', 'success')
+          router.replace('/app/dashboard')
+        } catch (e) {
+          console.error(e)
 
-        if (code === 'SOCIAL_ALREADY_LINKED') {
-          alert.show(
-            '이미 다른 Pokerly 계정에 연결된 Google 계정입니다. 다른 Google 계정을 선택해주세요.',
-            'warning',
-          )
-          return
+          const code = e?.response?.data?.error?.code
+          const message = e?.response?.data?.error?.message
+
+          if (code === 'SOCIAL_ALREADY_LINKED') {
+            alert.show(
+              '이미 다른 Pokerly 계정에 연결된 Google 계정입니다. 다른 Google 계정을 선택해주세요.',
+              'warning',
+            )
+            return
+          }
+
+          if (code === 'GOOGLE_TOKEN_INVALID') {
+            alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
+            return
+          }
+
+          alert.show(message || '계정 연결에 실패했습니다.', 'negative')
+        } finally {
+          loading.value = null
         }
+      },
+    })
 
-        if (code === 'GOOGLE_TOKEN_INVALID') {
-          alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
-          return
-        }
+    googleButtonRef.value.innerHTML = ''
 
-        alert.show(message || '계정 연결에 실패했습니다.', 'negative')
-      } finally {
-        loading.value = null
-      }
-    },
-  })
+    window.google.accounts.id.renderButton(googleButtonRef.value, {
+      type: 'standard',
+      theme: 'outline',
+      size: 'large',
+      text: 'continue_with',
+      shape: 'pill',
+      width: 312,
+    })
 
-  window.google.accounts.id.renderButton(googleButtonRef.value, {
-    type: 'standard',
-    theme: 'outline',
-    size: 'large',
-    text: 'continue_with',
-    shape: 'pill',
-    width: 312,
-  })
+    setTimeout(() => {
+      const hasRendered = googleButtonRef.value?.children?.length > 0
+      googleReady.value = hasRendered
+      googleError.value = !hasRendered
+    }, 300)
+  } catch (e) {
+    console.error(e)
+    googleReady.value = false
+    googleError.value = true
+    alert.show('Google 연결 버튼을 불러오지 못했습니다.', 'negative')
+  }
+}
+
+onMounted(() => {
+  initGoogleLink()
 })
 </script>
 
@@ -208,12 +255,36 @@ onMounted(async () => {
   margin: 46px auto 0;
 }
 
+.google-slot {
+  width: 100%;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .google-button-wrap {
   width: 312px;
   max-width: 100%;
+  height: 44px;
   min-height: 44px;
   display: flex;
   justify-content: center;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.google-button-wrap.ready {
+  opacity: 1;
+}
+
+.google-error {
+  margin: 10px 0 0;
+  text-align: center;
+  color: #ef4444;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
 }
 
 .logout-btn {
