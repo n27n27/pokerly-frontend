@@ -1,5 +1,5 @@
 <template>
-  <q-page class="running-page">
+  <q-page class="running-page" @click="showLevelMenu = false">
     <header class="running-topbar">
       <button class="running-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
         <q-icon name="chevron_left" size="28px" />
@@ -9,12 +9,16 @@
     </header>
 
     <section class="running-summary">
-      <span class="running-summary__icon">
-        <q-icon name="emoji_events" size="27px" />
-      </span>
-      <div>
-        <strong>프라임 0704</strong>
-        <p>바인 <b>100,000</b><span></span>리바인 2회</p>
+      <div class="running-summary__main">
+        <div>
+          <strong>프라임 0704</strong>
+          <p>바인 100,000 <span>·</span> 리바인 2회</p>
+        </div>
+
+        <button class="manage-link" type="button" @click="openManage">
+          <q-icon name="settings" size="18px" />
+          대회 관리
+        </button>
       </div>
     </section>
 
@@ -28,60 +32,114 @@
       </div>
 
       <div class="level-list">
+        <article class="current-level-card" role="button" tabindex="0" @click="openLevel(currentLevel.name)">
+          <div class="current-level-card__accent"></div>
+          <button
+            class="level-menu-button"
+            type="button"
+            aria-label="레벨 메뉴"
+            @click.stop="showLevelMenu = !showLevelMenu"
+          >
+            <q-icon name="more_vert" size="22px" />
+          </button>
+          <div v-if="showLevelMenu" class="level-menu" @click.stop>
+            <button type="button" @click.stop="closeLevelMenu">
+              <q-icon name="edit" size="18px" />
+              수정
+            </button>
+            <button class="danger" type="button" @click.stop="closeLevelMenu">
+              <q-icon name="delete_outline" size="18px" />
+              삭제
+            </button>
+          </div>
+
+          <div class="current-level-card__head">
+            <strong>{{ currentLevel.name }}</strong>
+            <span>{{ currentLevel.blinds }}</span>
+          </div>
+
+          <div class="current-level-card__body">
+            <div>
+              <span>현재 스택</span>
+              <strong>{{ currentLevel.endStack }}</strong>
+              <em>{{ currentLevel.bb }}</em>
+            </div>
+            <div>
+              <span>핸드</span>
+              <strong>{{ currentLevel.hands }}</strong>
+              <em>핸드</em>
+            </div>
+          </div>
+        </article>
+
         <button
-          v-for="level in levels"
+          v-for="level in otherLevels"
           :key="level.name"
-          class="level-card"
-          :class="{ 'level-card--current': level.current }"
+          class="level-row"
           type="button"
           @click="openLevel(level.name)"
         >
-          <div class="level-card__top">
-            <strong>{{ level.name }}</strong>
-            <span>{{ level.blinds }}</span>
-            <em v-if="level.current">현재</em>
-          </div>
-
-          <dl>
-            <div>
-              <dt>핸드</dt>
-              <dd>{{ level.hands }}</dd>
-            </div>
-            <div>
-              <dt>시작 스택</dt>
-              <dd>{{ level.startStack }}</dd>
-            </div>
-            <div>
-              <dt>마감/현재 스택</dt>
-              <dd>{{ level.endStack }}</dd>
-            </div>
-          </dl>
+          <strong>{{ level.name }}</strong>
+          <span class="level-row__blinds">{{ level.blinds }}</span>
+          <span class="level-row__metric">
+            <small>핸드</small>
+            {{ level.hands }}
+          </span>
+          <span class="level-row__stack">
+            <small>스택</small>
+            {{ level.endStack }}
+            <em v-if="level.bb">{{ level.bb }}</em>
+          </span>
+          <span class="level-row__menu" aria-hidden="true">
+            <q-icon name="more_vert" size="22px" />
+          </span>
         </button>
       </div>
     </section>
 
-    <button class="finish-button" type="button">토너먼트 종료</button>
+    <section class="finish-panel">
+      <div>
+        <strong>세션 종료</strong>
+        <p>대회를 종료하고 결과를 생성합니다.</p>
+      </div>
+      <button type="button" @click="openFinish">대회 종료</button>
+    </section>
   </q-page>
 </template>
 
 <script setup>
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 
 const levels = [
-  { name: 'L1', blinds: '100 / 200 / 200', hands: '12', startStack: '100,000', endStack: '115,000' },
-  { name: 'L2', blinds: '200 / 300 / 300', hands: '8', startStack: '115,000', endStack: '138,500' },
-  { name: 'L3', blinds: '300 / 500 / 500', hands: '5', startStack: '138,500', endStack: '132,000', current: true },
-  { name: 'L4', blinds: '400 / 800 / 800', hands: '0', startStack: '-', endStack: '-' },
-  { name: 'L5', blinds: '600 / 1,200 / 1,200', hands: '0', startStack: '-', endStack: '-' },
-  { name: 'L6', blinds: '800 / 1,600 / 1,600', hands: '0', startStack: '-', endStack: '-' },
-  { name: 'L7', blinds: '1,000 / 2,000 / 2,000', hands: '0', startStack: '-', endStack: '-' },
-  { name: 'L8', blinds: '1,500 / 3,000 / 3,000', hands: '0', startStack: '-', endStack: '-' },
+  { name: 'L1', blinds: '100 / 200 / 200', hands: '7', endStack: '132,000', bb: '(264BB)' },
+  { name: 'L2', blinds: '200 / 300 / 300', hands: '16', endStack: '138,500', bb: '(231BB)' },
+  { name: 'L3', blinds: '300 / 500 / 500', hands: '11', endStack: '132,000', bb: '176 BB', current: true },
+  { name: 'L4', blinds: '400 / 800 / 800', hands: '0', endStack: '-', bb: '' },
+  { name: 'L5', blinds: '600 / 1,200 / 1,200', hands: '0', endStack: '-', bb: '' },
+  { name: 'L8', blinds: '1,500 / 3,000 / 3,000', hands: '0', endStack: '-', bb: '' },
 ]
+
+const currentLevel = computed(() => levels.find((level) => level.current) || levels[0])
+const otherLevels = computed(() => levels.filter((level) => !level.current))
+const showLevelMenu = ref(false)
 
 const openLevel = (levelName) => {
   router.push(`/app/tournament/running/level/${levelName}`)
+}
+
+const openManage = () => {
+  router.push('/app/tournament/running/manage')
+}
+
+const openFinish = () => {
+  router.push('/app/tournament/running/finish')
+}
+
+const closeLevelMenu = () => {
+  showLevelMenu.value = false
 }
 </script>
 
@@ -89,9 +147,9 @@ const openLevel = (levelName) => {
 .running-page {
   display: grid;
   align-content: start;
-  gap: 22px;
+  gap: 20px;
   min-height: 100%;
-  padding: 34px 20px 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
 }
 
 .running-topbar {
@@ -120,54 +178,58 @@ const openLevel = (levelName) => {
 }
 
 .running-summary {
-  padding: 18px;
+  overflow: hidden;
+  padding: 18px 20px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
-  box-shadow: 0 6px 18px rgba(28, 18, 60, 0.035);
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: center;
-  gap: 12px;
+  box-shadow: 0 8px 24px rgba(28, 18, 60, 0.045);
 }
 
-.running-summary__icon {
-  display: flex;
-  width: 50px;
-  height: 50px;
+.running-summary__main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: center;
-  border-radius: var(--v2-radius-lg);
-  background: var(--v2-primary-soft);
-  color: var(--v2-primary);
+  gap: 16px;
 }
 
 .running-summary strong {
   color: var(--v2-text-main);
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 560;
   line-height: 1.2;
 }
 
 .running-summary p {
-  margin: 12px 0 0;
-  color: var(--v2-text-main);
+  margin: 10px 0 0;
+  color: #5f596b;
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   font-size: 14px;
   font-weight: 430;
   line-height: 1.2;
 }
 
-.running-summary b {
-  font-weight: 520;
+.running-summary p span {
+  color: var(--v2-text-sub);
 }
 
-.running-summary p span {
-  width: 1px;
-  height: 14px;
-  background: var(--v2-border);
+.manage-link {
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid rgba(109, 69, 232, 0.38);
+  border-radius: var(--v2-radius-sm);
+  background: #ffffff;
+  color: var(--v2-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 520;
+  white-space: nowrap;
 }
 
 .level-section {
@@ -206,144 +268,313 @@ const openLevel = (levelName) => {
 
 .level-list {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
-.level-card {
-  width: 100%;
-  padding: 14px 16px;
-  border: 1px solid var(--v2-border);
+.current-level-card {
+  position: relative;
+  overflow: visible;
+  padding: 22px 20px 20px 24px;
+  border: 1px solid rgba(109, 69, 232, 0.45);
   border-radius: var(--v2-radius-lg);
+  background: linear-gradient(135deg, #ffffff 0%, #fbf8ff 100%);
+  box-shadow: 0 10px 26px rgba(109, 69, 232, 0.09);
+  color: var(--v2-text-main);
+  cursor: pointer;
+}
+
+.current-level-card__accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  border-radius: var(--v2-radius-lg) 0 0 var(--v2-radius-lg);
+  background: var(--v2-primary);
+}
+
+.level-menu-button {
+  position: absolute;
+  right: 14px;
+  top: 16px;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5f596b;
+  outline: 0;
+}
+
+.level-menu {
+  position: absolute;
+  top: 52px;
+  right: 14px;
+  z-index: 2;
+  width: 156px;
+  overflow: hidden;
+  border: 1px solid rgba(230, 226, 240, 0.95);
+  border-radius: 12px;
   background: #ffffff;
-  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
-  color: var(--v2-text-main);
-  font: inherit;
-  text-align: left;
-}
-
-.level-card--current {
-  border-color: rgba(109, 69, 232, 0.72);
-  background: rgba(241, 236, 255, 0.5);
-}
-
-.level-card__top {
+  box-shadow: 0 14px 30px rgba(28, 18, 60, 0.18);
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
 }
 
-.level-card__top strong {
+.level-menu button {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: #ffffff;
   color: var(--v2-text-main);
-  font-size: 23px;
-  font-weight: 560;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 520;
+  text-align: left;
+  cursor: pointer;
+}
+
+.level-menu button:last-child {
+  border-bottom: 0;
+}
+
+.level-menu button:active {
+  background: #faf9ff;
+}
+
+.level-menu button.danger {
+  color: var(--v2-danger);
+}
+
+.current-level-card__head {
+  display: flex;
+  align-items: baseline;
+  gap: 28px;
+  padding-right: 40px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--v2-border);
+}
+
+.current-level-card__head strong {
+  color: var(--v2-primary);
+  font-size: 44px;
+  font-weight: 620;
   line-height: 1;
 }
 
-.level-card__top span {
-  color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 520;
+.current-level-card__head span {
+  color: var(--v2-primary);
+  font-size: 20px;
+  font-weight: 560;
   line-height: 1.2;
 }
 
-.level-card--current .level-card__top strong,
-.level-card--current .level-card__top span {
-  color: var(--v2-primary);
-}
-
-.level-card__top em {
-  padding: 5px 8px;
-  border-radius: var(--v2-radius-sm);
-  background: var(--v2-primary-soft);
-  color: var(--v2-primary);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 520;
-  line-height: 1;
-}
-
-.level-card dl {
+.current-level-card__body {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 12px 0 0;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.72fr);
+  gap: 22px;
+  padding-top: 18px;
 }
 
-.level-card dl div {
-  min-width: 0;
-  padding: 0 8px;
-  border-right: 1px solid var(--v2-border);
-  text-align: center;
+.current-level-card__body div + div {
+  padding-left: 22px;
+  border-left: 1px solid var(--v2-border);
 }
 
-.level-card dl div:first-child {
-  padding-left: 0;
-}
-
-.level-card dl div:last-child {
-  padding-right: 0;
-  border-right: 0;
-}
-
-.level-card dt,
-.level-card dd {
-  margin: 0;
-}
-
-.level-card dt {
+.current-level-card__body span,
+.level-row small {
   color: var(--v2-text-sub);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 430;
   line-height: 1.2;
 }
 
-.level-card dd {
-  margin-top: 7px;
+.current-level-card__body strong {
+  display: inline-block;
+  margin-top: 9px;
   color: var(--v2-text-main);
-  font-size: 15px;
-  font-weight: 520;
-  line-height: 1.15;
+  font-size: 34px;
+  font-weight: 620;
+  line-height: 1;
 }
 
-.level-card--current dd {
+.current-level-card__body em {
+  display: block;
+  margin-top: 8px;
+  color: var(--v2-primary);
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 520;
+}
+
+.current-level-card__body div:last-child strong {
   color: var(--v2-primary);
 }
 
-.finish-button {
-  min-height: 46px;
-  border: 1px solid rgba(239, 68, 68, 0.55);
+.current-level-card__body div:last-child em {
+  display: inline;
+  margin-left: 6px;
+  color: #5f596b;
+}
+
+.level-row {
+  width: 100%;
+  min-height: 62px;
+  padding: 12px 12px 12px 16px;
+  border: 1px solid rgba(230, 226, 240, 0.9);
+  border-radius: var(--v2-radius-lg);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(28, 18, 60, 0.018);
+  color: var(--v2-text-main);
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1.35fr) minmax(54px, 0.55fr) minmax(94px, 0.85fr) 24px;
+  align-items: center;
+  gap: 8px;
+  font: inherit;
+  text-align: left;
+}
+
+.level-row > strong {
+  color: var(--v2-text-main);
+  font-size: 22px;
+  font-weight: 620;
+}
+
+.level-row__blinds {
+  overflow: hidden;
+  color: var(--v2-text-main);
+  font-size: 14px;
+  font-weight: 450;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.level-row__metric,
+.level-row__stack {
+  min-width: 0;
+  padding-left: 14px;
+  border-left: 1px solid var(--v2-border);
+  display: grid;
+  gap: 3px;
+  color: var(--v2-text-main);
+  font-size: 14px;
+  font-weight: 540;
+  line-height: 1.1;
+}
+
+.level-row__stack em {
+  color: #5f596b;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 430;
+}
+
+.level-row__menu {
+  color: #8a8498;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.finish-panel {
+  margin-top: 6px;
+  padding: 16px 16px;
+  border: 1px solid rgba(239, 68, 68, 0.28);
   border-radius: var(--v2-radius-md);
+  background: #fffdfc;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.finish-panel strong {
+  color: var(--v2-text-main);
+  font-size: 16px;
+  font-weight: 560;
+}
+
+.finish-panel p {
+  margin: 6px 0 0;
+  color: #5f596b;
+  font-size: 13px;
+  font-weight: 430;
+}
+
+.finish-panel button {
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid var(--v2-danger);
+  border-radius: var(--v2-radius-sm);
   background: #ffffff;
   color: var(--v2-danger);
   font: inherit;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 560;
 }
 
 @media (max-width: 420px) {
   .running-page {
-    padding-top: 30px;
+    padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
   }
 
-  .level-card {
-    padding: 13px 14px;
+  .running-summary {
+    padding: 16px 18px;
   }
 
-  .level-card__top {
-    grid-template-columns: 46px minmax(0, 1fr) auto;
-    gap: 10px;
+  .running-summary__main {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .level-card__top strong {
-    font-size: 21px;
+  .manage-link {
+    margin-top: 0;
   }
 
-  .level-card__top span {
-    font-size: 15px;
+  .current-level-card {
+    padding: 20px 18px 18px 22px;
   }
 
-  .level-card dd {
-    font-size: 14px;
+  .current-level-card__head {
+    gap: 20px;
+  }
+
+  .current-level-card__head strong {
+    font-size: 39px;
+  }
+
+  .current-level-card__head span {
+    font-size: 18px;
+  }
+
+  .current-level-card__body strong {
+    font-size: 30px;
+  }
+
+  .level-row {
+    grid-template-columns: 46px minmax(0, 1.2fr) 54px minmax(76px, 0.75fr) 20px;
+    gap: 7px;
+    padding: 11px 10px 11px 14px;
+  }
+
+  .level-row > strong {
+    font-size: 20px;
+  }
+
+  .level-row__blinds,
+  .level-row__metric,
+  .level-row__stack {
+    font-size: 13px;
+  }
+
+  .finish-panel {
+    padding: 14px;
+  }
+
+  .finish-panel button {
+    padding: 0 16px;
   }
 }
 </style>

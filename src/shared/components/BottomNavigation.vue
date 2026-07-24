@@ -26,7 +26,7 @@ const items = [
   { name: 'home', label: '홈', icon: 'home', to: '/app/home' },
   { name: 'statistics', label: '통계', icon: 'query_stats', to: '/app/statistics' },
   { name: 'tools', label: '도구', icon: 'construction', to: '/app/tools' },
-  { name: 'my', label: '마이', icon: 'person', to: '/app/my' },
+  { name: 'my', label: 'My', icon: 'person', to: '/app/my' },
 ]
 
 const go = (to) => {

@@ -15,7 +15,7 @@
 
 .app-toolbar {
   min-height: 72px;
-  padding: 12px 20px 8px;
+  padding: 12px var(--v2-page-padding-x) 8px;
 }
 
 .app-title {

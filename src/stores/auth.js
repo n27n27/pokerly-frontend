@@ -9,6 +9,9 @@ export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = computed(() => !!user.value)
   const onboardingRequired = computed(() => {
     if (!user.value) return false
+    if (typeof user.value.onboardingRequired === 'boolean') {
+      return user.value.onboardingRequired
+    }
     return user.value.socialLinked === false || user.value.termsAgreed === false
   })
 
@@ -29,6 +32,11 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     user.value = userPayload
+    if (userPayload?.recordMode) {
+      localStorage.setItem('pokerly-record-mode', userPayload.recordMode)
+    } else {
+      localStorage.removeItem('pokerly-record-mode')
+    }
 
     return payload
   }
@@ -100,6 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     timezone,
     termsAgreed,
     privacyAgreed,
+    recordMode,
   }) => {
     const res = await api.post('/users/me/onboarding', {
       nickname,
@@ -107,9 +116,18 @@ export const useAuthStore = defineStore('auth', () => {
       timezone,
       termsAgreed,
       privacyAgreed,
+      recordMode,
     })
 
     user.value = unwrap(res)
+    localStorage.setItem('pokerly-record-mode', user.value.recordMode)
+    return user.value
+  }
+
+  const updateRecordMode = async (recordMode) => {
+    const res = await api.patch('/users/me/record-mode', { recordMode })
+    user.value = unwrap(res)
+    localStorage.setItem('pokerly-record-mode', user.value.recordMode)
     return user.value
   }
 
@@ -118,6 +136,11 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const res = await api.get('/users/me')
       user.value = unwrap(res)
+      if (user.value?.recordMode) {
+        localStorage.setItem('pokerly-record-mode', user.value.recordMode)
+      } else {
+        localStorage.removeItem('pokerly-record-mode')
+      }
     } catch (e) {
       console.warn('fetchMe 실패', e)
       user.value = null
@@ -149,6 +172,7 @@ export const useAuthStore = defineStore('auth', () => {
     linkGoogle,
     linkApple,
     completeOnboarding,
+    updateRecordMode,
     fetchMe,
     checkNickname,
     logout,

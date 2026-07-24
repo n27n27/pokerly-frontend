@@ -110,12 +110,17 @@ export default route(function () {
       return next('/link-social')
     }
 
-    // 🔸 D-2. 백엔드가 온보딩 필요하다고 판단한 경우만 /onboarding 강제
-    if (auth.user && auth.user.onboardingRequired === true && to.path !== '/onboarding') {
+    // 🔸 D-2. 임시 프로필 또는 필수 약관 미완료 사용자는 /onboarding 강제
+    if (auth.user && auth.onboardingRequired && to.path !== '/onboarding') {
       return next('/onboarding')
     }
 
-    // 🔸 D-3. 이미 소셜 연결된 사용자는 /link-social 접근 방지
+    // 🔸 D-3. 온보딩을 마친 사용자의 온보딩 화면 재진입 방지
+    if (auth.user && !auth.onboardingRequired && to.path === '/onboarding') {
+      return next('/app/home')
+    }
+
+    // 🔸 D-4. 이미 소셜 연결된 사용자는 /link-social 접근 방지
     if (auth.user && auth.user.socialLinked === true && to.path === '/link-social') {
       return next('/app/dashboard')
     }

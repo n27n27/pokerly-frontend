@@ -1,18 +1,18 @@
 <template>
   <q-page class="tools-page">
-    <header class="tools-topbar">
+    <header class="tools-header">
       <h1>Tools</h1>
+      <p>포커 실력을 높여주는 다양한 도구를 활용해보세요.</p>
     </header>
 
     <section class="tools-intro">
       <h2>실전에서 바로 쓰는 계산 도구들</h2>
-      <p>포커 실력을 높여주는 다양한 도구를 활용해보세요.</p>
     </section>
 
     <section class="tool-list">
       <button v-for="tool in tools" :key="tool.title" class="tool-card" type="button" @click="openTool(tool.to)">
         <span class="tool-card__icon" :class="`tool-card__icon--${tool.tone}`">
-          <q-icon :name="tool.icon" size="48px" />
+          <q-icon :name="tool.icon" size="30px" />
         </span>
 
         <span class="tool-card__copy">
@@ -30,13 +30,6 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const tools = [
-  {
-    title: '프리플랍 차트',
-    description: '포지션별 오픈, 콜, 3벳 추천 레인지를 확인할 수 있습니다.',
-    icon: 'style',
-    tone: 'cards',
-    to: '/app/tools/preflop-chart',
-  },
   {
     title: '에퀴티 계산기',
     description: '두 핸드의 승률을 빠르고 쉽게 계산해보세요.',
@@ -67,136 +60,125 @@ const openTool = (to) => {
 
 <style scoped>
 .tools-page {
-  min-height: 100%;
-  padding: 0 20px 24px;
-}
-
-.tools-topbar {
-  min-height: 76px;
-  margin: 0 -20px;
-  border-bottom: 1px solid var(--v2-border);
-  background: var(--v2-page-bg);
   display: grid;
-  place-items: center;
+  gap: 12px;
+  min-height: 100%;
+  align-content: start;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px;
 }
 
-.tools-topbar h1 {
+.tools-header {
+  display: grid;
+  gap: 8px;
+}
+
+.tools-header h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 29px;
+  font-size: 22px;
   font-weight: 560;
   line-height: 1;
   letter-spacing: 0;
 }
 
+.tools-header p {
+  margin: 0;
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 430;
+  line-height: 1.35;
+}
+
 .tools-intro {
-  padding: 40px 6px 26px;
+  padding: 4px 0 2px;
 }
 
 .tools-intro h2 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 560;
   line-height: 1.3;
   letter-spacing: 0;
 }
 
-.tools-intro p {
-  margin: 12px 0 0;
-  color: var(--v2-text-sub);
-  font-size: 17px;
-  font-weight: 430;
-  line-height: 1.45;
-}
-
 .tool-list {
   display: grid;
-  gap: 16px;
+  gap: 12px;
 }
 
 .tool-card {
   width: 100%;
-  min-height: 146px;
-  padding: 20px 24px;
+  min-height: 98px;
+  padding: 17px 18px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
-  box-shadow: 0 8px 22px rgba(28, 18, 60, 0.04);
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
   color: var(--v2-text-main);
   display: grid;
-  grid-template-columns: 134px minmax(0, 1fr);
+  grid-template-columns: 44px minmax(0, 1fr);
   align-items: center;
-  gap: 18px;
+  gap: 14px;
   text-align: left;
 }
 
 .tool-card__icon {
   display: flex;
-  width: 96px;
-  height: 96px;
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
-  border-radius: var(--v2-radius-lg);
-  background: var(--v2-primary-soft);
   color: var(--v2-primary);
 }
 
 .tool-card__copy {
   display: grid;
-  gap: 12px;
+  gap: 7px;
   min-width: 0;
 }
 
 .tool-card__copy strong {
   color: var(--v2-text-main);
-  font-size: 26px;
+  font-size: 17px;
   font-weight: 560;
   line-height: 1.2;
 }
 
 .tool-card__copy span {
   color: var(--v2-text-sub);
-  font-size: 17px;
+  font-size: 13px;
   font-weight: 430;
-  line-height: 1.55;
+  line-height: 1.45;
 }
 
-@media (max-width: 420px) {
-  .tools-topbar {
-    min-height: 70px;
-  }
-
-  .tools-intro {
-    padding-top: 36px;
+@media (max-width: 720px) {
+  .tools-page {
+    padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px;
   }
 
   .tools-intro h2 {
-    font-size: 22px;
-  }
-
-  .tools-intro p {
-    font-size: 15px;
+    font-size: 19px;
   }
 
   .tool-card {
-    grid-template-columns: 96px minmax(0, 1fr);
-    min-height: 126px;
-    padding: 16px 18px;
-    gap: 14px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    min-height: 94px;
+    padding: 16px 14px;
+    gap: 12px;
   }
 
   .tool-card__icon {
-    width: 76px;
-    height: 76px;
+    width: 34px;
+    height: 34px;
   }
 
   .tool-card__copy strong {
-    font-size: 22px;
+    font-size: 16px;
   }
 
   .tool-card__copy span {
-    font-size: 15px;
+    font-size: 13px;
   }
 }
 </style>

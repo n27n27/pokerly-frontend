@@ -1,641 +1,173 @@
 <template>
-  <q-page class="hand-edit-page">
+  <q-page class="review-edit-page">
     <header class="edit-topbar">
-      <button class="icon-button" type="button" aria-label="뒤로 가기" @click="router.back()">
-        <q-icon name="chevron_left" size="30px" />
-      </button>
-      <h1>핸드 수정 (상세 입력)</h1>
-      <button class="bookmark-button" type="button">
-        <q-icon name="bookmark_border" size="18px" />
-        <span>북키</span>
+      <button class="topbar-text" type="button" @click="router.back()">취소</button>
+      <h1>복기 작성 ({{ step }}/3)</h1>
+      <button class="topbar-text next" type="button" @click="nextStep">
+        {{ step === 3 ? '완료' : '다음' }}
       </button>
     </header>
 
-    <section class="hero-summary">
-      <span class="level-pill">{{ levelName }}</span>
-      <div class="summary-body">
-        <div class="playing-cards">
-          <span v-for="card in heroCards" :key="card.rank + card.suit" :class="{ red: card.red }">
-            <b>{{ card.rank }}</b>
-            <em>{{ card.suit }}</em>
-          </span>
-        </div>
-
-        <div class="summary-copy">
-          <strong>AKs · CO</strong>
-          <p>오픈 → BB 3Bet → Hero 콜</p>
-          <span>
-            <q-icon name="check_circle" size="16px" />
-            쇼다운 승리
-          </span>
-        </div>
-      </div>
-    </section>
-
-    <section class="edit-section">
-      <h2>기본 정보</h2>
-      <div class="basic-grid">
-        <label v-for="item in basicInfo" :key="item.label" class="field-card">
-          <span>{{ item.label }}</span>
-          <input :value="item.value" readonly />
-        </label>
-        <label class="field-card field-card--wide">
-          <span>액션 흐름</span>
-          <input value="오픈 → BB 3Bet → Hero 콜" readonly />
-        </label>
-        <label class="field-card field-card--wide">
-          <span>메모</span>
-          <textarea v-model="form.memo" rows="3" />
-        </label>
-      </div>
-    </section>
-
-    <section class="edit-panel">
-      <div class="panel-header">
-        <h2>보드</h2>
-        <button type="button">
-          <q-icon name="refresh" size="15px" />
-          보드 초기화
-        </button>
+    <div class="step-progress" aria-label="복기 작성 진행 단계">
+        <i v-for="index in 3" :key="index" :class="{ active: index <= step }"></i>
       </div>
 
-      <div class="street-grid">
-        <div v-for="street in boardStreets" :key="street.label" class="street-group">
-          <span>{{ street.label }}</span>
-          <div class="card-row">
-            <button
-              v-for="card in street.cards"
-              :key="street.label + card.rank + card.suit"
-              class="mini-card"
-              :class="{ red: card.red }"
-              type="button"
-            >
-              <b>{{ card.rank }}</b>
-              <em>{{ card.suit }}</em>
-            </button>
+      <section v-if="step === 1" class="edit-card">
+        <div class="step-heading"><h2>보드</h2></div>
+        <div class="board-editor">
+          <div v-for="street in boardStreets" :key="street.name" class="street-group">
+            <span>{{ street.name }}</span>
+            <div>
+              <button
+                v-for="(card, index) in street.cards"
+                :key="`${street.key}-${index}`"
+                class="mini-card"
+                :class="{ red: card?.red, empty: !card }"
+                type="button"
+                @click="openCardPicker(street.key, index)"
+              >
+                <template v-if="card"><b>{{ card.rank }}</b><em>{{ card.suit }}</em></template>
+                <q-icon v-else name="add" size="28px" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="edit-panel">
-      <div class="panel-header">
-        <h2>상대 핸드 <span>(쇼다운 시 입력)</span></h2>
-        <button type="button">
-          <q-icon name="refresh" size="15px" />
-          상대 초기화
-        </button>
-      </div>
-
-      <div class="villain-grid">
-        <div v-for="villain in villains" :key="villain.name" class="villain-group">
-          <span>{{ villain.name }}</span>
-          <div class="card-row">
-            <button
-              v-for="card in villain.cards"
-              :key="villain.name + card.rank + card.suit"
-              class="mini-card"
-              :class="{ red: card.red, empty: card.empty }"
-              type="button"
-            >
-              <template v-if="card.empty">+</template>
-              <template v-else>
-                <b>{{ card.rank }}</b>
-                <em>{{ card.suit }}</em>
-              </template>
-            </button>
-          </div>
+      <section v-else-if="step === 2" class="edit-card">
+        <div class="step-heading"><h2>액션</h2></div>
+        <div class="action-editor">
+          <label v-for="row in actionRows" :key="row.street">
+            <span>{{ row.street }}</span>
+            <button type="button"><i>{{ row.value }}</i><q-icon name="edit" size="16px" /></button>
+          </label>
         </div>
-      </div>
-      <p class="panel-caption">* 멀티웨이의 경우 여러 상대 핸드를 입력할 수 있습니다.</p>
-    </section>
+      </section>
 
-    <section class="edit-panel">
-      <div class="panel-header">
-        <h2>팟 사이즈 <span>(bb)</span></h2>
-        <button type="button">
-          <q-icon name="refresh" size="15px" />
-          팟 초기화
-        </button>
-      </div>
-
-      <div class="pot-grid">
-        <label v-for="pot in form.pots" :key="pot.street">
-          <span>{{ pot.street }}</span>
-          <input v-model="pot.value" inputmode="decimal" />
-          <small>총 {{ pot.total }}bb</small>
-        </label>
-      </div>
-    </section>
-
-    <section class="edit-panel">
-      <h2>스택 정보 <span>(해당 핸드 시점)</span></h2>
-      <div class="stack-grid">
-        <div class="stack-box">
-          <div>
-            <span>Hero (나)</span>
-            <strong>92.5 bb</strong>
-          </div>
+      <section v-else class="edit-card">
+        <div class="step-heading"><h2>메모</h2></div>
+        <div class="memo-field">
+          <textarea v-model="memo" maxlength="500" placeholder="이 핸드에서 기억하고 싶은 상황이나 생각을 남겨보세요." />
+          <span>{{ memo.length }}/500</span>
         </div>
-        <div class="stack-box">
-          <div>
-            <span>상대</span>
-            <strong>111.0 bb</strong>
-          </div>
-          <p>BB (상대 1) <b>111.0 bb</b></p>
-          <button type="button">
-            <q-icon name="add" size="17px" />
-            상대 추가
-          </button>
-        </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="edit-panel">
-      <h2>상세 메모 <span>(선택)</span></h2>
-      <textarea v-model="form.detailMemo" maxlength="300" placeholder="이 핸드에 대한 추가 메모를 입력하세요." />
-      <p class="text-count">{{ form.detailMemo.length }} / 300</p>
-    </section>
-
-    <div class="edit-actions">
-      <AppButton label="취소" variant="secondary" block @click="router.back()" />
-      <AppButton label="수정 완료" block @click="completeEdit" />
+      <div class="bottom-actions">
+        <button v-if="step > 1" class="secondary-action" type="button" @click="step -= 1">이전</button>
+        <button class="primary-action" type="button" @click="nextStep">{{ step === 3 ? '저장하기' : '다음' }}</button>
     </div>
+
+    <CardPickerSheet
+      v-model="pickerOpen"
+      :active-card="activeCard"
+      :used-codes="usedCardCodes"
+      @select="selectCard"
+      @clear="clearActiveCard"
+    />
   </q-page>
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
-import AppButton from 'src/shared/components/AppButton.vue'
+import CardPickerSheet from 'src/shared/components/CardPickerSheet.vue'
 
 const route = useRoute()
 const router = useRouter()
+const step = ref(1)
+const pickerOpen = ref(false)
+const activeStreetKey = ref('flop')
+const activeCardIndex = ref(0)
+const memo = ref(route.query.review === '1' ? 'CO에서 오픈 후 SB가 3bet.\n플랍에서 C-bet 후 콜 받고\n리버에서 벳, 폴드로 승리.' : '')
+const levelName = computed(() => route.params.levelName || 'L3')
+const handId = computed(() => route.params.handId || '128')
 
-const levelName = computed(() => route.params.levelName || 'L8')
-const handId = computed(() => route.params.handId || '1')
-
-const heroCards = [
-  { rank: 'A', suit: '♠' },
-  { rank: 'K', suit: '♥', red: true },
+const boardStreets = ref([
+  { key: 'flop', name: '플랍', cards: [null, null, null] },
+  { key: 'turn', name: '턴', cards: [null] },
+  { key: 'river', name: '리버', cards: [null] },
+])
+const actionRows = [
+  { street: '프리플랍', value: 'CO 오픈 2.5 BB  ›  SB 3bet 9 BB  ›  CO 콜' },
+  { street: '플랍', value: 'SB 체크  ›  CO 벳 1/2팟  ›  SB 콜' },
+  { street: '턴', value: 'SB 체크  ›  CO 체크' },
+  { street: '리버', value: 'SB 체크  ›  CO 벳 3/4팟  ›  SB 폴드' },
 ]
 
-const basicInfo = [
-  { label: '핸드', value: 'AKs' },
-  { label: '포지션', value: 'CO' },
-  { label: '결과', value: '쇼다운 승리' },
-  { label: '북키', value: '북키' },
-]
-
-const boardStreets = [
-  {
-    label: 'Flop',
-    cards: [
-      { rank: 'A', suit: '♠' },
-      { rank: '8', suit: '♦', red: true },
-      { rank: '3', suit: '♣' },
-    ],
-  },
-  { label: 'Turn', cards: [{ rank: 'T', suit: '♠' }] },
-  { label: 'River', cards: [{ rank: '2', suit: '♣' }] },
-]
-
-const villains = [
-  {
-    name: '상대 1 (BB)',
-    cards: [
-      { rank: 'Q', suit: '♠' },
-      { rank: 'J', suit: '♣' },
-    ],
-  },
-  {
-    name: '상대 2 (선택)',
-    cards: [{ empty: true }, { empty: true }],
-  },
-  {
-    name: '상대 3 (선택)',
-    cards: [{ empty: true }, { empty: true }],
-  },
-]
-
-const form = reactive({
-  memo: 'BB가 평소보다 루즈하게 3Bet.\n플랍에서 백도어 플러쉬 노리고 콜.',
-  detailMemo: '',
-  pots: [
-    { street: 'Preflop', value: '3.2', total: '16.0' },
-    { street: 'Flop', value: '10.4', total: '26.4' },
-    { street: 'Turn', value: '20.8', total: '47.2' },
-    { street: 'River', value: '20.8', total: '68.0' },
-  ],
-})
-
-const completeEdit = () => {
-  router.push(`/app/tournament/running/level/${levelName.value}/hand/${handId.value}`)
+const detailPath = computed(() => `/app/tournament/running/level/${levelName.value}/hand/${handId.value}`)
+const activeStreet = computed(() => boardStreets.value.find((street) => street.key === activeStreetKey.value))
+const activeCard = computed(() => activeStreet.value?.cards[activeCardIndex.value] || null)
+const usedCardCodes = computed(() => boardStreets.value
+  .flatMap((street) => street.cards)
+  .filter((card) => card && card !== activeCard.value)
+  .map((card) => `${card.rank}${card.suit}`))
+const openCardPicker = (streetKey, index) => {
+  activeStreetKey.value = streetKey
+  activeCardIndex.value = index
+  pickerOpen.value = true
+}
+const closeCardPicker = () => {
+  pickerOpen.value = false
+}
+const selectCard = (card) => {
+  if (!activeStreet.value) return
+  activeStreet.value.cards[activeCardIndex.value] = card
+  closeCardPicker()
+}
+const clearActiveCard = () => {
+  if (activeStreet.value) activeStreet.value.cards[activeCardIndex.value] = null
+  closeCardPicker()
+}
+const nextStep = () => {
+  if (step.value < 3) step.value += 1
+  else router.replace({ path: detailPath.value, query: { review: '1' } })
 }
 </script>
 
 <style scoped>
-.hand-edit-page {
-  display: grid;
-  align-content: start;
-  gap: 12px;
-  min-height: 100%;
-  padding: 18px 18px 112px;
-}
-
-.edit-topbar {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) auto;
-  align-items: center;
-  min-height: 40px;
-  gap: 8px;
-}
-
-.icon-button,
-.bookmark-button,
-.panel-header button,
-.stack-box button {
-  border: 0;
-  background: transparent;
-  color: var(--v2-text-main);
-  font: inherit;
-}
-
-.icon-button {
-  width: 38px;
-  height: 38px;
-  padding: 0;
-}
-
-.edit-topbar h1 {
-  margin: 0;
-  color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 520;
-  text-align: left;
-}
-
-.bookmark-button {
-  min-height: 36px;
-  padding: 0 12px;
-  border-radius: var(--v2-radius-sm);
-  background: var(--v2-primary-soft);
-  color: var(--v2-primary);
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 13px;
-  font-weight: 520;
-}
-
-.hero-summary,
-.edit-panel,
-.field-card {
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-lg);
-  background: #ffffff;
-  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.022);
-}
-
-.hero-summary {
-  padding: 11px 12px;
-}
-
-.level-pill {
-  display: inline-flex;
-  min-height: 23px;
-  align-items: center;
-  padding: 0 8px;
-  border-radius: var(--v2-radius-sm);
-  background: var(--v2-primary-soft);
-  color: var(--v2-primary);
-  font-size: 12px;
-  font-weight: 560;
-}
-
-.summary-body {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
-  margin-top: 9px;
-}
-
-.playing-cards,
-.card-row {
-  display: flex;
-  gap: 8px;
-}
-
-.playing-cards span,
-.mini-card {
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-sm);
-  background: #ffffff;
-  color: var(--v2-text-main);
-  display: grid;
-  place-items: center;
-  align-content: center;
-}
-
-.playing-cards span {
-  width: 52px;
-  height: 72px;
-  gap: 4px;
-}
-
-.playing-cards .red,
-.mini-card.red {
-  color: #e11d48;
-}
-
-.playing-cards b {
-  font-size: 24px;
-  font-weight: 560;
-  line-height: 1;
-}
-
-.playing-cards em,
-.mini-card em {
-  font-style: normal;
-  line-height: 1;
-}
-
-.summary-copy strong {
-  color: var(--v2-text-main);
-  font-size: 19px;
-  font-weight: 560;
-}
-
-.summary-copy p {
-  overflow: hidden;
-  margin: 8px 0;
-  color: #5b5668;
-  font-size: 13px;
-  font-weight: 430;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.summary-copy span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  color: var(--v2-success);
-  font-size: 13px;
-  font-weight: 520;
-}
-
-.edit-section,
-.edit-panel {
-  display: grid;
-  gap: 10px;
-}
-
-.edit-section h2,
-.edit-panel h2 {
-  margin: 0;
-  color: var(--v2-text-main);
-  font-size: 15px;
-  font-weight: 520;
-}
-
-.edit-panel h2 span,
-.panel-caption {
-  color: var(--v2-text-sub);
-  font-weight: 430;
-}
-
-.basic-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.field-card {
-  min-width: 0;
-  padding: 11px 12px;
-  display: grid;
-  gap: 8px;
-}
-
-.field-card--wide {
-  grid-column: 1 / -1;
-}
-
-.field-card span,
-.street-group > span,
-.villain-group > span,
-.pot-grid label > span,
-.stack-box span {
-  color: #5f596b;
-  font-size: 12px;
-  font-weight: 520;
-}
-
-input,
-textarea {
-  width: 100%;
-  border: 0;
-  outline: 0;
-  background: transparent;
-  color: var(--v2-text-main);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 430;
-}
-
-textarea {
-  min-height: 52px;
-  resize: none;
-  line-height: 1.55;
-}
-
-.edit-panel {
-  padding: 12px;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.panel-header button {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-sm);
-  color: #5d586b;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-}
-
-.street-grid,
-.villain-grid,
-.pot-grid,
-.stack-grid {
-  display: grid;
-  gap: 12px;
-}
-
-.street-grid {
-  grid-template-columns: 1.4fr 1fr 1fr;
-}
-
-.street-group,
-.villain-group,
-.pot-grid label {
-  display: grid;
-  align-content: start;
-  gap: 8px;
-  min-width: 0;
-}
-
-.mini-card {
-  width: 40px;
-  height: 54px;
-  padding: 0;
-  border-style: solid;
-  font: inherit;
-}
-
-.mini-card.empty {
-  border-style: dashed;
-  color: var(--v2-text-sub);
-  font-size: 20px;
-}
-
-.mini-card b {
-  font-size: 16px;
-  font-weight: 560;
-  line-height: 1;
-}
-
-.mini-card em {
-  font-size: 13px;
-}
-
-.villain-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.panel-caption {
-  margin: -2px 0 0;
-  font-size: 11px;
-  line-height: 1.4;
-}
-
-.pot-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.pot-grid input {
-  height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-sm);
-}
-
-.pot-grid small {
-  color: var(--v2-text-sub);
-  font-size: 11px;
-}
-
-.stack-grid {
-  grid-template-columns: 1fr 1fr;
-}
-
-.stack-box {
-  overflow: hidden;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-md);
-}
-
-.stack-box > div,
-.stack-box p,
-.stack-box button {
-  min-height: 42px;
-  padding: 0 12px;
-  border-bottom: 1px solid var(--v2-border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-}
-
-.stack-box p {
-  margin: 0;
-  color: #6b6577;
-  font-size: 12px;
-}
-
-.stack-box strong,
-.stack-box b {
-  color: var(--v2-primary);
-  font-size: 13px;
-  font-weight: 560;
-}
-
-.stack-box button {
-  width: 100%;
-  border-bottom: 0;
-  color: var(--v2-primary);
-  justify-content: flex-start;
-  font-size: 13px;
-  font-weight: 520;
-}
-
-.edit-panel > textarea {
-  min-height: 78px;
-  padding: 11px 12px;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-sm);
-}
-
-.text-count {
-  margin: -4px 0 0;
-  color: var(--v2-text-sub);
-  font-size: 11px;
-  text-align: right;
-}
-
-.edit-actions {
-  display: grid;
-  grid-template-columns: 1fr 1.2fr;
-  gap: 10px;
-}
-
-@media (max-width: 420px) {
-  .hand-edit-page {
-    padding-inline: 16px;
-  }
-
-  .street-grid,
-  .villain-grid {
-    overflow-x: auto;
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(128px, 1fr);
-    grid-template-columns: none;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-
-  .street-grid::-webkit-scrollbar,
-  .villain-grid::-webkit-scrollbar {
-    display: none;
-  }
-
-  .pot-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .stack-grid {
-    grid-template-columns: 1fr;
-  }
-}
+.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 14px; padding: 0 var(--v2-page-padding-x) 130px; }
+.edit-topbar { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; min-height: 36px; }
+.edit-topbar h1 { margin: 0; font-size: 16px; font-weight: 600; text-align: center; }
+.topbar-text { min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 13px; text-align: left; }
+.topbar-text.next { color: #806bd2; font-weight: 480; text-align: right; }
+.step-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: -28px; padding: 0 2px; }
+.step-progress i { height: 3px; border-radius: 3px; background: #e6e2f0; }
+.step-progress i.active { background: var(--v2-primary); }
+.edit-card { padding: 16px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28, 18, 60, .025); }
+.step-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0edf6; color: var(--v2-primary); }
+.step-heading h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.street-group { display: grid; gap: 10px; }
+.street-group + .street-group { margin-top: 22px; }
+.street-group > span, .action-editor label > span { color: #4f495a; font-size: 13px; font-weight: 600; }
+.street-group > div { display: flex; gap: 9px; }
+.mini-card { display: inline-flex; width: 58px; height: 72px; align-items: center; justify-content: center; gap: 3px; padding: 0; border: 1px solid var(--v2-border); border-radius: 10px; background: #fff; color: var(--v2-text-main); font: inherit; }
+.mini-card.red { color: #e11d48; }
+.mini-card b { font-size: 20px; font-weight: 600; line-height: 1; }
+.mini-card em { font-size: 18px; font-style: normal; line-height: 1; }
+.mini-card.empty { border-style: dashed; color: #aaa1c4; font-size: 25px; }
+.action-editor { display: grid; gap: 13px; }
+.action-editor label { display: grid; gap: 7px; }
+.action-editor button { display: grid; grid-template-columns: 1fr auto; min-height: 46px; align-items: center; gap: 8px; padding: 0 12px; border: 1px solid var(--v2-border); border-radius: 9px; background: #fff; color: var(--v2-primary); font: inherit; text-align: left; }
+.action-editor button i { overflow: hidden; color: #504a5b; font-size: 11px; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.memo-field { position: relative; }
+.memo-field textarea { width: 100%; min-height: 245px; padding: 13px 13px 31px; border: 1.5px solid var(--v2-primary); border-radius: 10px; outline: 0; resize: none; color: var(--v2-text-main); font: inherit; font-size: 13px; line-height: 1.6; }
+.memo-field span { position: absolute; right: 12px; bottom: 10px; color: var(--v2-text-sub); font-size: 11px; }
+.bottom-actions { display: flex; gap: 10px; }
+.bottom-actions button { min-height: 50px; border: 0; border-radius: var(--v2-radius-md); font: inherit; font-size: 14px; font-weight: 600; }
+.secondary-action { flex: .45; background: #ece9f4; color: var(--v2-text-main); }
+.primary-action { flex: 1; background: var(--v2-primary); color: #fff; }
+.picker-backdrop { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: flex-end; justify-content: center; padding: 0 18px 18px; background: rgba(23, 21, 31, .42); }
+.card-picker { display: grid; width: min(100%, 480px); gap: 10px; padding: 10px 18px 14px; border-radius: 16px; background: #fff; box-shadow: 0 18px 50px rgba(28, 18, 60, .18); }
+.picker-handle { width: 44px; height: 5px; justify-self: center; border-radius: 999px; background: #aaa4ba; }
+.rank-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 11px 10px; }
+.rank-grid button, .suit-grid button { min-height: 54px; border: 1px solid var(--v2-border); border-radius: 9px; background: #fff; color: var(--v2-text-main); font: inherit; font-size: 16px; font-weight: 560; }
+.rank-grid button.red, .suit-grid button.red { color: #e11d48; }
+.suit-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 3px; padding-top: 13px; border-top: 1px solid #f0edf6; }
+.suit-grid button { width: 48px; min-height: 48px; justify-self: center; padding: 0; border: 0; border-radius: 50%; background: transparent; font-size: 26px; }
+.suit-grid button.selected { background: #fff1f4; box-shadow: inset 0 0 0 1px rgba(225, 29, 72, .12); }
+.suit-grid button:not(.red).selected { background: #f4f1ff; box-shadow: inset 0 0 0 1px rgba(109, 69, 232, .12); }
+.picker-actions { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
+.picker-actions button { min-height: 38px; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 14px; font-weight: 560; }
+.picker-actions .danger { color: var(--v2-danger); }
 </style>

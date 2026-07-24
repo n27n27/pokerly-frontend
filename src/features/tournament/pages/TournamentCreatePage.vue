@@ -64,7 +64,6 @@
       <div class="form-field">
         <label class="form-label" for="startingStack">시작 스택 <span>선택</span></label>
         <div class="text-field text-field--currency">
-          <strong>₩</strong>
           <input id="startingStack" v-model="form.startingStack" inputmode="numeric" placeholder="예) 60,000" />
           <span>칩</span>
         </div>
@@ -74,14 +73,11 @@
       <div class="form-field">
         <label class="form-label" for="buyIn">바인 금액 <span>선택</span></label>
         <div class="text-field text-field--currency">
-          <strong>₩</strong>
           <input id="buyIn" v-model="form.buyIn" inputmode="numeric" placeholder="예) 100,000" />
-          <span>원</span>
         </div>
         <p class="field-help">바인 금액 또는 엔트리 비용을 입력하세요.</p>
       </div>
 
-      <AppButton class="create-submit" label="대회 생성" block />
     </form>
 
     <div class="create-info">
@@ -111,6 +107,7 @@
         </div>
       </div>
     </q-dialog>
+    <StickyPrimaryAction label="대회 생성" @click="submitTournament" />
   </q-page>
 </template>
 
@@ -119,6 +116,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppButton from 'src/shared/components/AppButton.vue'
+import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 
 const router = useRouter()
 const venueOpen = ref(true)
@@ -164,7 +162,7 @@ const submitTournament = () => {
   align-content: start;
   gap: 22px;
   min-height: 100%;
-  padding: 42px 20px 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
 }
 
 .create-topbar {
@@ -374,10 +372,6 @@ const submitTournament = () => {
   line-height: 1.45;
 }
 
-.create-submit {
-  margin-top: 4px;
-}
-
 .create-info {
   padding: 18px;
   border-radius: var(--v2-radius-lg);
@@ -431,7 +425,7 @@ const submitTournament = () => {
 
 @media (max-width: 420px) {
   .tournament-create-page {
-    padding-top: 34px;
+    padding-top: var(--v2-page-padding-top);
   }
 
   .create-intro h2 {

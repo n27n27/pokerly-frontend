@@ -1,11 +1,36 @@
 <template>
   <q-page class="auth-page">
+    <div class="ambient ambient--one"></div>
+    <div class="ambient ambient--two"></div>
+    <div class="card-outline card-outline--left"><span>A</span><b>♠</b></div>
+    <div class="card-outline card-outline--right"><span>K</span><b>♠</b></div>
+
     <main class="auth-shell">
       <section class="login-block">
         <div class="auth-header">
-          <q-img src="~assets/logo.png" alt="Pokerly Logo" class="auth-logo" />
-
+          <div class="brand-symbol" aria-label="Pokerly">
+            <svg viewBox="0 0 120 130" role="img" aria-hidden="true">
+              <defs>
+                <linearGradient id="brandSpadeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#f6c8ff" />
+                  <stop offset="46%" stop-color="#b94ff4" />
+                  <stop offset="100%" stop-color="#6521da" />
+                </linearGradient>
+              </defs>
+              <path
+                class="spade-shape"
+                d="M60 4C49 22 20 45 20 72C20 91 40 101 56 89C55 103 50 113 44 122H76C70 113 65 103 64 89C80 101 100 91 100 72C100 45 71 22 60 4Z"
+              />
+              <g class="chart-bars">
+                <rect x="43" y="58" width="8" height="25" rx="4" />
+                <rect x="56" y="43" width="8" height="40" rx="4" />
+                <rect x="69" y="52" width="8" height="31" rx="4" />
+              </g>
+            </svg>
+          </div>
           <h1 class="auth-title">Pokerly</h1>
+          <p class="brand-tagline">TRACK. ANALYZE. IMPROVE.</p>
+          <p class="brand-description">포커를 기록하고 분석하여<br />더 나은 플레이로.</p>
         </div>
 
         <section class="login-actions">
@@ -17,16 +42,13 @@
             ></div>
           </div>
 
-          <q-btn
-            no-caps
-            unelevated
-            class="legacy-btn"
-            label="기존 계정으로 로그인"
-            @click="goLegacyLogin"
-          />
-        </section>
+          <div class="login-divider"><span></span><em>또는</em><span></span></div>
 
-        <p class="brand-copy">Record. Review. Improve.</p>
+          <button class="legacy-btn" type="button" @click="goLegacyLogin">
+            <span>기존 계정으로 로그인</span>
+            <q-icon name="chevron_right" size="20px" />
+          </button>
+        </section>
       </section>
     </main>
   </q-page>
@@ -142,8 +164,8 @@ const initGoogleLogin = async () => {
       type: 'standard',
       theme: 'outline',
       size: 'large',
-      text: 'signin_with',
-      shape: 'pill',
+      text: 'continue_with',
+      shape: 'rectangular',
       width: 320,
     })
 
@@ -164,52 +186,134 @@ onMounted(() => {
 .auth-page {
   min-height: 100vh;
   min-height: 100dvh;
-  background: linear-gradient(180deg, #f8f8f9 0%, #f3f4f6 100%);
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(92, 28, 204, .2), transparent 31%),
+    radial-gradient(circle at 50% 110%, rgba(63, 13, 129, .19), transparent 36%),
+    linear-gradient(180deg, #090719 0%, #070515 52%, #050410 100%);
   display: flex;
   justify-content: center;
-  padding: 40px 24px;
+  padding: 30px 24px;
+  color: #fff;
 }
 
 .auth-shell {
+  position: relative;
+  z-index: 2;
   width: 100%;
   max-width: 420px;
-  min-height: calc(100dvh - 80px);
+  min-height: calc(100dvh - 60px);
   display: flex;
   flex-direction: column;
 }
 
 .login-block {
   width: 100%;
-  margin-top: 82px;
+  margin-top: clamp(50px, 9vh, 92px);
 }
 
 .auth-header {
   text-align: center;
 }
 
-.auth-logo {
-  width: 70px;
-  height: 70px;
-  border-radius: 18px;
-  margin: 0 auto 15px;
+.brand-symbol {
+  width: 112px;
+  height: 122px;
+  margin: 0 auto -2px;
+  filter: drop-shadow(0 12px 26px rgba(137, 52, 255, .34));
+}
+
+.brand-symbol svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.spade-shape {
+  fill: url(#brandSpadeGradient);
+  stroke: rgba(255, 255, 255, .58);
+  stroke-width: 1.2;
+}
+
+.chart-bars rect {
+  fill: rgba(250, 211, 255, .25);
+  stroke: #331064;
+  stroke-width: 3;
+}
+
+.ambient {
+  position: absolute;
+  z-index: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #8c2cff;
+  box-shadow: 0 0 12px 3px rgba(140, 44, 255, .62);
+}
+
+.ambient--one { top: 17%; left: 67%; }
+.ambient--two { top: 34%; left: 11%; }
+
+.card-outline {
+  position: absolute;
+  z-index: 0;
+  width: 102px;
+  height: 148px;
+  padding: 12px;
+  border: 2px solid rgba(116, 37, 230, .14);
+  border-radius: 10px;
+  color: rgba(134, 44, 237, .18);
+  font-family: Georgia, serif;
+  transform: rotate(-18deg);
+}
+
+.card-outline span { display: block; font-size: 23px; }
+.card-outline b { display: block; margin-top: 5px; font-size: 38px; }
+.card-outline--left { top: 21%; left: -47px; }
+.card-outline--right { top: 21%; right: -47px; transform: rotate(16deg); }
+
+.card-outline--right b {
+  font-size: 48px;
 }
 
 .auth-title {
   margin: 0;
-  font-size: 42px;
-  line-height: 1.05;
-  font-weight: 800;
-  color: #111827;
-  letter-spacing: -0.055em;
+  color: #fff;
+  font-size: clamp(50px, 15vw, 64px);
+  line-height: 1;
+  font-weight: 720;
+  letter-spacing: -.045em;
+  text-shadow: 0 4px 20px rgba(255, 255, 255, .12);
+}
+
+.brand-tagline {
+  margin: 13px 0 0;
+  background: linear-gradient(90deg, #c85fff, #ae74ff);
+  background-clip: text;
+  color: transparent;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .29em;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-description {
+  margin: 25px 0 0;
+  color: rgba(255, 255, 255, .78);
+  font-size: 14px;
+  font-weight: 460;
+  line-height: 1.55;
 }
 
 .login-actions {
   width: 100%;
   max-width: 320px;
-  margin: 42px auto 0;
+  margin: 34px auto 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .google-slot {
@@ -226,6 +330,7 @@ onMounted(() => {
   height: 44px;
   min-height: 44px;
   display: flex;
+  align-items: center;
   justify-content: center;
   opacity: 0;
   transition: opacity 140ms ease;
@@ -236,70 +341,79 @@ onMounted(() => {
 }
 
 .legacy-btn {
+  position: relative;
+  display: flex;
   width: 100%;
-  height: 44px;
-  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
   padding: 0;
-  border-radius: 999px;
-  border: 1px solid #d7dbe2;
-  background: #ffffff;
-  color: #374151;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
-}
-
-.legacy-btn :deep(.q-btn__content) {
-  min-height: 44px;
-}
-
-.brand-copy {
-  margin: 46px 0 0;
-  text-align: center;
-  color: #a3a3a3;
-  font-size: 12px;
+  border: 0;
+  background: transparent;
+  color: #b76aff;
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.015em;
+}
+
+.legacy-btn > .q-icon {
+  position: absolute;
+  left: calc(50% + 105px);
+}
+
+.login-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 15px;
+}
+
+.login-divider span {
+  height: 1px;
+  background: rgba(255, 255, 255, .22);
+}
+
+.login-divider em {
+  color: rgba(255, 255, 255, .38);
+  font-size: 11px;
+  font-style: normal;
 }
 
 @media (max-width: 420px) {
   .auth-page {
-    padding: 34px 24px;
+    padding: 24px;
   }
 
   .auth-shell {
-    min-height: calc(100dvh - 68px);
+    min-height: calc(100dvh - 48px);
   }
 
   .login-block {
-    margin-top: 72px;
+    margin-top: clamp(42px, 8vh, 70px);
   }
 
   .login-actions {
     max-width: 320px;
-    margin-top: 38px;
+    margin-top: 30px;
   }
 
   .google-button-wrap {
     width: 320px;
   }
 
-  .brand-copy {
-    margin-top: 42px;
-  }
 }
 
 @media (max-height: 700px) {
   .login-block {
-    margin-top: 42px;
+    margin-top: 22px;
   }
 
+  .brand-symbol { width: 92px; height: 100px; }
+  .auth-title { font-size: 48px; }
+  .brand-description { margin-top: 17px; }
   .login-actions {
-    margin-top: 30px;
-  }
-
-  .brand-copy {
-    margin-top: 30px;
+    margin-top: 22px;
+    gap: 13px;
   }
 }
 </style>

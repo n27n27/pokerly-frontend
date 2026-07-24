@@ -1,20 +1,10 @@
 <template>
   <q-page class="equity-page">
     <header class="equity-topbar">
-      <button type="button" aria-label="뒤로 가기" @click="router.back()">
-        <q-icon name="arrow_back" size="24px" />
-      </button>
       <h1>에퀴티 계산기</h1>
-      <button type="button" aria-label="정보">
-        <q-icon name="info" size="22px" />
-      </button>
     </header>
 
-    <section class="equity-intro">
-      <p>여러 핸드와 보드를 입력하여 각 핸드의 에퀴티를 계산해 보세요.</p>
-    </section>
-
-    <section class="panel">
+    <section class="panel player-panel">
       <div class="panel-header">
         <h2>플레이어</h2>
         <button type="button" @click="addPlayer">
@@ -31,8 +21,8 @@
             <button
               v-for="(_, cardIndex) in player.cards"
               :key="cardIndex"
-              class="small-card"
-              :class="{ red: player.cards[cardIndex]?.red }"
+              class="card-slot"
+              :class="{ red: player.cards[cardIndex]?.red, empty: !player.cards[cardIndex] }"
               type="button"
               @click="openPicker('player', playerIndex, cardIndex)"
             >
@@ -43,16 +33,18 @@
               <q-icon v-else name="add" size="18px" />
             </button>
           </div>
-          <button class="icon-button" type="button" aria-label="삭제" @click="removePlayer(playerIndex)">
-            <q-icon name="delete_outline" size="20px" />
+          <button
+            v-if="players.length > 2 && playerIndex > 0"
+            class="icon-button"
+            type="button"
+            aria-label="삭제"
+            @click="removePlayer(playerIndex)"
+          >
+            <q-icon name="close" size="17px" />
           </button>
+          <span v-else class="icon-spacer" aria-hidden="true"></span>
         </article>
       </div>
-
-      <p class="hint">
-        <q-icon name="lightbulb" size="17px" />
-        카드를 클릭하여 선택하거나, 다시 클릭하면 변경할 수 있습니다.
-      </p>
     </section>
 
     <section class="panel">
@@ -67,8 +59,8 @@
         <button
           v-for="(_, cardIndex) in board"
           :key="cardIndex"
-          class="board-card"
-          :class="{ red: board[cardIndex]?.red }"
+          class="card-slot"
+          :class="{ red: board[cardIndex]?.red, empty: !board[cardIndex] }"
           type="button"
           @click="openPicker('board', 0, cardIndex)"
         >
@@ -81,21 +73,27 @@
       </div>
     </section>
 
-    <button class="calculate-button" type="button" :disabled="calculating" @click="calculateEquity">
-      <q-icon name="calculate" size="19px" />
-      {{ calculating ? '계산 중...' : '계산하기' }}
-    </button>
+    <StickyPrimaryAction
+      label="계산하기"
+      loading-label="계산 중..."
+      icon="calculate"
+      :loading="calculating"
+      @click="calculateEquity"
+    />
 
-    <section class="panel">
+    <section v-if="results.length" class="panel">
       <div class="panel-header">
         <h2>결과 <span>(에퀴티)</span></h2>
-        <q-icon name="info" size="18px" />
       </div>
       <div class="result-list">
         <article v-for="result in results" :key="result.id" class="result-row">
           <span class="player-badge">{{ result.index }}</span>
           <strong>{{ result.name }}</strong>
-          <span class="result-hand">{{ result.hand }}</span>
+          <span class="result-hand">
+            <span v-for="card in result.cards" :key="card.code" :class="{ red: card.red }">
+              {{ card.rank }}{{ card.suit }}
+            </span>
+          </span>
           <em>{{ result.equity.toFixed(2) }}%</em>
         </article>
       </div>
@@ -105,30 +103,30 @@
       </div>
     </section>
 
-    <section class="panel analysis-panel">
+    <section v-if="results.length" class="panel analysis-panel">
       <div class="panel-header">
         <h2>상세 분석</h2>
         <q-icon name="keyboard_arrow_up" size="20px" />
       </div>
 
-      <div v-if="headsUpSummary" class="heads-up">
+      <div v-if="heroVsOthersSummary" class="heads-up">
         <div>
-          <strong>{{ headsUpSummary.left.name }}</strong>
-          <em>{{ headsUpSummary.left.equity.toFixed(2) }}%</em>
+          <strong>{{ heroVsOthersSummary.hero.name }}</strong>
+          <em>{{ heroVsOthersSummary.hero.equity.toFixed(2) }}%</em>
         </div>
         <dl>
           <div>
-            <dt>Win</dt>
-            <dd>{{ headsUpSummary.left.win.toFixed(2) }}%</dd>
+            <dt>Hero Win</dt>
+            <dd>{{ heroVsOthersSummary.hero.win.toFixed(2) }}%</dd>
           </div>
           <div>
             <dt>Tie</dt>
-            <dd>{{ headsUpSummary.tie.toFixed(2) }}%</dd>
+            <dd>{{ heroVsOthersSummary.tie.toFixed(2) }}%</dd>
           </div>
         </dl>
         <div>
-          <strong>{{ headsUpSummary.right.name }}</strong>
-          <em>{{ headsUpSummary.right.equity.toFixed(2) }}%</em>
+          <strong>{{ heroVsOthersSummary.others.name }}</strong>
+          <em>{{ heroVsOthersSummary.others.equity.toFixed(2) }}%</em>
         </div>
       </div>
 
@@ -137,13 +135,13 @@
         <thead>
           <tr>
             <th>핸드 랭크</th>
-            <th v-for="result in results.slice(0, 2)" :key="result.id">{{ result.name }} (%)</th>
+            <th v-for="result in analysisResults" :key="result.id">{{ result.name }} (%)</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="rank in rankRows" :key="rank.key">
             <td>{{ rank.label }}</td>
-            <td v-for="result in results.slice(0, 2)" :key="`${result.id}-${rank.key}`">
+            <td v-for="result in analysisResults" :key="`${result.id}-${rank.key}`">
               {{ result.distribution[rank.key].toFixed(2) }}%
             </td>
           </tr>
@@ -152,38 +150,21 @@
       <p class="note">확률은 가능한 보드 조합을 기준으로 계산됩니다.</p>
     </section>
 
-    <q-dialog v-model="pickerOpen">
-      <div class="picker">
-        <div class="picker-header">
-          <h2>카드 선택</h2>
-          <button type="button" @click="pickerOpen = false">
-            <q-icon name="close" size="20px" />
-          </button>
-        </div>
-        <div class="picker-grid">
-          <button
-            v-for="card in deck"
-            :key="card.code"
-            class="picker-card"
-            :class="{ red: card.red, disabled: isCardUsed(card) }"
-            type="button"
-            :disabled="isCardUsed(card)"
-            @click="selectCard(card)"
-          >
-            <b>{{ card.rank }}</b>
-            <em>{{ card.suit }}</em>
-          </button>
-        </div>
-      </div>
-    </q-dialog>
+    <CardPickerSheet
+      v-model="pickerOpen"
+      :active-card="activePickerCard"
+      :used-codes="pickerUsedCodes"
+      @select="selectCard"
+      @clear="clearActiveCard"
+    />
   </q-page>
 </template>
 
 <script setup>
-import { computed, nextTick, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, reactive, ref } from 'vue'
 
-const router = useRouter()
+import CardPickerSheet from 'src/shared/components/CardPickerSheet.vue'
+import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 
 const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
 const suits = ['♠', '♥', '♦', '♣']
@@ -220,22 +201,54 @@ const results = ref([])
 const calculating = ref(false)
 const pickerOpen = ref(false)
 const pickerTarget = ref(null)
+const activePickerCard = computed(() => {
+  if (!pickerTarget.value) return null
+  return pickerTarget.value.type === 'player'
+    ? players[pickerTarget.value.playerIndex].cards[pickerTarget.value.cardIndex]
+    : board[pickerTarget.value.cardIndex]
+})
 
 const usedCodes = computed(() => {
   return [...players.flatMap((player) => player.cards), ...board].filter(Boolean).map((card) => card.code)
 })
+const pickerUsedCodes = computed(() => usedCodes.value
+  .filter((code) => code !== activePickerCard.value?.code)
+  .map((code) => code.replace(/^T/, '10')))
 
 const totalEquity = computed(() => results.value.reduce((sum, result) => sum + result.equity, 0))
-const headsUpSummary = computed(() => {
+const heroVsOthersSummary = computed(() => {
   if (results.value.length < 2) return null
+  const hero = results.value[0]
+
   return {
-    left: results.value[0],
-    right: results.value[1],
-    tie: Math.min(results.value[0].tie, results.value[1].tie),
+    hero,
+    others: {
+      name: 'Others',
+      equity: Math.max(0, 100 - hero.equity),
+    },
+    tie: hero.tie,
   }
 })
+const analysisResults = computed(() => {
+  if (results.value.length <= 2) return results.value
+  const hero = results.value[0]
+  const others = results.value.slice(1)
 
-const isCardUsed = (card) => usedCodes.value.includes(card.code)
+  return [
+    hero,
+    {
+      id: 'others',
+      name: 'Others',
+      distribution: Object.fromEntries(
+        handRanks.map((rank) => [
+          rank.key,
+          others.reduce((sum, result) => sum + result.distribution[rank.key], 0) / Math.max(1, others.length),
+        ]),
+      ),
+    },
+  ]
+})
+
 const openPicker = (type, playerIndex, cardIndex) => {
   pickerTarget.value = { type, playerIndex, cardIndex }
   pickerOpen.value = true
@@ -243,10 +256,20 @@ const openPicker = (type, playerIndex, cardIndex) => {
 
 const selectCard = (card) => {
   if (!pickerTarget.value) return
+  const normalizedCard = makeCard(card.rank === '10' ? 'T' : card.rank, card.suit)
   if (pickerTarget.value.type === 'player') {
-    players[pickerTarget.value.playerIndex].cards[pickerTarget.value.cardIndex] = card
+    players[pickerTarget.value.playerIndex].cards[pickerTarget.value.cardIndex] = normalizedCard
   } else {
-    board[pickerTarget.value.cardIndex] = card
+    board[pickerTarget.value.cardIndex] = normalizedCard
+  }
+  pickerOpen.value = false
+}
+const clearActiveCard = () => {
+  if (!pickerTarget.value) return
+  if (pickerTarget.value.type === 'player') {
+    players[pickerTarget.value.playerIndex].cards[pickerTarget.value.cardIndex] = null
+  } else {
+    board[pickerTarget.value.cardIndex] = null
   }
   pickerOpen.value = false
 }
@@ -257,7 +280,7 @@ const addPlayer = () => {
 }
 
 const removePlayer = (index) => {
-  if (players.length <= 2) return
+  if (players.length <= 2 || index === 0) return
   players.splice(index, 1)
 }
 
@@ -371,6 +394,7 @@ const calculateEquity = () => {
     id: player.id,
     name: player.name,
     hand: handLabel(player.cards),
+    cards: player.cards.map((card) => ({ ...card })),
     equity: 0,
     win: 0,
     tie: 0,
@@ -408,7 +432,6 @@ const calculateEquity = () => {
   calculating.value = false
 }
 
-nextTick(calculateEquity)
 </script>
 
 <style scoped>
@@ -416,41 +439,24 @@ nextTick(calculateEquity)
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  padding: 0 20px 104px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
 }
 
 .equity-topbar {
-  min-height: 70px;
-  margin: 0 -20px;
-  border-bottom: 1px solid var(--v2-border);
+  margin: 0 0 12px;
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) 54px;
-  align-items: center;
-}
-
-.equity-topbar button {
-  width: 44px;
-  height: 44px;
-  margin: 0 auto;
-  border: 0;
-  background: transparent;
-  color: var(--v2-text-main);
+  justify-items: start;
 }
 
 .equity-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 560;
-  text-align: center;
+  line-height: 1;
+  text-align: left;
 }
 
-.equity-intro {
-  padding: 18px 0 12px;
-}
-
-.equity-intro p,
-.hint,
 .note {
   margin: 0;
   color: var(--v2-text-sub);
@@ -460,7 +466,7 @@ nextTick(calculateEquity)
 }
 
 .panel {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
   padding: 12px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
@@ -468,12 +474,25 @@ nextTick(calculateEquity)
   box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
 }
 
+.player-panel {
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.player-panel .panel-header {
+  margin-bottom: 7px;
+}
+
+.player-panel .player-row {
+  min-height: 68px;
+}
+
 .panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .panel-header h2 {
@@ -481,6 +500,7 @@ nextTick(calculateEquity)
   color: var(--v2-text-main);
   font-size: 14px;
   font-weight: 560;
+  line-height: 1;
 }
 
 .panel-header h2 span {
@@ -498,6 +518,7 @@ nextTick(calculateEquity)
   font: inherit;
   font-size: 12px;
   font-weight: 520;
+  line-height: 1;
 }
 
 .player-list,
@@ -507,12 +528,12 @@ nextTick(calculateEquity)
 
 .player-row,
 .result-row {
-  min-height: 54px;
+  min-height: 36px;
   border-bottom: 1px solid var(--v2-border);
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr) auto 28px;
+  grid-template-columns: 22px minmax(0, 1fr) auto 24px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .player-row:last-child,
@@ -522,8 +543,8 @@ nextTick(calculateEquity)
 
 .player-badge {
   display: grid;
-  width: 20px;
-  height: 20px;
+  width: 21px;
+  height: 21px;
   place-items: center;
   border-radius: 6px;
   background: var(--v2-primary);
@@ -542,12 +563,10 @@ nextTick(calculateEquity)
 .card-pair,
 .board-row {
   display: flex;
-  gap: 8px;
+  gap: 7px;
 }
 
-.small-card,
-.board-card,
-.picker-card {
+.card-slot {
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-sm);
   background: #ffffff;
@@ -559,69 +578,52 @@ nextTick(calculateEquity)
   font: inherit;
 }
 
-.small-card {
-  width: 34px;
-  height: 42px;
+.card-slot {
+  width: 46px;
+  height: 58px;
 }
 
-.board-card {
-  width: 54px;
-  height: 62px;
+.card-slot.empty {
   border-style: dashed;
+  color: #aaa1c4;
 }
 
-.small-card.red,
-.board-card.red,
-.picker-card.red {
+.card-slot.red {
   color: #e11d48;
 }
 
-.small-card b,
-.board-card b,
-.picker-card b {
-  font-size: 14px;
+.card-slot b {
+  font-size: 17px;
   font-weight: 560;
   line-height: 1;
 }
 
-.icon-button {
-  width: 28px;
-  height: 32px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--v2-text-sub);
+.card-slot em {
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  font-style: normal;
+  font-weight: 650;
+  line-height: 1;
 }
 
-.hint {
-  margin-top: 10px;
-  padding: 8px;
-  background: #f7f5fc;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.icon-button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #8b849b;
+}
+
+.icon-spacer {
+  width: 24px;
+  height: 24px;
 }
 
 .board-row {
   overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.calculate-button {
-  width: 100%;
-  min-height: 44px;
-  margin-bottom: 12px;
-  border: 0;
-  border-radius: var(--v2-radius-md);
-  background: var(--v2-primary);
-  color: #ffffff;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 560;
+  padding-bottom: 0;
 }
 
 .result-row {
@@ -631,6 +633,12 @@ nextTick(calculateEquity)
 .result-hand {
   color: var(--v2-text-main);
   font-size: 12px;
+  display: inline-flex;
+  gap: 3px;
+}
+
+.result-hand .red {
+  color: #e11d48;
 }
 
 .result-row em,
@@ -643,7 +651,7 @@ nextTick(calculateEquity)
 }
 
 .total-row {
-  padding-top: 10px;
+  padding-top: 8px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -652,7 +660,7 @@ nextTick(calculateEquity)
 }
 
 .heads-up {
-  padding: 14px;
+  padding: 10px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-md);
   display: grid;
@@ -692,7 +700,7 @@ nextTick(calculateEquity)
 }
 
 .analysis-panel h3 {
-  margin: 16px 0 8px;
+  margin: 12px 0 6px;
   color: var(--v2-text-main);
   font-size: 13px;
   font-weight: 560;
@@ -718,42 +726,4 @@ td:first-child {
   text-align: left;
 }
 
-.picker {
-  width: min(360px, calc(100vw - 32px));
-  padding: 16px;
-  border-radius: var(--v2-radius-lg);
-  background: #ffffff;
-}
-
-.picker-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
-
-.picker-header h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 560;
-}
-
-.picker-header button {
-  border: 0;
-  background: transparent;
-}
-
-.picker-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.picker-card {
-  min-height: 48px;
-}
-
-.picker-card.disabled {
-  opacity: 0.28;
-}
 </style>

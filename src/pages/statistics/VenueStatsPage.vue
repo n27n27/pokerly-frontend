@@ -234,7 +234,7 @@ const columns = [
   { name: 'avgEntry', label: '평균 엔트리', field: 'avgEntry', align: 'right' },
 ]
 
-const formatCurrency = (v) => (v == null ? '-' : v.toLocaleString() + '원')
+const formatCurrency = (v) => (v == null ? '-' : v.toLocaleString())
 const formatPercent = (v) => (v == null ? '-' : v.toFixed(1) + '%')
 const formatRatioPercent = (v) => (v == null ? '-' : (v * 100).toFixed(1) + '%')
 </script>

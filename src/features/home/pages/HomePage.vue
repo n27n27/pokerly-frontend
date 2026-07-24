@@ -1,5 +1,76 @@
 <template>
-  <q-page class="home-page">
+  <q-page v-if="isSimpleMode" class="home-page simple-home">
+    <AppSection title="이번 달 요약">
+      <div class="simple-summary">
+        <article class="simple-summary__profit">
+          <span>순수익</span>
+          <strong>+248,500</strong>
+        </article>
+        <article v-for="metric in simpleMetrics" :key="metric.label">
+          <span>{{ metric.label }}</span>
+          <strong>{{ metric.value }}</strong>
+        </article>
+      </div>
+    </AppSection>
+
+    <AppSection title="손익 추세">
+      <AppCard class="profit-chart" padding="md">
+        <div class="profit-chart__header">
+          <strong>이번 달</strong>
+          <div class="period-tabs" aria-label="손익 그래프 기간">
+            <button
+              v-for="period in periods"
+              :key="period"
+              type="button"
+              :class="{ active: selectedPeriod === period }"
+              @click="selectedPeriod = period"
+            >
+              {{ period }}
+            </button>
+          </div>
+        </div>
+        <div class="profit-chart__value"><strong>+248,500</strong><span>ROI 18.7%</span></div>
+        <svg viewBox="0 0 320 104" role="img" aria-label="선택 기간 누적 손익 그래프">
+          <defs>
+            <linearGradient id="simpleProfitFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#6d45e8" stop-opacity=".2" />
+              <stop offset="100%" stop-color="#6d45e8" stop-opacity="0" />
+            </linearGradient>
+          </defs>
+          <path class="chart-area" d="M4 92 L34 78 L62 83 L91 57 L119 64 L148 39 L176 47 L205 25 L233 42 L262 29 L290 35 L316 14 L316 102 L4 102 Z" />
+          <path class="chart-line" d="M4 92 L34 78 L62 83 L91 57 L119 64 L148 39 L176 47 L205 25 L233 42 L262 29 L290 35 L316 14" />
+        </svg>
+      </AppCard>
+    </AppSection>
+
+    <button class="add-record-card" type="button" @click="goSimpleRecord()">
+      <span class="add-record-card__icon"><q-icon name="add" size="25px" /></span>
+      <strong>새 기록 추가</strong>
+      <q-icon name="chevron_right" size="24px" />
+    </button>
+
+    <AppSection title="최근 기록" action-label="더보기 ›" @action="goBankRecordList">
+      <AppCard padding="none">
+        <button
+          v-for="item in simpleRecords"
+          :key="item.id"
+          class="simple-record"
+          type="button"
+          @click="goSimpleRecord(item.id)"
+        >
+          <span class="simple-record__main">
+            <strong>{{ item.title }}</strong>
+            <small>{{ item.date }} · 바인 {{ item.buyIn }} · {{ item.entries }} Entries</small>
+          </span>
+          <strong v-if="item.result" class="simple-record__result" :class="item.tone">{{ item.result }}</strong>
+          <span v-else class="simple-record__pending">결과 미입력</span>
+          <q-icon name="chevron_right" size="22px" />
+        </button>
+      </AppCard>
+    </AppSection>
+  </q-page>
+
+  <q-page v-else class="home-page">
     <section v-if="hasRunningTournament" class="running-section">
       <h2>진행 중 토너먼트</h2>
 
@@ -34,7 +105,11 @@
 
     <AppCard v-else class="start-card" variant="interactive" padding="lg" @click="goTournamentStart">
       <div class="start-card__mark" aria-hidden="true">
-        <div class="start-card__glyph"></div>
+        <div class="start-card__card start-card__card--back"></div>
+        <div class="start-card__card start-card__card--front">
+          <span></span>
+          <span></span>
+        </div>
         <q-icon class="start-card__plus" name="add" size="22px" />
       </div>
 
@@ -46,7 +121,7 @@
       <q-icon class="start-card__arrow" name="chevron_right" size="30px" />
     </AppCard>
 
-    <AppSection :title="recentSection.title" action-label="더보기 ›">
+    <AppSection :title="recentSection.title" action-label="더보기 ›" @action="goTournamentList">
       <AppCard padding="none">
         <button
           v-for="item in recentSection.items"
@@ -71,7 +146,6 @@
           <q-icon class="recent-row__arrow" name="chevron_right" size="24px" />
         </button>
       </AppCard>
-      <p class="home-page__hint">최근 3개를 표시합니다. 더보기에서 전체 목록을 확인할 수 있어요.</p>
     </AppSection>
 
     <AppSection title="이번 달 요약">
@@ -86,16 +160,35 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppCard from 'src/shared/components/AppCard.vue'
 import AppSection from 'src/shared/components/AppSection.vue'
 import StatCard from 'src/shared/components/StatCard.vue'
 
-const recordMode = 'tournament'
 const router = useRouter()
 const route = useRoute()
+const recordMode = ref('simple')
+const selectedPeriod = ref('월')
+const periods = ['주', '월', '전체']
+
+onMounted(() => {
+  recordMode.value = localStorage.getItem('pokerly-record-mode') || 'simple'
+})
+
+const isSimpleMode = computed(() => recordMode.value === 'simple')
+const simpleMetrics = [
+  { label: 'ROI', value: '18.7%' },
+  { label: '참가', value: '12회' },
+  { label: 'ITM', value: '3회' },
+  { label: '게임당 평균 바인', value: '1.42x' },
+]
+const simpleRecords = [
+  { id: 'prime-0702', title: 'Prime', date: '2026.07.23', buyIn: '100,000', entries: 2, result: '+320,000', tone: 'win' },
+  { id: 'royce-0718', title: 'Royce Daily', date: '2026.07.18', buyIn: '110,000', entries: 1, result: '-50,000', tone: 'lose' },
+  { id: 'mango-0712', title: 'Mango', date: '2026.07.12', buyIn: '80,000', entries: 1, result: '', tone: '' },
+]
 
 const hasRunningTournament = computed(() => route.query.running === '1')
 
@@ -109,26 +202,14 @@ const runningTournament = {
   averageBb: '37',
 }
 
-const recentByMode = {
-  tournament: {
-    title: '최근 토너먼트',
-    items: [
-      { id: 'prime-0702', title: '프라임 0702', meta: '2025.07.02', badge: '완료', tone: 'success' },
-      { id: 'mango-0630', title: 'Mango 2nd', meta: '2024.06.30', badge: '탈락', tone: 'default' },
-      { id: 'kiki-0629', title: 'KIKI 3000 GTD', meta: '2024.06.29', badge: 'Bubble', tone: 'default' },
-    ],
-  },
-  simple: {
-    title: '최근 세션',
-    items: [
-      { title: 'Prime Daily', meta: '2024.07.03  |  바이인 120,000', result: '+200,000', tone: 'success' },
-      { title: 'Royce Daily', meta: '2024.07.02  |  바이인 110,000', result: '-50,000', tone: 'danger' },
-      { title: 'Mango Deepstack', meta: '2024.07.01  |  바이인 80,000', result: '+35,000', tone: 'success' },
-    ],
-  },
+const recentSection = {
+  title: '최근 토너먼트',
+  items: [
+    { id: 'prime-0702', title: '프라임 0702', meta: '2025.07.02', badge: '완료', tone: 'success' },
+    { id: 'mango-0630', title: 'Mango 2nd', meta: '2024.06.30', badge: '탈락', tone: 'default' },
+    { id: 'kiki-0629', title: 'KIKI 3000 GTD', meta: '2024.06.29', badge: 'Bubble', tone: 'default' },
+  ],
 }
-
-const recentSection = computed(() => recentByMode[recordMode])
 
 const goTournamentStart = () => {
   router.push('/app/tournament/start')
@@ -138,9 +219,23 @@ const goTournamentRunning = () => {
   router.push('/app/tournament/running')
 }
 
+const goTournamentList = () => {
+  router.push('/app/tournaments')
+}
+
+const goBankRecordList = () => {
+  router.push('/app/bank-records')
+}
+
 const openRecentTournament = (item) => {
-  if (recordMode !== 'tournament') return
   router.push(`/app/tournament/${item.id}/summary`)
+}
+
+const goSimpleRecord = (recordId) => {
+  router.push({
+    path: '/app/simple-record',
+    query: recordId ? { recordId } : {},
+  })
 }
 </script>
 
@@ -148,7 +243,244 @@ const openRecentTournament = (item) => {
 .home-page {
   display: grid;
   gap: 26px;
-  padding: 10px 20px 24px;
+  padding: 10px var(--v2-page-padding-x) 24px;
+}
+
+.simple-home {
+  align-content: start;
+  gap: 20px;
+  padding-bottom: 104px;
+}
+
+.simple-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  box-shadow: var(--v2-shadow-card);
+}
+
+.simple-summary article {
+  display: grid;
+  min-height: 68px;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  padding: 10px 6px;
+  border-left: 1px solid var(--v2-border);
+  text-align: center;
+}
+
+.simple-summary__profit {
+  grid-column: 1 / -1;
+  min-height: 80px !important;
+  border-bottom: 1px solid var(--v2-border);
+  border-left: 0 !important;
+}
+
+.simple-summary article:nth-child(2) {
+  border-left: 0;
+}
+
+.simple-summary span {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.simple-summary strong {
+  font-size: 15px;
+  font-weight: 620;
+  line-height: 1.15;
+  white-space: nowrap;
+}
+
+.simple-summary__profit strong {
+  color: var(--v2-success);
+  font-size: 24px;
+}
+
+.profit-chart {
+  display: grid;
+  gap: 10px;
+}
+
+.profit-chart__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.profit-chart__header > strong {
+  font-size: 13px;
+  font-weight: 580;
+}
+
+.period-tabs {
+  display: flex;
+  padding: 3px;
+  border-radius: 9px;
+  background: #f2f0f7;
+}
+
+.period-tabs button {
+  min-width: 38px;
+  min-height: 28px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--v2-text-sub);
+  font: inherit;
+  font-size: 11px;
+}
+
+.period-tabs button.active {
+  background: #fff;
+  color: var(--v2-primary);
+  font-weight: 600;
+  box-shadow: 0 2px 7px rgba(28, 18, 60, .08);
+}
+
+.profit-chart__value {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.profit-chart__value strong {
+  color: var(--v2-success);
+  font-size: 19px;
+  font-weight: 620;
+}
+
+.profit-chart__value span {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+}
+
+.profit-chart svg {
+  display: block;
+  width: 100%;
+  height: 104px;
+}
+
+.chart-area {
+  fill: url(#simpleProfitFill);
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--v2-primary);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.add-record-card {
+  display: grid;
+  width: 100%;
+  min-height: 64px;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 11px;
+  padding: 12px 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  color: var(--v2-text-main);
+  font: inherit;
+  text-align: left;
+  box-shadow: var(--v2-shadow-card);
+}
+
+.add-record-card__icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 10px;
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+}
+
+.add-record-card strong {
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.add-record-card > .q-icon {
+  color: var(--v2-text-sub);
+}
+
+.add-record-card:active {
+  border-color: rgba(109, 69, 232, .24);
+  background: #fbfaff;
+}
+
+.simple-record {
+  display: grid;
+  width: 100%;
+  min-height: 72px;
+  grid-template-columns: minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 12px 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: transparent;
+  color: var(--v2-text-main);
+  font: inherit;
+  text-align: left;
+}
+
+.simple-record:last-child {
+  border-bottom: 0;
+}
+
+.simple-record__main {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
+.simple-record__main strong {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-record__main small {
+  overflow: hidden;
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.simple-record__result {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.simple-record__result.win { color: var(--v2-success); }
+.simple-record__result.lose { color: var(--v2-danger); }
+.simple-record__pending {
+  padding: 5px 7px;
+  border-radius: 7px;
+  background: #f2f0f7;
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.simple-record > .q-icon {
+  color: var(--v2-text-sub);
 }
 
 .running-section {
@@ -301,15 +633,50 @@ const openRecentTournament = (item) => {
   height: 64px;
 }
 
-.start-card__glyph {
+.start-card__card {
   position: absolute;
-  inset: 6px 10px 9px 6px;
-  border: 10px solid rgba(109, 69, 232, 0.72);
-  border-right: 0;
-  border-bottom: 0;
-  border-radius: 8px 3px 0 3px;
-  box-shadow: 10px 8px 0 rgba(109, 69, 232, 0.1);
-  transform: skewY(-7deg);
+  border-radius: 8px;
+}
+
+.start-card__card--back {
+  right: 5px;
+  bottom: 3px;
+  width: 43px;
+  height: 54px;
+  background: #eee8ff;
+  box-shadow: inset 0 0 0 1px rgba(109, 69, 232, 0.07);
+  transform: rotate(-4deg);
+}
+
+.start-card__card--front {
+  left: 2px;
+  top: 2px;
+  width: 43px;
+  height: 54px;
+  background: linear-gradient(180deg, #8a6bf0 0%, #6d45e8 100%);
+  box-shadow: 0 10px 18px rgba(109, 69, 232, 0.18);
+  transform: rotate(-7deg);
+}
+
+.start-card__card--front span {
+  position: absolute;
+  display: block;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.start-card__card--front span:first-child {
+  left: 10px;
+  top: 12px;
+  width: 23px;
+  height: 5px;
+}
+
+.start-card__card--front span:last-child {
+  left: 10px;
+  top: 22px;
+  width: 16px;
+  height: 5px;
 }
 
 .start-card__plus {
@@ -429,14 +796,6 @@ const openRecentTournament = (item) => {
 
 .recent-row__arrow {
   color: #777188;
-}
-
-.home-page__hint {
-  margin: 12px 0 0;
-  color: var(--v2-text-sub);
-  font-size: 13px;
-  font-weight: 450;
-  line-height: 1.45;
 }
 
 .home-page__stats-grid {

@@ -2,7 +2,6 @@
   <q-page class="tournament-start-page">
     <header class="tournament-start-page__header">
       <h1>토너먼트 시작</h1>
-      <p>토너먼트를 시작하는 방법을 선택하세요.</p>
     </header>
 
     <div class="tournament-start-page__options">
@@ -24,11 +23,6 @@
           <span>{{ option.description }}</span>
         </span>
       </button>
-    </div>
-
-    <div class="info-box">
-      <q-icon name="info" size="32px" />
-      <p>대회 정보는 필요할 때<br />언제든 추가하거나 수정할 수 있습니다.</p>
     </div>
   </q-page>
 </template>
@@ -72,9 +66,9 @@ const handleOption = (key) => {
 .tournament-start-page {
   display: grid;
   align-content: start;
-  gap: 24px;
+  gap: 28px;
   min-height: 100%;
-  padding: 54px 20px 24px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 24px;
 }
 
 .tournament-start-page__header h1 {
@@ -84,14 +78,6 @@ const handleOption = (key) => {
   font-weight: 560;
   line-height: 1.2;
   letter-spacing: 0;
-}
-
-.tournament-start-page__header p {
-  margin: 22px 0 0;
-  color: var(--v2-text-main);
-  font-size: 15px;
-  font-weight: 450;
-  line-height: 1.45;
 }
 
 .tournament-start-page__options {
@@ -125,12 +111,10 @@ const handleOption = (key) => {
 
 .start-option__icon-box {
   display: flex;
-  width: 58px;
-  height: 58px;
+  width: 44px;
+  height: 44px;
   align-items: center;
   justify-content: center;
-  border-radius: var(--v2-radius-md);
-  background: var(--v2-primary-soft);
   color: var(--v2-primary);
 }
 
@@ -154,37 +138,10 @@ const handleOption = (key) => {
   line-height: 1.45;
 }
 
-.info-box {
-  margin-top: 10px;
-  padding: 22px 24px;
-  border-radius: var(--v2-radius-lg);
-  background: var(--v2-primary-soft);
-  color: var(--v2-text-main);
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: center;
-  gap: 14px;
-}
-
-.info-box .q-icon {
-  color: var(--v2-primary);
-}
-
-.info-box p {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 450;
-  line-height: 1.55;
-}
-
 @media (max-width: 420px) {
   .tournament-start-page {
-    gap: 22px;
-    padding-top: 46px;
-  }
-
-  .tournament-start-page__header p {
-    margin-top: 20px;
+    gap: 28px;
+    padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 24px;
   }
 
   .start-option {
@@ -195,8 +152,8 @@ const handleOption = (key) => {
   }
 
   .start-option__icon-box {
-    width: 54px;
-    height: 54px;
+    width: 42px;
+    height: 42px;
   }
 
   .start-option__copy strong {
@@ -207,12 +164,5 @@ const handleOption = (key) => {
     font-size: 14px;
   }
 
-  .info-box {
-    padding: 20px;
-  }
-
-  .info-box p {
-    font-size: 15px;
-  }
 }
 </style>

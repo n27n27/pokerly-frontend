@@ -43,10 +43,28 @@ const routes = [
         component: () => import('src/features/home/pages/HomePage.vue'),
       },
       {
+        path: 'simple-record',
+        name: 'simple-record',
+        meta: { hideHeader: true },
+        component: () => import('src/features/home/pages/SimpleRecordPage.vue'),
+      },
+      {
+        path: 'bank-records',
+        name: 'bank-records',
+        meta: { hideHeader: true },
+        component: () => import('src/features/home/pages/BankRecordListPage.vue'),
+      },
+      {
         path: 'tournament/start',
         name: 'tournament-start',
         meta: { hideHeader: true },
         component: () => import('src/features/tournament/pages/TournamentStartPage.vue'),
+      },
+      {
+        path: 'tournaments',
+        name: 'tournament-list',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentListPage.vue'),
       },
       {
         path: 'tournament/create',
@@ -89,6 +107,18 @@ const routes = [
         name: 'tournament-running',
         meta: { hideHeader: true },
         component: () => import('src/features/tournament/pages/TournamentRunningPage.vue'),
+      },
+      {
+        path: 'tournament/running/manage',
+        name: 'tournament-manage',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentManagePage.vue'),
+      },
+      {
+        path: 'tournament/running/finish',
+        name: 'tournament-finish',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentFinishPage.vue'),
       },
       {
         path: 'tournament/running/level/:levelName',
@@ -139,12 +169,6 @@ const routes = [
         component: () => import('src/features/tools/pages/ToolsPage.vue'),
       },
       {
-        path: 'tools/preflop-chart',
-        name: 'preflop-chart',
-        meta: { hideHeader: true },
-        component: () => import('src/features/tools/pages/PreflopChartPage.vue'),
-      },
-      {
         path: 'tools/equity-calculator',
         name: 'equity-calculator',
         meta: { hideHeader: true },
@@ -165,7 +189,25 @@ const routes = [
       {
         path: 'my',
         name: 'my',
+        meta: { hideHeader: true },
         component: () => import('src/features/my/pages/MyPage.vue'),
+      },
+      {
+        path: 'my/feedback',
+        name: 'my-feedback',
+        component: () => import('src/pages/support/FeedbackView.vue'),
+      },
+      {
+        path: 'my/account',
+        name: 'my-account',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/MyAccountPage.vue'),
+      },
+      {
+        path: 'my/document/:documentType',
+        name: 'my-document',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/MyDocumentPage.vue'),
       },
     ],
   },

@@ -1,25 +1,15 @@
 <template>
   <q-page class="icm-page">
     <header class="calc-topbar">
-      <button type="button" aria-label="뒤로 가기" @click="router.back()">
-        <q-icon name="chevron_left" size="30px" />
-      </button>
-      <h1>ICM 칩 계산기</h1>
-      <button type="button" aria-label="정보">
-        <q-icon name="info" size="21px" />
-      </button>
+      <h1>ICM 찹 계산기</h1>
     </header>
 
-    <p class="intro">남은 플레이어들의 스택과 지급 구조를 입력하면 ICM 기준 칩 가치를 계산합니다.</p>
-
     <section class="player-count-card">
-      <span>남은 플레이어 수</span>
       <div>
         <button type="button" @click="adjustCount(-1)">-</button>
         <strong>{{ players.length }}명</strong>
         <button type="button" @click="adjustCount(1)">+</button>
       </div>
-      <small>최소 2명 - 최대 10명</small>
     </section>
 
     <section class="dual-panel">
@@ -41,7 +31,6 @@
       <div class="panel">
         <div class="panel-header">
           <h2>지급 구조 입력</h2>
-          <span>단위: 원</span>
         </div>
         <label v-for="(prize, index) in prizes" :key="index" class="data-row">
           <span>{{ index + 1 }}등</span>
@@ -54,18 +43,11 @@
       </div>
     </section>
 
-    <button class="primary-action" type="button" @click="calculate">
-      <q-icon name="calculate" size="18px" />
-      ICM 칩 계산하기
-    </button>
+    <StickyPrimaryAction label="ICM 찹 계산하기" icon="calculate" @click="calculate" />
 
-    <section class="panel result-panel">
+    <section v-if="results.length" class="panel result-panel">
       <div class="panel-header">
         <h2>ICM 계산 결과</h2>
-        <button type="button" @click="reset">
-          <q-icon name="refresh" size="16px" />
-          초기화
-        </button>
       </div>
 
       <div class="icm-table">
@@ -89,7 +71,7 @@
 
       <p class="success-note">
         <q-icon name="check_circle" size="17px" />
-        ICM 칩 금액의 합계는 총 상금과 일치합니다.
+        ICM 찹 금액의 합계는 총 상금과 일치합니다.
       </p>
       <p class="muted-note">ICM(Independent Chip Model) 기준으로 계산된 값입니다.</p>
     </section>
@@ -98,9 +80,9 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 
-const router = useRouter()
+import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+
 let nextId = 5
 
 const players = reactive([
@@ -157,7 +139,7 @@ const calculate = () => {
 }
 
 const adjustCount = (amount) => {
-  if (amount > 0 && players.length < 10) {
+  if (amount > 0 && players.length < 15) {
     players.push({ id: nextId, name: `Player ${nextId}`, stack: 250000 })
     prizes.push(Math.max(0, Number(prizes[prizes.length - 1] || 0) - 50000))
     nextId += 1
@@ -168,25 +150,10 @@ const adjustCount = (amount) => {
     prizes.pop()
   }
 
-  calculate()
-}
-
-const reset = () => {
-  players.splice(
-    0,
-    players.length,
-    { id: 1, name: 'Hero (나)', stack: 350000 },
-    { id: 2, name: 'Player 2', stack: 420000 },
-    { id: 3, name: 'Player 3', stack: 280000 },
-    { id: 4, name: 'Player 4', stack: 560000 },
-  )
-  prizes.splice(0, prizes.length, 1000000, 600000, 400000, 250000)
-  calculate()
 }
 
 const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('ko-KR')
 
-calculate()
 </script>
 
 <style scoped>
@@ -195,62 +162,95 @@ calculate()
 .icm-page {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 8px;
   min-height: 100%;
-  padding: 18px 16px 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+}
+
+.calc-topbar {
+  display: grid;
+  justify-items: start;
+  margin: 0 0 12px;
+}
+
+.calc-topbar h1 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 22px;
+  font-weight: 560;
+  line-height: 1;
+  text-align: left;
+  white-space: nowrap;
 }
 
 .player-count-card {
-  min-height: 112px;
-  padding: 16px;
+  padding: 12px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
   display: grid;
   place-items: center;
-  gap: 8px;
+  gap: 7px;
   text-align: center;
-}
-
-.player-count-card span,
-.player-count-card small {
-  color: #5f596b;
-  font-size: 12px;
 }
 
 .player-count-card div {
   display: flex;
   align-items: center;
-  gap: 22px;
+  gap: 18px;
 }
 
 .player-count-card button {
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
+  padding: 0;
   border: 1px solid var(--v2-primary);
   border-radius: var(--v2-radius-sm);
   background: #ffffff;
   color: var(--v2-primary);
+  display: grid;
+  place-items: center;
+  font: inherit;
   font-size: 18px;
+  font-weight: 560;
+  line-height: 1;
 }
 
 .player-count-card strong {
   color: var(--v2-text-main);
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 560;
+}
+
+.panel {
+  padding: 12px;
+  gap: 8px;
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.022);
+}
+
+.panel h2 {
+  line-height: 1;
+}
+
+.panel-header {
+  margin-bottom: 0;
+}
+
+.panel-header span {
+  font-size: 12px;
 }
 
 .dual-panel {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 8px;
 }
 
 .data-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 112px;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .data-row span {
@@ -289,7 +289,7 @@ calculate()
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  padding-top: 10px;
+  padding-top: 8px;
   border-top: 1px solid var(--v2-border);
   color: var(--v2-primary);
   font-size: 12px;
@@ -313,8 +313,8 @@ calculate()
 .icm-table strong,
 .icm-table b,
 .icm-table em {
-  min-height: 38px;
-  padding: 10px 8px;
+  min-height: 36px;
+  padding: 8px;
   border-right: 1px solid var(--v2-border);
   border-bottom: 1px solid var(--v2-border);
   color: #4f4a5e;
@@ -347,7 +347,7 @@ calculate()
 .success-note,
 .muted-note {
   margin: 0;
-  padding: 10px;
+  padding: 9px;
   border-radius: var(--v2-radius-sm);
   color: #4f4a5e;
   font-size: 11px;
