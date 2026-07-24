@@ -35,7 +35,7 @@
                       type="number"
                       filled
                       dense
-                      label="리엔트리 비용 (₩)"
+                      label="리엔트리 비용"
                       :min="0"
                       hint="예: 60000 (6만 바인)"
                     >
@@ -43,7 +43,7 @@
                         <q-icon name="help_outline" size="16px">
                           <q-tooltip>
                             지금 다시 들어갈 때 실제로 내는 금액입니다.
-                            <br />예: 60,000원이면 60000 입력
+                            <br />예: 60,000이면 60000 입력
                           </q-tooltip>
                         </q-icon>
                       </template>
@@ -56,7 +56,7 @@
                       type="number"
                       filled
                       dense
-                      label="총 상금 (예상, ₩)"
+                      label="총 상금 (예상)"
                       :min="0"
                       hint="예: 8000000 (800만 보장)"
                     >
@@ -249,7 +249,7 @@
                       'text-negative': evNow < 0,
                     }"
                   >
-                    {{ formatMoney(evNow) }} 원
+                    {{ formatMoney(evNow) }}
                   </span>
                 </div>
               </div>
@@ -260,7 +260,7 @@
               <div class="text-caption text-grey-7 column q-gutter-xs">
                 <div>
                   • 총 상금 (입력 기준):
-                  <b>{{ formatMoney(prizePool) }} 원</b>
+                  <b>{{ formatMoney(prizePool) }}</b>
                 </div>
                 <div v-if="survivalRatioText">
                   • 현재 경쟁률 (생존 : ITM):

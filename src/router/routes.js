@@ -1,5 +1,5 @@
 const routes = [
-  // 🔹 공개 페이지 (AuthLayout 사용)
+  // Auth 영역은 기존 유지
   {
     path: '/login',
     component: () => import('layouts/AuthLayout.vue'),
@@ -15,7 +15,6 @@ const routes = [
     component: () => import('layouts/AuthLayout.vue'),
     children: [{ path: '', component: () => import('pages/SignupView.vue') }],
   },
-
   {
     path: '/onboarding',
     component: () => import('layouts/AuthLayout.vue'),
@@ -28,97 +27,191 @@ const routes = [
     meta: { requiresAuth: true },
     children: [{ path: '', component: () => import('pages/LinkSocialView.vue') }],
   },
+
   { path: '/', redirect: '/login' },
 
-  // 🔹 인증 필요한 페이지 (MainLayout 사용)
+  // V2 App Shell
   {
     path: '/app',
     component: () => import('layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
-    redirect: '/app/dashboard',
+    redirect: '/app/home',
     children: [
-      // Dashboard
-      { path: 'dashboard', component: () => import('pages/DashboardPage.vue') },
-
-      // -------------------------------------------------
-      // My Poker
-      // -------------------------------------------------
       {
-        path: 'mypoker/ledger',
-        component: () => import('src/pages/mypoker/MyPokerLedgerPage.vue'),
+        path: 'home',
+        name: 'home',
+        component: () => import('src/features/home/pages/HomePage.vue'),
       },
       {
-        path: 'mypoker/hand-log',
-        component: () => import('src/pages/mypoker/HandLogPage.vue'),
+        path: 'simple-record',
+        name: 'simple-record',
+        meta: { hideHeader: true },
+        component: () => import('src/features/home/pages/SimpleRecordPage.vue'),
       },
       {
-        path: 'mypoker/hand-log/:eventId',
-        component: () => import('src/pages/mypoker/HandLogEventDetailPage.vue'),
+        path: 'bank-records',
+        name: 'bank-records',
+        meta: { hideHeader: true },
+        component: () => import('src/features/home/pages/BankRecordListPage.vue'),
       },
       {
-        path: 'mypoker/hand-log/:eventId/levels/:levelId',
-        component: () => import('pages/mypoker/HandLogLevelDetailPage.vue'),
+        path: 'tournament/start',
+        name: 'tournament-start',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentStartPage.vue'),
       },
       {
-        path: 'mypoker/hand-log/:eventId/levels/:levelId/hands/:handId',
-        component: () => import('pages/mypoker/HandLogHandDetailPage.vue'),
+        path: 'tournaments',
+        name: 'tournament-list',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentListPage.vue'),
       },
       {
-        path: 'mypoker/hand-review',
-        component: () => import('src/pages/mypoker/MyPokerHandReviewPage.vue'),
+        path: 'tournament/create',
+        name: 'tournament-create',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentCreatePage.vue'),
       },
       {
-        path: 'mypoker/journal',
-        component: () => import('src/pages/mypoker/MyPokerJournalPage.vue'),
-      },
-
-      // -------------------------------------------------
-      // Statistics
-      // -------------------------------------------------
-      { path: 'statistics/month', component: () => import('pages/statistics/MonthlyPage.vue') },
-      { path: 'statistics/session', component: () => import('pages/statistics/SessionPage.vue') },
-      {
-        path: 'statistics/venue',
-        component: () => import('pages/statistics/VenueStatsPage.vue'),
-      },
-
-      // -------------------------------------------------
-      // Tools (도구)
-      // -------------------------------------------------
-      { path: 'tools/call-ev', component: () => import('pages/tools/CallEVPage.vue') },
-      {
-        path: 'tools/tournament-ev',
-        component: () => import('pages/tools/TournamentEVPage.vue'),
+        path: 'tournament/presets',
+        name: 'tournament-presets',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentPresetPage.vue'),
       },
       {
-        path: 'tools/reentry-ev',
-        component: () => import('pages/tools/ReEntryEVPage.vue'),
+        path: 'tournament/start/setup',
+        name: 'tournament-start-setup',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentStartSetupPage.vue'),
       },
-      { path: 'tools/iso-3bet', component: () => import('pages/tools/Iso3BetPage.vue') },
-      { path: 'tools/icm', component: () => import('pages/tools/ICMCalculatorPage.vue') },
-      { path: 'tools/spr', component: () => import('pages/tools/SPRCalculatorPage.vue') },
       {
-        path: 'tools/implied-odds',
-        component: () => import('pages/tools/ImpliedOddsPage.vue'),
+        path: 'tournament/:tournamentId/summary',
+        name: 'tournament-summary',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentSummaryPage.vue'),
       },
-
-      // -------------------------------------------------
-      // Venues
-      // -------------------------------------------------
-      { path: 'venues/list', component: () => import('pages/VenueListPage.vue') },
-      { path: 'venues/:id', component: () => import('pages/VenueDetailPage.vue') },
-
-      // -------------------------------------------------
-      // feedback
-      // -------------------------------------------------
       {
-        path: 'support/feedback',
-        component: () => import('pages/support/FeedbackView.vue'),
+        path: 'tournament/:tournamentId/review-hands',
+        name: 'tournament-review-hands',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentReviewHandsPage.vue'),
+      },
+      {
+        path: 'tournament/:tournamentId/stats/:statType',
+        name: 'tournament-stats',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentStatsPage.vue'),
+      },
+      {
+        path: 'tournament/running',
+        name: 'tournament-running',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentRunningPage.vue'),
+      },
+      {
+        path: 'tournament/running/manage',
+        name: 'tournament-manage',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentManagePage.vue'),
+      },
+      {
+        path: 'tournament/running/finish',
+        name: 'tournament-finish',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentFinishPage.vue'),
+      },
+      {
+        path: 'tournament/running/level/:levelName',
+        name: 'tournament-level-detail',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentLevelDetailPage.vue'),
+      },
+      {
+        path: 'tournament/running/level/:levelName/hand/new',
+        name: 'tournament-hand-record',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentHandRecordPage.vue'),
+      },
+      {
+        path: 'tournament/running/level/:levelName/hand/:handId/edit',
+        name: 'tournament-hand-edit',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentHandEditPage.vue'),
+      },
+      {
+        path: 'tournament/running/level/:levelName/hand/:handId',
+        name: 'tournament-hand-detail',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentHandDetailPage.vue'),
+      },
+      {
+        path: 'statistics',
+        name: 'statistics',
+        meta: { hideHeader: true },
+        component: () => import('src/features/statistics/pages/StatisticsHomePage.vue'),
+      },
+      {
+        path: 'statistics/position',
+        name: 'statistics-position',
+        meta: { hideHeader: true },
+        component: () => import('src/features/statistics/pages/StatisticsPositionPage.vue'),
+      },
+      {
+        path: 'statistics/hands',
+        name: 'statistics-hands',
+        meta: { hideHeader: true },
+        component: () => import('src/features/statistics/pages/StatisticsHandPage.vue'),
+      },
+      {
+        path: 'tools',
+        name: 'tools',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tools/pages/ToolsPage.vue'),
+      },
+      {
+        path: 'tools/equity-calculator',
+        name: 'equity-calculator',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tools/pages/EquityCalculatorPage.vue'),
+      },
+      {
+        path: 'tools/pot-odds-calculator',
+        name: 'pot-odds-calculator',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tools/pages/PotOddsCalculatorPage.vue'),
+      },
+      {
+        path: 'tools/icm-calculator',
+        name: 'icm-calculator',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tools/pages/IcmCalculatorPage.vue'),
+      },
+      {
+        path: 'my',
+        name: 'my',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/MyPage.vue'),
+      },
+      {
+        path: 'my/feedback',
+        name: 'my-feedback',
+        component: () => import('src/pages/support/FeedbackView.vue'),
+      },
+      {
+        path: 'my/account',
+        name: 'my-account',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/MyAccountPage.vue'),
+      },
+      {
+        path: 'my/document/:documentType',
+        name: 'my-document',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/MyDocumentPage.vue'),
       },
     ],
   },
 
-  // 🔹 404
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

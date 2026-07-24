@@ -588,7 +588,7 @@ function removeTournament(id) {
 function formatMoney(v) {
   if (!isFinite(v)) return '-'
   const rounded = Math.floor(v / 1000) * 1000 // 1000원 단위 버림
-  return rounded.toLocaleString('ko-KR') + '원'
+  return rounded.toLocaleString('ko-KR')
 }
 
 /* ============================================================
