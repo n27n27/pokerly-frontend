@@ -110,8 +110,14 @@ export default route(function () {
       return next('/link-social')
     }
 
-    // 🔸 D-2. 임시 프로필 또는 필수 약관 미완료 사용자는 /onboarding 강제
-    if (auth.user && auth.onboardingRequired && to.path !== '/onboarding') {
+    // 🔸 D-2. 소셜 연결을 마친 뒤에만 온보딩으로 이동
+    // 미연동 사용자는 D-1에서 /link-social로 보내므로 두 화면 간 리다이렉트 루프를 막는다.
+    if (
+      auth.user &&
+      auth.user.socialLinked !== false &&
+      auth.onboardingRequired &&
+      to.path !== '/onboarding'
+    ) {
       return next('/onboarding')
     }
 
