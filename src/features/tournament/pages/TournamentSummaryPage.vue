@@ -7,8 +7,8 @@
       <div v-if="menuOpen" class="page-menu" @click.stop>
         <template v-if="eventId">
           <button type="button" @click="copyTournamentText">텍스트 복사</button>
-          <button type="button" @click="editTournament">토너먼트 결과 수정</button>
-          <button type="button" @click="resumeTournament">토너먼트 재개</button>
+          <button v-if="!legacyEventId" type="button" @click="editTournament">토너먼트 결과 수정</button>
+          <button v-if="!legacyEventId" type="button" @click="resumeTournament">토너먼트 재개</button>
         </template>
         <button v-else type="button" @click="editBankRecord">기록 수정</button>
       </div>
@@ -16,7 +16,7 @@
 
     <section class="title-row"><h2>{{ tournamentDisplayName(result) }}</h2><time>{{ result.playDate || '-' }}</time></section>
 
-    <section class="result-card">
+    <section v-if="resultMetrics.length" class="result-card">
       <div v-for="metric in resultMetrics" :key="metric.label">
         <span>{{ metric.label }}</span>
         <strong :class="{ primary: metric.primary }">
@@ -165,6 +165,7 @@ const menuOpen = ref(false)
 const selectedMajorHand = ref('')
 const tournamentSeats = ref([])
 const tournamentId = route.params.tournamentId || '1'
+const legacyEventId = computed(() => route.query.legacyEventId || null)
 const runningTournament = (() => {
   try {
     return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
@@ -173,7 +174,7 @@ const runningTournament = (() => {
   }
 })()
 const session = ref(null)
-const eventId = computed(() => session.value?.handLogEventId || runningTournament.eventId)
+const eventId = computed(() => legacyEventId.value || session.value?.handLogEventId || runningTournament.eventId)
 const event = computed(() => handLogStore.selectedEvent)
 const cachedResult = (() => {
   try {
@@ -182,7 +183,16 @@ const cachedResult = (() => {
     return {}
   }
 })()
-const result = computed(() => session.value || cachedResult)
+const result = computed(() => {
+  if (session.value) return session.value
+  if (legacyEventId.value && event.value) {
+    return {
+      tournamentName: event.value.name,
+      playDate: event.value.date || String(event.value.eventAt || event.value.createdAt || '').slice(0, 10),
+    }
+  }
+  return cachedResult
+})
 const tournamentMemo = computed(() =>
   String(result.value?.notes || result.value?.memo || '').trim(),
 )
@@ -457,7 +467,7 @@ const resumeTournament = async () => {
 const openHand = (hand) => router.push({
   name: 'tournament-hand-detail',
   params: { levelName: hand.levelId, handId: hand.id },
-  query: { levelName: hand.level },
+  query: { levelName: hand.level, ...legacyQuery.value },
 })
 const openLevel = (name) => {
   const level = levels.value.find((item) => item.name === name)
@@ -465,11 +475,20 @@ const openLevel = (name) => {
   router.push({
   name: 'tournament-level-detail',
   params: { levelName: level.id },
-  query: { view: 'summary', levelName: level.name },
+    query: { view: 'summary', levelName: level.name, ...legacyQuery.value },
 })
 }
-const goReviewHands = () => router.push(`/app/tournament/${tournamentId}/review-hands`)
-const goStats = () => router.push(`/app/tournament/${tournamentId}/stats/preflop`)
+const legacyQuery = computed(() => legacyEventId.value ? { legacyEventId: legacyEventId.value } : {})
+const goReviewHands = () => router.push({
+  name: 'tournament-review-hands',
+  params: { tournamentId },
+  query: legacyQuery.value,
+})
+const goStats = () => router.push({
+  name: 'tournament-stats',
+  params: { tournamentId, statType: 'preflop' },
+  query: legacyQuery.value,
+})
 
 const copyTournamentText = async () => {
   menuOpen.value = false
@@ -487,12 +506,14 @@ const copyTournamentText = async () => {
 }
 
 onMounted(async () => {
-  try {
-    session.value = await fetchGameSession(tournamentId)
-    localStorage.setItem('pokerly-last-tournament-result', JSON.stringify(session.value))
-  } catch {
-    alert.show('대회 기록을 불러오지 못했습니다.', 'error')
-    return
+  if (!legacyEventId.value) {
+    try {
+      session.value = await fetchGameSession(tournamentId)
+      localStorage.setItem('pokerly-last-tournament-result', JSON.stringify(session.value))
+    } catch {
+      alert.show('대회 기록을 불러오지 못했습니다.', 'error')
+      return
+    }
   }
 
   if (!eventId.value) {
@@ -503,7 +524,7 @@ onMounted(async () => {
   try {
     const [, seats] = await Promise.all([
       handLogStore.fetchEventDetail(eventId.value),
-      fetchTournamentSeats(tournamentId).catch(() => []),
+      legacyEventId.value ? Promise.resolve([]) : fetchTournamentSeats(tournamentId).catch(() => []),
     ])
     tournamentSeats.value = seats || []
   } catch (error) {

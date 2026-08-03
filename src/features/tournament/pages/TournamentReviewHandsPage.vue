@@ -107,15 +107,16 @@ const openHand = (hand) => {
   router.push({
     name: 'tournament-hand-detail',
     params: { levelName: hand.levelId, handId: hand.id },
-    query: { levelName: hand.level },
+    query: { levelName: hand.level, ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}) },
   })
 }
 
 onMounted(async () => {
   if (!tournamentId.value) return
   try {
-    const session = await fetchGameSession(tournamentId.value)
-    const eventId = session?.handLogEventId ||
+    const legacyEventId = route.query.legacyEventId
+    const session = legacyEventId ? null : await fetchGameSession(tournamentId.value)
+    const eventId = legacyEventId || session?.handLogEventId ||
       (String(runningTournament.sessionId) === String(tournamentId.value)
         ? runningTournament.eventId
         : null)

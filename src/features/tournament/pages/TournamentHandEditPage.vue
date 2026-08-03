@@ -238,6 +238,7 @@ const isEditMode = ref(false)
 const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(() => String(route.query.levelName || '') || '-')
 const handId = computed(() => String(route.params.handId || ''))
+const eventId = computed(() => route.query.legacyEventId || storedTournament.eventId || null)
 
 const boardStreets = ref([
   { key: 'flop', name: '플랍', cards: [null, null, null] },
@@ -400,10 +401,10 @@ const nextStreetLabel = computed(() => {
 })
 
 const loadReview = async () => {
-  if (!storedTournament.eventId || !levelId.value || !handId.value) return
+  if (!eventId.value || !levelId.value || !handId.value) return
   try {
     const hand = await handLogStore.fetchHandDetail(
-      storedTournament.eventId,
+      eventId.value,
       levelId.value,
       handId.value,
     )
@@ -528,10 +529,10 @@ const clearActiveCard = () => {
 }
 const saveReview = async () => {
   const hand = handLogStore.selectedHand
-  if (!hand || !storedTournament.eventId) return
+  if (!hand || !eventId.value) return
   try {
     await handLogStore.updateHandInBlindLevel(
-      storedTournament.eventId,
+      eventId.value,
       levelId.value,
       handId.value,
       {

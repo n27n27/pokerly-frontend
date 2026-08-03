@@ -281,7 +281,7 @@ const storedTournament = (() => {
   }
 })()
 const eventId = computed(
-  () => storedTournament.eventId || handLogStore.selectedEvent?.id || null,
+  () => route.query.legacyEventId || storedTournament.eventId || handLogStore.selectedEvent?.id || null,
 )
 const levelLoading = computed(() => handLogStore.levelLoading)
 const blindLevel = computed(() => {

@@ -72,7 +72,7 @@ const alert = useAlert()
 const handLogStore = useHandLogStore()
 const tournamentId = computed(() => route.params.tournamentId)
 const session = ref(null)
-const eventId = computed(() => session.value?.handLogEventId || null)
+const eventId = computed(() => route.query.legacyEventId || session.value?.handLogEventId || null)
 const event = computed(() =>
   String(handLogStore.selectedEvent?.id) === String(eventId.value)
     ? handLogStore.selectedEvent
@@ -222,12 +222,14 @@ const positions = computed(() => {
 
 onMounted(async () => {
   if (!tournamentId.value) return
-  try {
-    session.value = await fetchGameSession(tournamentId.value)
-  } catch {
-    session.value = null
-    alert.show('프리플랍 통계를 불러오지 못했습니다.', 'error')
-    return
+  if (!route.query.legacyEventId) {
+    try {
+      session.value = await fetchGameSession(tournamentId.value)
+    } catch {
+      session.value = null
+      alert.show('프리플랍 통계를 불러오지 못했습니다.', 'error')
+      return
+    }
   }
 
   if (!eventId.value) {

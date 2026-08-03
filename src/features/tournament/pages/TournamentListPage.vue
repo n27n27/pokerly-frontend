@@ -52,10 +52,10 @@
         </div>
         <button
           v-for="tournament in filteredTournaments"
-          :key="tournament.id"
+          :key="tournament.key"
           class="tournament-row"
           type="button"
-          @click="openTournament(tournament.id)"
+          @click="openTournament(tournament)"
         >
           <span class="tournament-row__main">
             <strong>{{ tournament.title }}</strong>
@@ -77,6 +77,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
+import { fetchHandLogEvents } from 'src/api/handLogApi'
 import { fetchVenues } from 'src/api/venue'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 
@@ -90,17 +91,33 @@ const sortOrder = ref('desc')
 const tournaments = ref([])
 const labels = { BUST: '탈락', BUBBLE: 'Bubble', ITM: 'ITM', CHOP: '찹', WIN: '우승' }
 
+const fetchAllLegacyEvents = async () => {
+  const events = []
+  let page = 0
+  let hasNext = true
+  while (hasNext && page < 100) {
+    const response = await fetchHandLogEvents({ page, size: 100 })
+    events.push(...(Array.isArray(response?.content) ? response.content : []))
+    hasNext = Boolean(response?.hasNext)
+    page += 1
+  }
+  return events
+}
+
 onMounted(async () => {
-  const [sessions, venueItems] = await Promise.all([
+  const [sessions, venueItems, legacyEvents] = await Promise.all([
     fetchAllGameSessions(),
     fetchVenues(),
+    fetchAllLegacyEvents(),
   ])
   venues.value = venueItems || []
   const venueById = new Map(venues.value.map((venue) => [String(venue.id), venue.name]))
-  tournaments.value = (sessions || [])
-    .filter((session) => session.tournamentStatus !== 'RUNNING')
+  const sessionItems = (sessions || [])
+    .filter((session) => session.tournamentStatus !== 'RUNNING' && session.handLogEventId)
     .map((session) => ({
+      key: `session-${session.id}`,
       id: session.id,
+      source: 'session',
       title: tournamentDisplayName(session),
       date: session.playDate?.replaceAll('-', '.') || '-',
       rawDate: session.playDate || '',
@@ -112,6 +129,29 @@ onMounted(async () => {
       badge: labels[session.tournamentResult] || '완료',
       tone: session.tournamentResult === 'WIN' ? 'success' : 'default',
     }))
+
+  const linkedEventIds = new Set(
+    (sessions || []).map((session) => session.handLogEventId).filter(Boolean).map(String),
+  )
+  const legacyItems = (legacyEvents || [])
+    .filter((event) => !linkedEventIds.has(String(event.id)))
+    .map((event) => {
+      const rawDate = String(event.eventAt || event.createdAt || '').slice(0, 10)
+      return {
+        key: `event-${event.id}`,
+        id: event.id,
+        source: 'event',
+        title: String(event.name || '').trim() || '이름 없는 토너먼트',
+        date: rawDate ? rawDate.replaceAll('-', '.') : '-',
+        rawDate,
+        venueId: null,
+        venueName: '기타',
+        badge: `${Number(event.handCount || 0)}핸드`,
+        tone: 'default',
+      }
+    })
+
+  tournaments.value = [...sessionItems, ...legacyItems]
 })
 
 const selectedVenueLabel = computed(() => {
@@ -146,8 +186,16 @@ const toggleSort = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
 }
 
-const openTournament = (id) => {
-  router.push(`/app/tournament/${id}/summary`)
+const openTournament = (tournament) => {
+  if (tournament.source === 'event') {
+    router.push({
+      name: 'tournament-summary',
+      params: { tournamentId: `event-${tournament.id}` },
+      query: { legacyEventId: tournament.id },
+    })
+    return
+  }
+  router.push(`/app/tournament/${tournament.id}/summary`)
 }
 </script>
 

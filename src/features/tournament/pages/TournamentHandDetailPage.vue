@@ -164,6 +164,7 @@ const deleteDialogOpen = ref(false)
 const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(() => String(route.query.levelName || '') || '-')
 const handId = computed(() => String(route.params.handId || ''))
+const eventId = computed(() => route.query.legacyEventId || storedTournament.eventId || null)
 const hand = computed(() => {
   const selected = handLogStore.selectedHand
   return selected && String(selected.id) === handId.value ? selected : null
@@ -303,9 +304,9 @@ const storedTournament = (() => {
 })()
 
 onMounted(async () => {
-  if (!storedTournament.eventId || !levelId.value || !handId.value) return
+  if (!eventId.value || !levelId.value || !handId.value) return
   try {
-    await handLogStore.fetchHandDetail(storedTournament.eventId, levelId.value, handId.value)
+    await handLogStore.fetchHandDetail(eventId.value, levelId.value, handId.value)
   } catch {
     alert.show('핸드 정보를 불러오지 못했습니다.', 'error')
   }
@@ -315,7 +316,7 @@ const goReviewEdit = () => {
   router.push({
     name: 'tournament-hand-review-edit',
     params: { levelName: levelId.value, handId: handId.value },
-    query: { levelName: levelName.value },
+    query: { levelName: levelName.value, ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}) },
   })
 }
 const goHandEdit = () => {
@@ -323,7 +324,7 @@ const goHandEdit = () => {
   router.push({
     name: 'tournament-hand-edit',
     params: { levelName: levelId.value, handId: handId.value },
-    query: { levelName: levelName.value },
+    query: { levelName: levelName.value, ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}) },
   })
 }
 const openDeleteDialog = () => {
@@ -331,10 +332,10 @@ const openDeleteDialog = () => {
   deleteDialogOpen.value = true
 }
 const confirmDelete = async () => {
-  if (!storedTournament.eventId || !levelId.value || !handId.value) return
+  if (!eventId.value || !levelId.value || !handId.value) return
   try {
     await handLogStore.deleteHandFromBlindLevel(
-      storedTournament.eventId,
+      eventId.value,
       levelId.value,
       handId.value,
     )
