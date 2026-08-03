@@ -8,35 +8,34 @@
       <span aria-hidden="true"></span>
     </header>
 
-    <section class="stack-card">
+    <section v-if="levelLoading && !blindLevel" class="level-state-card">
+      레벨 정보를 불러오는 중입니다.
+    </section>
+
+    <section v-else-if="!blindLevel" class="level-state-card">
+      레벨 정보가 없습니다.
+    </section>
+
+    <section v-else class="stack-card">
       <div class="stack-card__item">
-        <span>현재 스택</span>
-        <strong>132,000 (264BB)</strong>
-      </div>
-      <div class="stack-card__item stack-card__item--blinds">
-        <span>블라인드</span>
-        <strong>{{ levelInfo.blinds }}</strong>
-      </div>
-    </section>
-
-    <section class="level-stats">
-      <h2>레벨 요약</h2>
-      <div class="level-stats__grid">
-        <div v-for="stat in stats" :key="stat.label">
-          <span>{{ stat.label }}</span>
-          <strong>{{ stat.value }}</strong>
+        <div class="stack-card__heading">
+          <span>현재 스택</span>
+          <button type="button" aria-label="현재 스택 수정" @click="openStackSheet">
+            <q-icon name="edit" size="18px" />
+          </button>
         </div>
+        <strong>{{ stackWithBb }}</strong>
       </div>
     </section>
 
-    <section class="hand-section">
+    <section v-if="blindLevel" class="hand-section">
       <div class="hand-section__header">
         <h2>{{ selectionMode ? `핸드 선택 (${selectedHandIds.length})` : `핸드 목록 (${hands.length})` }}</h2>
         <div v-if="selectionMode" class="hand-selection-actions">
           <button type="button" @click="cancelHandSelection">취소</button>
           <button type="button" :disabled="!selectedHandIds.length" @click="moveSheetOpen = true">이동</button>
         </div>
-        <div v-else class="hand-list-action">
+        <div v-else-if="hands.length" class="hand-list-action">
           <button
             type="button"
             aria-label="핸드 목록 작업"
@@ -54,6 +53,7 @@
         </div>
       </div>
       <div class="hand-list">
+        <p v-if="!hands.length" class="hand-list__empty">기록된 핸드가 없습니다.</p>
         <article
           v-for="hand in hands"
           :key="hand.id"
@@ -91,153 +91,521 @@
       </div>
     </section>
 
+    <section v-if="blindLevel" class="level-stats">
+      <div class="level-stats__heading">
+        <h2>레벨 요약</h2>
+        <span>{{ hands.length }}핸드</span>
+      </div>
+      <div class="level-stats__grid">
+        <div v-for="stat in stats" :key="stat.label">
+          <strong>{{ stat.value }}</strong>
+          <span>{{ stat.label }}</span>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="blindLevel" class="rank-distribution">
+      <div class="rank-distribution__heading">
+        <h2>순위 구간 분포</h2>
+        <span>169개 스타팅 핸드 기준</span>
+      </div>
+      <div class="rank-distribution__card">
+        <div class="rank-meter" aria-hidden="true">
+          <span
+            v-for="bucket in rankDistribution.buckets"
+            :key="bucket.key"
+            :class="`rank-tone--${bucket.tone}`"
+            :style="{ width: `${bucket.percent}%` }"
+          ></span>
+        </div>
+        <div class="rank-distribution__list">
+          <div v-for="bucket in rankDistribution.buckets" :key="bucket.key">
+            <i :class="`rank-tone--${bucket.tone}`"></i>
+            <span>
+              <strong>{{ bucket.label }}</strong>
+              <small>{{ bucket.description }}</small>
+            </span>
+            <b>{{ bucket.count }}개</b>
+            <em>{{ bucket.percent }}%</em>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="blindLevel" class="hand-groups">
+      <h2>주요 핸드</h2>
+      <div class="hand-groups__card">
+        <article v-for="group in handGroups" :key="group.key" class="hand-group">
+          <div class="hand-group__heading">
+            <div>
+              <strong>{{ group.label }}</strong>
+              <span>{{ group.description }}</span>
+            </div>
+            <b>{{ group.count }}개</b>
+          </div>
+          <div v-if="group.items.length" class="hand-group__items">
+            <button
+              v-for="item in group.items"
+              :key="item.hand"
+              type="button"
+              :class="{ active: selectedGroupHand === `${group.key}:${item.hand}` }"
+              @click="toggleGroupHand(group.key, item.hand)"
+            >
+              {{ item.hand }} <small>×{{ item.count }}</small>
+            </button>
+          </div>
+          <p v-else>기록 없음</p>
+          <div
+            v-if="selectedGroupHand?.startsWith(`${group.key}:`)"
+            class="hand-group__details"
+          >
+            <button
+              v-for="hand in selectedGroupHands(group)"
+              :key="hand.id"
+              type="button"
+              @click="openHand(hand.id)"
+            >
+              <strong>{{ handLevelLabel(hand) }} · {{ normalizedHand(hand) }}</strong>
+              <span>
+                {{ hand.position || '-' }} · {{ handActionLabel(hand) }} · {{ hand.result }}
+              </span>
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+
     <button v-if="!isSummaryView" class="hand-fab" type="button" @click="recordHand">
       <span class="hand-fab__icon" aria-hidden="true">
         <i></i>
       </span>
       <span>핸드 기록</span>
     </button>
-    <StickyPrimaryAction v-if="!isSummaryView" label="레벨 종료" @click="endLevel" />
+    <StickyPrimaryAction
+      v-if="!isSummaryView && isCurrentLevel"
+      label="레벨 종료"
+      @click="endLevel"
+    />
 
     <q-dialog v-model="moveSheetOpen" position="bottom">
       <section class="move-level-sheet">
         <div class="move-level-sheet__handle"></div>
         <h2>레벨 선택</h2>
         <p>선택한 핸드 {{ selectedHandIds.length }}개</p>
-        <button v-for="level in movableLevels" :key="level.name" type="button" @click="moveSelectedHands(level.name)">
+        <button
+          v-for="level in movableLevels"
+          :key="level.id"
+          type="button"
+          @click="moveSelectedHands(level)"
+        >
           <strong>{{ level.name }}</strong>
           <span>{{ level.blinds }}</span>
           <q-icon name="chevron_right" size="20px" />
         </button>
       </section>
     </q-dialog>
+
+    <q-dialog v-model="stackSheetOpen" position="bottom">
+      <q-card class="stack-sheet" @click.stop>
+        <div class="stack-sheet__handle"></div>
+        <h2>현재 스택</h2>
+        <label>
+          <span>현재 스택</span>
+          <input
+            :value="stackInput"
+            inputmode="numeric"
+            autofocus
+            @click.stop
+            @input="updateStackInput"
+          />
+        </label>
+        <button type="button" :disabled="handLogStore.saving" @click.stop="saveStack">
+          저장
+        </button>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { useHandLogStore } from 'src/stores/handLog'
+import { fetchGameSession, updateGameSession } from 'src/api/gameSession'
+import {
+  createStartingHandRunSummary,
+  isPfrAction,
+  isThreeBetPlusAction,
+  isVpipAction,
+} from 'src/utils/handLogHandAnalysis'
 
 const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
+const handLogStore = useHandLogStore()
 
-const levelName = computed(() => route.params.levelName || 'L3')
+const levelId = computed(() => String(route.params.levelName || ''))
+const levelName = computed(
+  () =>
+    (blindLevel.value?.levelNo ? `L${blindLevel.value.levelNo}` : '') ||
+    String(route.query.levelName || '') ||
+    '-',
+)
 const isSummaryView = computed(() => route.query.view === 'summary')
 const showHandListMenu = ref(false)
 const selectionMode = ref(false)
 const selectedHandIds = ref([])
 const moveSheetOpen = ref(false)
+const stackSheetOpen = ref(false)
+const stackInput = ref('')
+const selectedGroupHand = ref('')
 
-const levelMap = {
-  L1: '100 / 200 / 200',
-  L2: '200 / 300 / 300',
-  L3: '300 / 500 / 500',
-  L4: '400 / 800 / 800',
-  L5: '600 / 1,200 / 1,200',
-  L6: '800 / 1,600 / 1,600',
-}
-
-const levelInfo = computed(() => ({
-  blinds: levelMap[levelName.value] || '400 / 800 / 800',
-}))
-
-const stats = [
-  { label: '기록 핸드', value: '11' },
-  { label: 'VPIP', value: '27%' },
-  { label: 'PFR', value: '18%' },
-  { label: '3Bet+', value: '0%' },
-]
-
-const hands = ref([
-  {
-    id: 1,
-    cards: [
-      { rank: 'A', suit: '♠' },
-      { rank: 'K', suit: '♥', red: true },
-    ],
-    name: 'AKo',
-    position: 'CO',
-    result: '승리',
-    tone: 'win',
-    needsReview: true,
-  },
-  {
-    id: 2,
-    cards: [
-      { rank: 'Q', suit: '♠' },
-      { rank: 'T', suit: '♥', red: true },
-    ],
-    name: 'QTs',
-    position: 'UTG',
-    result: '패배',
-    tone: 'lose',
-  },
-  {
-    id: 3,
-    cards: [
-      { rank: '8', suit: '♣' },
-      { rank: '7', suit: '♣' },
-    ],
-    name: '87s',
-    position: 'BTN',
-    result: '찹',
-    tone: 'draw',
-    needsReview: true,
-  },
-  {
-    id: 4,
-    cards: [
-      { rank: 'A', suit: '♦', red: true },
-      { rank: 'J', suit: '♦', red: true },
-    ],
-    name: 'AJo',
-    position: 'UTG+1',
-    result: '패배',
-    tone: 'lose',
-  },
-  {
-    id: 5,
-    cards: [
-      { rank: '9', suit: '♣' },
-      { rank: '9', suit: '♥', red: true },
-    ],
-    name: '99',
-    position: 'SB',
-    result: '승리',
-    tone: 'win',
-    needsReview: true,
-  },
-  {
-    id: 6,
-    cards: [
-      { rank: 'A', suit: '♠' },
-      { rank: 'Q', suit: '♥', red: true },
-    ],
-    name: 'AQo',
-    position: 'BB',
-    result: '패배',
-    tone: 'lose',
-  },
-])
-
-const movableLevels = computed(() =>
-  Object.entries(levelMap)
-    .filter(([name, blinds]) => name !== levelName.value && Boolean(blinds))
-    .map(([name, blinds]) => ({ name, blinds })),
+const storedTournament = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
+  } catch {
+    return {}
+  }
+})()
+const eventId = computed(
+  () => storedTournament.eventId || handLogStore.selectedEvent?.id || null,
+)
+const levelLoading = computed(() => handLogStore.levelLoading)
+const blindLevel = computed(() => {
+  const selected = handLogStore.selectedBlindLevel
+  if (selected && String(selected.id) === levelId.value) return selected
+  return (
+    handLogStore.selectedEvent?.blindLevels?.find(
+      (level) => String(level.id) === levelId.value,
+    ) || null
+  )
+})
+const isCurrentLevel = computed(
+  () =>
+    storedTournament.currentBlindLevelId &&
+    String(storedTournament.currentBlindLevelId) === levelId.value,
 )
 
-const recordHand = () => {
-  router.push(`/app/tournament/running/level/${levelName.value}/hand/new`)
+const formatNumber = (value) =>
+  value === null || value === undefined || value === ''
+    ? '-'
+    : Number(value).toLocaleString('ko-KR')
+const currentStack = computed(
+  () =>
+    blindLevel.value?.endStack ??
+    blindLevel.value?.displayStartStack ??
+    blindLevel.value?.startStack ??
+    null,
+)
+const stackWithBb = computed(() => {
+  if (currentStack.value == null) return '-'
+  const stack = formatNumber(currentStack.value)
+  const bigBlind = Number(blindLevel.value?.bigBlind || 0)
+  if (!bigBlind) return stack
+  const bb = Number(currentStack.value) / bigBlind
+  return `${stack} (${Number.isInteger(bb) ? bb : bb.toFixed(1)}BB)`
+})
+
+const formatInputNumber = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? Number(digits).toLocaleString('ko-KR') : ''
 }
 
-const endLevel = () => {
-  router.push('/app/tournament/running')
+const openStackSheet = () => {
+  stackInput.value = formatInputNumber(currentStack.value)
+  stackSheetOpen.value = true
+}
+
+const updateStackInput = (event) => {
+  stackInput.value = formatInputNumber(event.target.value)
+}
+
+const saveStack = async () => {
+  if (!eventId.value || !blindLevel.value?.id || !stackInput.value) {
+    alert.show('현재 스택을 입력해 주세요.', 'warning')
+    return
+  }
+
+  const endStack = Number(stackInput.value.replaceAll(',', ''))
+  try {
+    const saved = await handLogStore.updateBlindLevelInfo(eventId.value, blindLevel.value.id, {
+      startStack: blindLevel.value.startStack ?? blindLevel.value.displayStartStack,
+      endStack,
+      averageStack: blindLevel.value.averageStack,
+      memo: blindLevel.value.memo,
+    })
+    if (!saved) throw new Error('Stack update returned no data')
+
+    if (isCurrentLevel.value) {
+      storedTournament.currentStack = formatInputNumber(endStack)
+      storedTournament.currentBb =
+        Number(saved.bigBlind || blindLevel.value.bigBlind) > 0
+          ? Number((endStack / Number(saved.bigBlind || blindLevel.value.bigBlind)).toFixed(1))
+          : null
+      localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+      if (storedTournament.sessionId) {
+        const session = await fetchGameSession(storedTournament.sessionId)
+        await updateGameSession(storedTournament.sessionId, { ...session, currentStack: endStack })
+      }
+    }
+    stackSheetOpen.value = false
+  } catch {
+    alert.show('현재 스택을 저장하지 못했습니다.', 'error')
+  }
+}
+
+const resultMeta = (hand) => {
+  const result = hand.resultType || hand.result || 'NOT_RECORDED'
+  if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(result)) {
+    return { result: '승리', tone: 'win' }
+  }
+  if (['CHOP', 'DRAW'].includes(result)) return { result: '찹', tone: 'draw' }
+  if (
+    ['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'].includes(result)
+  ) {
+    return { result: '패배', tone: 'lose' }
+  }
+  return { result: '미기록', tone: 'neutral' }
+}
+
+const handCards = (hand) => {
+  const ranks =
+    [hand.firstRank, hand.secondRank].filter(Boolean).length === 2
+      ? [hand.firstRank, hand.secondRank]
+      : String(hand.holeCards || hand.hand || '').match(/10|[AKQJT2-9]/g)?.slice(0, 2) || []
+  const suits = [hand.firstSuit, hand.secondSuit]
+  return ranks.map((rank, index) => {
+    const suit = suits[index] || (hand.suited ? '♠' : index === 0 ? '♠' : '♥')
+    return {
+      rank: rank === '10' ? 'T' : rank,
+      suit,
+      red: ['♥', '♦'].includes(suit),
+    }
+  })
+}
+
+const hands = computed(() =>
+  [...(blindLevel.value?.hands || [])]
+    .sort((a, b) => {
+      const createdAtDifference =
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+
+      if (createdAtDifference) return createdAtDifference
+      return Number(b.id || 0) - Number(a.id || 0)
+    })
+    .map((hand) => ({
+      ...hand,
+      cards: handCards(hand),
+      position: hand.position || '-',
+      ...resultMeta(hand),
+      needsReview: Boolean(hand.reviewRequired),
+    })),
+)
+
+const formatPercent = (count, total) =>
+  total ? `${Math.round((count / total) * 100)}%` : '-'
+const stats = computed(() => {
+  const total = hands.value.length
+  const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
+  const vpip = hands.value.filter((hand) => isVpipAction(actionOf(hand))).length
+  const pfr = hands.value.filter((hand) => isPfrAction(actionOf(hand))).length
+  const threeBet = hands.value.filter((hand) => isThreeBetPlusAction(actionOf(hand))).length
+  const review = hands.value.filter((hand) => hand.needsReview).length
+  return [
+    { label: '복기 필요', value: String(review) },
+    { label: 'VPIP', value: formatPercent(vpip, total) },
+    { label: 'PFR', value: formatPercent(pfr, total) },
+    { label: '3Bet+', value: formatPercent(threeBet, total) },
+  ]
+})
+
+const normalizedHand = (hand) => {
+  const ranks =
+    [hand.firstRank, hand.secondRank].filter(Boolean).length === 2
+      ? [hand.firstRank, hand.secondRank]
+      : String(hand.holeCards || hand.hand || '').match(/10|[AKQJT2-9]/gi)?.slice(0, 2) || []
+  if (ranks.length !== 2) return ''
+
+  const normalizedRanks = ranks.map((rank) => (String(rank).toUpperCase() === '10' ? 'T' : String(rank).toUpperCase()))
+  if (normalizedRanks[0] === normalizedRanks[1]) return normalizedRanks.join('')
+
+  const rankOrder = 'AKQJT98765432'
+  normalizedRanks.sort((a, b) => rankOrder.indexOf(a) - rankOrder.indexOf(b))
+  const rawHand = String(hand.holeCards || hand.hand || '')
+  const suffix = /s$/i.test(rawHand) || hand.suited === true ? 's' : /o$/i.test(rawHand) ? 'o' : ''
+  return `${normalizedRanks.join('')}${suffix}`
+}
+
+const groupItems = (matcher) => {
+  const counts = new Map()
+  hands.value.forEach((hand) => {
+    const notation = normalizedHand(hand)
+    if (!notation || !matcher(notation)) return
+    const item = counts.get(notation) || { hand: notation, count: 0, hands: [] }
+    item.count += 1
+    item.hands.push(hand)
+    counts.set(notation, item)
+  })
+  return [...counts.values()]
+}
+
+const handGroups = computed(() => {
+  const pocketPairs = groupItems((hand) => hand.length === 2 && hand[0] === hand[1])
+  const premium = groupItems((hand) =>
+    ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AKo', 'AK', 'AQs'].includes(hand),
+  )
+  const strongHands = groupItems((hand) =>
+    ['99', '88', '77', 'AJs', 'AQs', 'AKs', 'AQo', 'AKo', 'AQ', 'AK', 'KQs'].includes(hand),
+  )
+  return [
+    {
+      key: 'premium',
+      label: '프리미엄',
+      description: 'AA~TT, AK, AQs',
+      count: premium.reduce((sum, item) => sum + item.count, 0),
+      items: premium,
+    },
+    {
+      key: 'strong',
+      label: '강한 핸드',
+      description: '99~77, AJs+, AQo+, KQs',
+      count: strongHands.reduce((sum, item) => sum + item.count, 0),
+      items: strongHands,
+    },
+    {
+      key: 'pocket-pair',
+      label: '포켓 페어',
+      description: 'AA~22',
+      count: pocketPairs.reduce((sum, item) => sum + item.count, 0),
+      items: pocketPairs,
+    },
+  ]
+})
+
+const rankDistribution = computed(() => createStartingHandRunSummary(hands.value))
+
+const toggleGroupHand = (groupKey, hand) => {
+  const key = `${groupKey}:${hand}`
+  selectedGroupHand.value = selectedGroupHand.value === key ? '' : key
+}
+
+const selectedGroupHands = (group) => {
+  const selectedHand = selectedGroupHand.value.split(':')[1]
+  return group.items.find((item) => item.hand === selectedHand)?.hands || []
+}
+
+const handLevelLabel = (hand) =>
+  hand.__levelLabel ||
+  (hand.__levelNo ? `L${hand.__levelNo}` : '') ||
+  (hand.levelNo ? `L${hand.levelNo}` : '') ||
+  levelName.value
+
+const handActionLabel = (hand) => {
+  const action = hand.actionType || hand.preflopAction || ''
+  return (
+    {
+      FOLD: '폴드',
+      CHECK: '체크',
+      CALL: '콜',
+      WALK: '앞에서 올폴드',
+      OPEN: '오픈',
+      THREE_BET: '3벳',
+      THREE_BET_PLUS: '3벳+',
+      FOUR_BET_PLUS: '4벳+',
+    }[action] ||
+    action ||
+    '-'
+  )
+}
+
+const movableLevels = computed(() =>
+  (handLogStore.selectedEvent?.blindLevels || [])
+    .filter((level) => String(level.id) !== levelId.value)
+    .map((level) => ({
+      id: level.id,
+      name: `L${level.levelNo}`,
+      blinds: [level.smallBlind, level.bigBlind, level.ante].map(formatNumber).join(' / '),
+    })),
+)
+
+onMounted(async () => {
+  if (!eventId.value || !levelId.value) return
+  try {
+    await handLogStore.fetchEventDetail(eventId.value)
+    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
+  } catch {
+    alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
+  }
+})
+
+const recordHand = () => {
+  router.push({
+    name: 'tournament-hand-record',
+    params: { levelName: levelId.value },
+    query: { levelName: levelName.value },
+  })
+}
+
+const endLevel = async () => {
+  const currentLevelNo = Number(blindLevel.value?.levelNo || 0)
+  const expectedNextLevelNo = currentLevelNo + 1
+  const nextLevel = [...(handLogStore.selectedEvent?.blindLevels || [])]
+    .find((level) => Number(level.levelNo) === expectedNextLevelNo)
+
+  if (!nextLevel) {
+    router.push({
+      name: 'tournament-running',
+      query: {
+        addLevel: '1',
+        nextLevelNo: String(expectedNextLevelNo),
+        activateLevel: '1',
+      },
+    })
+    return
+  }
+
+  const nextStack =
+    nextLevel.endStack ?? nextLevel.displayStartStack ?? nextLevel.startStack ?? currentStack.value
+  storedTournament.currentBlindLevelId = nextLevel.id
+  storedTournament.currentLevel = `L${nextLevel.levelNo}`
+  storedTournament.currentBlinds = {
+    smallBlind: formatNumber(nextLevel.smallBlind),
+    bigBlind: formatNumber(nextLevel.bigBlind),
+    ante: formatNumber(nextLevel.ante),
+  }
+  storedTournament.blinds = [nextLevel.smallBlind, nextLevel.bigBlind, nextLevel.ante]
+    .map(formatNumber)
+    .join(' / ')
+  storedTournament.currentStack =
+    nextStack === null || nextStack === undefined ? null : formatNumber(nextStack)
+  storedTournament.currentBb =
+    nextStack != null && Number(nextLevel.bigBlind) > 0
+      ? Number((Number(nextStack) / Number(nextLevel.bigBlind)).toFixed(1))
+      : null
+  localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+  if (storedTournament.sessionId) {
+    const session = await fetchGameSession(storedTournament.sessionId)
+    await updateGameSession(storedTournament.sessionId, {
+      ...session,
+      currentLevel: storedTournament.currentLevel,
+      currentStack: nextStack,
+      currentSmallBlind: nextLevel.smallBlind,
+      currentBigBlind: nextLevel.bigBlind,
+      currentAnte: nextLevel.ante,
+    })
+  }
+  router.push({ name: 'tournament-running' })
 }
 
 const openHand = (handId) => {
-  router.push(`/app/tournament/running/level/${levelName.value}/hand/${handId}`)
+  router.push({
+    name: 'tournament-hand-detail',
+    params: { levelName: levelId.value, handId },
+    query: { levelName: levelName.value },
+  })
 }
 
 const startHandSelection = () => {
@@ -262,10 +630,21 @@ const handleHandClick = (handId) => {
     : [...selectedHandIds.value, handId]
 }
 
-const moveSelectedHands = () => {
-  hands.value = hands.value.filter((hand) => !selectedHandIds.value.includes(hand.id))
-  moveSheetOpen.value = false
-  cancelHandSelection()
+const moveSelectedHands = async (targetLevel) => {
+  if (!eventId.value || !targetLevel?.id || !selectedHandIds.value.length) return
+  try {
+    await handLogStore.moveHandsToBlindLevel(
+      eventId.value,
+      levelId.value,
+      selectedHandIds.value,
+      targetLevel.id,
+    )
+    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
+    moveSheetOpen.value = false
+    cancelHandSelection()
+  } catch {
+    alert.show('선택한 핸드를 이동하지 못했습니다.', 'error')
+  }
 }
 </script>
 
@@ -320,13 +699,48 @@ const moveSelectedHands = () => {
   gap: 16px;
 }
 
+.level-state-card,
+.hand-list__empty {
+  margin: 0;
+  padding: 28px 18px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #ffffff;
+  color: var(--v2-text-sub);
+  font-size: 13px;
+  text-align: center;
+}
+
+.hand-list__empty {
+  border: 0;
+  border-radius: 0;
+}
+
 .stack-card__item {
   min-width: 0;
 }
 
-.stack-card__item--blinds {
-  padding-top: 16px;
-  border-top: 1px solid var(--v2-border);
+.stack-card__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.stack-card__heading button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #817899;
+  display: grid;
+  place-items: center;
+}
+
+.stack-card__heading button:active {
+  color: var(--v2-primary);
 }
 
 .stack-card__item span {
@@ -345,18 +759,137 @@ const moveSelectedHands = () => {
 }
 
 .level-stats,
+.rank-distribution,
+.hand-groups,
 .hand-section {
   display: grid;
   gap: 12px;
 }
 
 .level-stats h2,
+.rank-distribution h2,
+.hand-groups h2,
 .hand-section h2 {
   margin: 0;
   color: var(--v2-text-main);
   font-size: 17px;
   font-weight: 560;
   line-height: 1.2;
+}
+
+.level-stats__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rank-distribution__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rank-distribution__heading > span {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  font-weight: 430;
+  white-space: nowrap;
+}
+
+.rank-distribution__card {
+  padding: 16px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
+}
+
+.rank-meter {
+  height: 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #f0edf5;
+  display: flex;
+}
+
+.rank-meter > span {
+  height: 100%;
+}
+
+.rank-distribution__list {
+  margin-top: 12px;
+  display: grid;
+}
+
+.rank-distribution__list > div {
+  min-height: 48px;
+  border-bottom: 1px solid var(--v2-border);
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) auto 36px;
+  align-items: center;
+  gap: 9px;
+}
+
+.rank-distribution__list > div:last-child {
+  border-bottom: 0;
+}
+
+.rank-distribution__list i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.rank-distribution__list span {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.rank-distribution__list strong {
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.rank-distribution__list small,
+.rank-distribution__list em {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  font-style: normal;
+}
+
+.rank-distribution__list b {
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.rank-distribution__list em {
+  text-align: right;
+}
+
+.rank-tone--premium {
+  background: #7143df;
+}
+
+.rank-tone--strong {
+  background: #2983d8;
+}
+
+.rank-tone--middle {
+  background: #159487;
+}
+
+.rank-tone--low {
+  background: #f58a0a;
+}
+
+.level-stats__heading > span {
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 430;
 }
 
 .hand-section__header {
@@ -444,14 +977,6 @@ const moveSelectedHands = () => {
   opacity: 0.4;
 }
 
-.stack-card__item--blinds strong {
-  overflow: hidden;
-  font-size: clamp(16px, 4.8vw, 20px);
-  letter-spacing: -0.35px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .level-stats__grid {
   overflow: hidden;
   border: 1px solid var(--v2-border);
@@ -463,7 +988,7 @@ const moveSelectedHands = () => {
 }
 
 .level-stats__grid div {
-  min-height: 72px;
+  min-height: 82px;
   padding: 12px 6px;
   border-right: 1px solid var(--v2-border);
   display: grid;
@@ -482,6 +1007,7 @@ const moveSelectedHands = () => {
   font-size: 12px;
   font-weight: 430;
   line-height: 1.2;
+  white-space: nowrap;
 }
 
 .level-stats__grid strong {
@@ -492,6 +1018,135 @@ const moveSelectedHands = () => {
   line-height: 1;
   -webkit-background-clip: text;
   background-clip: text;
+}
+
+.hand-groups__card {
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #ffffff;
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
+}
+
+.hand-group {
+  padding: 16px;
+  border-bottom: 1px solid var(--v2-border);
+}
+
+.hand-group:last-child {
+  border-bottom: 0;
+}
+
+.hand-group__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.hand-group__heading > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.hand-group__heading strong {
+  color: var(--v2-text-main);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.hand-group__heading span,
+.hand-group > p {
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.hand-group__heading b {
+  color: var(--v2-text-main);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.hand-group__items {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.hand-group__items > button {
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid var(--v2-border);
+  border-radius: 999px;
+  background: #ffffff;
+  color: var(--v2-text-main);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+}
+
+.hand-group__items > button.active {
+  border-color: var(--v2-primary);
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+}
+
+.hand-group__items small {
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 520;
+}
+
+.hand-group > p {
+  margin: 10px 0 0;
+}
+
+.hand-group__details {
+  margin-top: 12px;
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  background: #faf9fd;
+}
+
+.hand-group__details > button {
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: transparent;
+  color: var(--v2-text-main);
+  display: grid;
+  justify-items: start;
+  gap: 5px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.hand-group__details > button:last-child {
+  border-bottom: 0;
+}
+
+.hand-group__details > button:active {
+  background: var(--v2-primary-soft);
+}
+
+.hand-group__details strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hand-group__details span {
+  color: var(--v2-text-sub);
+  font-size: 12px;
 }
 
 .hand-list {
@@ -651,6 +1306,75 @@ const moveSelectedHands = () => {
   padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
   border-radius: 18px 18px 0 0;
   background: #ffffff;
+}
+
+.stack-sheet {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 10px 24px calc(24px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  display: grid;
+  gap: 20px;
+}
+
+.stack-sheet__handle {
+  width: 38px;
+  height: 5px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: #d4d0dc;
+}
+
+.stack-sheet h2 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 20px;
+  font-weight: 620;
+  text-align: center;
+}
+
+.stack-sheet label {
+  display: grid;
+  gap: 8px;
+}
+
+.stack-sheet label span {
+  color: var(--v2-text-main);
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.stack-sheet input {
+  width: 100%;
+  height: 54px;
+  padding: 0 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  outline: 0;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 18px;
+}
+
+.stack-sheet input:focus {
+  border-color: var(--v2-primary);
+}
+
+.stack-sheet > button {
+  width: 100%;
+  height: 52px;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  background: var(--v2-primary);
+  color: #ffffff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 620;
+}
+
+.stack-sheet > button:disabled {
+  opacity: 0.55;
 }
 
 .move-level-sheet__handle {

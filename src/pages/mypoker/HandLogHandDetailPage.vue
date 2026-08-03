@@ -380,7 +380,7 @@ const updateHand = async (payload) => {
     await handLogStore.updateHandInBlindLevel(eventId.value, levelId.value, handId.value, payload)
 
     editDialog.value = false
-    alert.show('핸드 기록을 수정했습니다.', 'positive')
+    alert.show('핸드 기록을 수정했습니다.', 'success')
   } catch (error) {
     console.error(error)
 
@@ -420,7 +420,7 @@ const moveHand = async () => {
     moveDialog.value = false
     targetBlindLevelId.value = null
 
-    alert.show('핸드를 다른 레벨로 이동했습니다.', 'positive')
+    alert.show('핸드를 다른 레벨로 이동했습니다.', 'success')
 
     router.replace(
       `/app/mypoker/hand-log/${eventId.value}/levels/${nextLevelId}/hands/${handId.value}`,
@@ -460,7 +460,7 @@ const deleteHand = async () => {
   try {
     await handLogStore.deleteHandFromBlindLevel(eventId.value, levelId.value, handId.value)
 
-    alert.show('핸드 기록을 삭제했습니다.', 'positive')
+    alert.show('핸드 기록을 삭제했습니다.', 'success')
     goBack()
   } catch (error) {
     console.error(error)

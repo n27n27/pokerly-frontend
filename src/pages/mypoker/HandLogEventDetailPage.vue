@@ -585,11 +585,11 @@ const saveLevel = async () => {
     if (isLevelEditMode.value) {
       await handLogStore.updateBlindLevelStructure(eventId.value, editingLevel.value.id, payload)
 
-      alert.show('레벨을 수정했습니다.', 'positive')
+      alert.show('레벨을 수정했습니다.', 'success')
     } else {
       await handLogStore.addBlindLevel(eventId.value, payload)
 
-      alert.show('레벨을 추가했습니다.', 'positive')
+      alert.show('레벨을 추가했습니다.', 'success')
     }
 
     closeLevelDialog()
@@ -643,7 +643,7 @@ const deleteLevel = async (level) => {
   try {
     await handLogStore.deleteBlindLevel(eventId.value, level.id)
 
-    alert.show('레벨을 삭제했습니다.', 'positive')
+    alert.show('레벨을 삭제했습니다.', 'success')
   } catch (error) {
     console.error(error)
 
@@ -673,7 +673,7 @@ const copyEventReviewText = async () => {
   try {
     await copyToClipboard(text)
 
-    alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'positive')
+    alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'success')
   } catch (error) {
     console.error(error)
 
@@ -792,7 +792,7 @@ const importBlindStructure = async () => {
     blindImportDialog.value = false
     selectedSourceEventId.value = null
 
-    alert.show('블라인드 구조를 불러왔습니다.', 'positive')
+    alert.show('블라인드 구조를 불러왔습니다.', 'success')
   } catch (error) {
     console.error(error)
 

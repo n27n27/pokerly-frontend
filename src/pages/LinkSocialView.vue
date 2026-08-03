@@ -98,7 +98,7 @@ const logout = async () => {
 
 const initGoogleLink = async () => {
   if (!GOOGLE_CLIENT_ID) {
-    alert.show('Google 로그인 설정이 누락되었습니다.', 'negative')
+    alert.show('Google 로그인 설정이 누락되었습니다.', 'error')
     return
   }
 
@@ -137,7 +137,7 @@ const initGoogleLink = async () => {
             return
           }
 
-          alert.show(message || '계정 연결에 실패했습니다.', 'negative')
+          alert.show(message || '계정 연결에 실패했습니다.', 'error')
         } finally {
           loading.value = null
         }
@@ -161,7 +161,7 @@ const initGoogleLink = async () => {
   } catch (e) {
     console.error(e)
     googleReady.value = false
-    alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'negative')
+    alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'error')
   }
 }
 

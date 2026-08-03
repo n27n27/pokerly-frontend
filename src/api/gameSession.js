@@ -10,6 +10,11 @@ export const updateGameSession = async (id, payload) => {
   return res.data.data
 }
 
+export const updateSimpleGameSession = async (id, payload) => {
+  const res = await api.put(`/game-sessions/${id}/simple-record`, payload)
+  return res.data.data
+}
+
 export const deleteGameSession = async (id) => {
   const res = await api.delete(`/game-sessions/${id}`)
   return res.data.data
@@ -17,13 +22,30 @@ export const deleteGameSession = async (id) => {
 
 export const fetchMonthlySessions = async (year, month) => {
   const res = await api.get('/game-sessions', {
-    params: { year, month },
+    params: { year, month, _: Date.now() },
   })
   return res.data.data
 }
 
 export const fetchGameSession = async (id) => {
   const res = await api.get(`/game-sessions/${id}`)
+  return res.data.data
+}
+
+export const fetchRecentGameSessions = async () => {
+  const res = await api.get('/game-sessions/recent')
+  return res.data.data
+}
+
+export const fetchRunningGameSession = async () => {
+  const res = await api.get('/game-sessions/running')
+  return res.data.data
+}
+
+export const fetchAllGameSessions = async () => {
+  const res = await api.get('/game-sessions/all', {
+    params: { _: Date.now() },
+  })
   return res.data.data
 }
 

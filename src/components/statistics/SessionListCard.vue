@@ -11,7 +11,7 @@
       <div class="text-caption text-grey-7">
         바인 {{ formatMoney(session.totalBuyIn) }}
         <span class="q-mx-xs">→</span>
-        프라이즈 {{ formatMoney(session.prize) }}
+        포인트 {{ formatMoney(session.prize) }}
       </div>
 
       <div class="text-body2 text-weight-bold" :class="profitClass">

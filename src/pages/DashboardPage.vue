@@ -165,7 +165,7 @@ const bestVenueInfo = computed(() => {
   if (prizeVenues.length > 0) {
     const bestPrize = prizeVenues.reduce((acc, cur) => (getPrize(cur) > getPrize(acc) ? cur : acc))
     return {
-      label: '가장 상금을 많이 받은 매장',
+      label: '가장 포인트를 많이 받은 매장',
       name: bestPrize.venueName,
     }
   }

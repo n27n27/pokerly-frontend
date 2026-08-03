@@ -136,6 +136,12 @@ const routes = [
         path: 'tournament/running/level/:levelName/hand/:handId/edit',
         name: 'tournament-hand-edit',
         meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentHandRecordPage.vue'),
+      },
+      {
+        path: 'tournament/running/level/:levelName/hand/:handId/review',
+        name: 'tournament-hand-review-edit',
+        meta: { hideHeader: true },
         component: () => import('src/features/tournament/pages/TournamentHandEditPage.vue'),
       },
       {

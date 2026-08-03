@@ -30,52 +30,112 @@
 
       <div class="form-field">
         <div class="form-label">장소 <span>선택</span></div>
-        <button class="select-field" type="button" @click="venueOpen = !venueOpen">
-          <span>{{ selectedVenue }}</span>
+        <button
+          v-if="venues.length"
+          class="select-field"
+          type="button"
+          @click="venueOpen = !venueOpen"
+        >
+          <span>{{ selectedVenue?.name || '장소를 선택하세요' }}</span>
           <q-icon name="expand_more" size="24px" />
         </button>
-        <div v-if="venueOpen" class="venue-list">
+        <div v-if="venues.length && venueOpen" class="venue-list">
           <button
             v-for="venue in venues"
-            :key="venue"
+            :key="venue.id"
             type="button"
             class="venue-list__item"
             @click="selectVenue(venue)"
           >
-            <span>{{ venue }}</span>
-            <q-icon v-if="selectedVenue === venue" name="check" size="22px" />
+            <span>{{ venue.name }}</span>
+            <q-icon v-if="selectedVenue?.id === venue.id" name="check" size="22px" />
           </button>
           <button class="venue-list__add" type="button" @click="showVenueSheet = true">
             <q-icon name="add" size="20px" />
             <span>새 장소 추가</span>
           </button>
         </div>
-      </div>
 
-      <div class="venue-empty">
-        <q-icon name="location_on" size="36px" />
-        <p>등록된 장소가 없습니다.</p>
-        <button type="button" @click="showVenueSheet = true">
-          <q-icon name="add" size="18px" />
-          장소 추가
-        </button>
+        <div v-if="!venueLoading && venues.length === 0" class="venue-empty">
+          <q-icon name="location_on" size="36px" />
+          <p>등록된 장소가 없습니다.</p>
+          <button type="button" @click="showVenueSheet = true">
+            <q-icon name="add" size="18px" />
+            장소 추가
+          </button>
+        </div>
+        <div v-else-if="venueLoading" class="venue-loading">장소를 불러오는 중...</div>
       </div>
 
       <div class="form-field">
         <label class="form-label" for="startingStack">시작 스택 <span>선택</span></label>
         <div class="text-field text-field--currency">
-          <input id="startingStack" v-model="form.startingStack" inputmode="numeric" placeholder="예) 60,000" />
+          <input
+            id="startingStack"
+            :value="form.startingStack"
+            inputmode="numeric"
+            placeholder="예) 60,000"
+            @input="updateNumberField('startingStack', $event)"
+          />
           <span>칩</span>
         </div>
-        <p class="field-help">대회 시작 시 지급되는 기본 스택입니다.</p>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label" for="startLevel">시작 레벨 <span>필수</span></label>
+        <div class="text-field text-field--currency">
+          <input id="startLevel" v-model="form.startLevel" inputmode="numeric" placeholder="예) 1" />
+          <span>Level</span>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <div class="form-label">시작 블라인드 · 앤티 <span>필수</span></div>
+        <div class="blind-fields">
+          <label class="blind-field">
+            <span>SB</span>
+            <input
+              :value="form.smallBlind"
+              inputmode="numeric"
+              placeholder="100"
+              @input="updateNumberField('smallBlind', $event)"
+            />
+          </label>
+          <label class="blind-field">
+            <span>BB</span>
+            <input
+              :value="form.bigBlind"
+              inputmode="numeric"
+              placeholder="200"
+              @input="updateBigBlind"
+            />
+          </label>
+          <label class="blind-field">
+            <span>Ante</span>
+            <input
+              :value="form.ante"
+              inputmode="numeric"
+              placeholder="200"
+              @input="updateAnte"
+            />
+          </label>
+        </div>
+        <div v-if="anteManuallyEdited" class="ante-help">
+          <button type="button" @click="syncAnteWithBigBlind">BB와 동일</button>
+        </div>
       </div>
 
       <div class="form-field">
         <label class="form-label" for="buyIn">바인 금액 <span>선택</span></label>
         <div class="text-field text-field--currency">
-          <input id="buyIn" v-model="form.buyIn" inputmode="numeric" placeholder="예) 100,000" />
+          <input
+            id="buyIn"
+            :value="form.buyIn"
+            inputmode="numeric"
+            placeholder="예) 100,000"
+            @input="updateNumberField('buyIn', $event)"
+          />
         </div>
-        <p class="field-help">바인 금액 또는 엔트리 비용을 입력하세요.</p>
       </div>
 
     </form>
@@ -103,30 +163,47 @@
 
         <div class="venue-sheet__actions">
           <AppButton label="취소" variant="secondary" block @click="showVenueSheet = false" />
-          <AppButton label="추가" block @click="addVenue" />
+          <AppButton label="추가" block :loading="venueSaving" @click="addVenue" />
         </div>
       </div>
     </q-dialog>
-    <StickyPrimaryAction label="대회 생성" @click="submitTournament" />
+    <StickyPrimaryAction label="대회 생성" :loading="submitting" loading-label="생성 중..." @click="submitTournament" />
   </q-page>
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 
 import AppButton from 'src/shared/components/AppButton.vue'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { useAlert } from 'src/composables/useAlert'
+import { useHandLogStore } from 'src/stores/handLog'
+import { useVenueStore } from 'src/stores/venue'
+import { createGameSession } from 'src/api/gameSession'
+import { deleteHandLogEvent } from 'src/api/handLogApi'
+import { formatLocalDate } from 'src/utils/localDate'
 
 const router = useRouter()
-const venueOpen = ref(true)
+const alert = useAlert()
+const handLogStore = useHandLogStore()
+const venueStore = useVenueStore()
+const { venues, loading: venueLoading } = storeToRefs(venueStore)
+const venueOpen = ref(false)
 const showVenueSheet = ref(false)
-const venues = ref(['Prime 강남', 'Royce 잠실', 'Ati 홍대', 'Mango 신촌'])
-const selectedVenue = ref('Prime 강남')
+const venueSaving = ref(false)
+const selectedVenue = ref(null)
+const anteManuallyEdited = ref(false)
+const submitting = ref(false)
 
 const form = reactive({
   name: '',
   startingStack: '',
+  startLevel: '1',
+  smallBlind: '100',
+  bigBlind: '200',
+  ante: '200',
   buyIn: '',
 })
 
@@ -140,19 +217,175 @@ const selectVenue = (venue) => {
   venueOpen.value = false
 }
 
-const addVenue = () => {
-  if (!venueForm.name.trim()) return
-
-  venues.value.push(venueForm.name.trim())
-  selectedVenue.value = venueForm.name.trim()
-  venueForm.name = ''
-  venueForm.area = ''
-  showVenueSheet.value = false
-  venueOpen.value = false
+const formatNumber = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? Number(digits).toLocaleString('ko-KR') : ''
 }
 
-const submitTournament = () => {
-  router.push('/app/tournament/start')
+const updateNumberField = (field, event) => {
+  form[field] = formatNumber(event.target.value)
+}
+
+const updateBigBlind = (event) => {
+  form.bigBlind = formatNumber(event.target.value)
+  if (!anteManuallyEdited.value) {
+    form.ante = form.bigBlind
+  }
+}
+
+const updateAnte = (event) => {
+  form.ante = formatNumber(event.target.value)
+  anteManuallyEdited.value = true
+}
+
+const syncAnteWithBigBlind = () => {
+  form.ante = form.bigBlind
+  anteManuallyEdited.value = false
+}
+
+const addVenue = async () => {
+  if (!venueForm.name.trim()) return
+  if (venueSaving.value) return
+
+  venueSaving.value = true
+  try {
+    const created = await venueStore.addVenue({
+      name: venueForm.name.trim(),
+      location: venueForm.area.trim(),
+      notes: '',
+      pointBalance: 0,
+    })
+    selectedVenue.value = created
+    venueForm.name = ''
+    venueForm.area = ''
+    showVenueSheet.value = false
+    venueOpen.value = false
+  } catch {
+    alert.show('장소 등록 중 오류가 발생했습니다.', 'error')
+  } finally {
+    venueSaving.value = false
+  }
+}
+
+onMounted(async () => {
+  try {
+    await venueStore.loadVenues()
+    selectedVenue.value = venues.value[0] || null
+  } catch {
+    alert.show('장소 목록을 불러오지 못했습니다.', 'error')
+  }
+})
+
+const parseNumber = (value) => {
+  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  if (!normalized) return null
+  const number = Number(normalized)
+  return Number.isFinite(number) ? number : null
+}
+
+const submitTournament = async () => {
+  if (submitting.value) return
+  if (!form.name.trim()) {
+    alert.show('대회명을 입력해 주세요.', 'warning')
+    return
+  }
+  if (!form.smallBlind || !form.bigBlind || !form.ante) {
+    alert.show('시작 블라인드와 앤티를 입력해 주세요.', 'warning')
+    return
+  }
+
+  const levelNumber = String(form.startLevel).replace(/\D/g, '') || '1'
+  const startLevel = `L${levelNumber}`
+  const startBlinds = {
+    smallBlind: form.smallBlind || null,
+    bigBlind: form.bigBlind || null,
+    ante: form.ante || null,
+  }
+  const runningTournament = {
+    name: form.name.trim() || '이름 없는 토너먼트',
+    venueId: selectedVenue.value?.id || null,
+    venueName: selectedVenue.value?.name || '',
+    startLevel,
+    currentLevel: startLevel,
+    startBlinds,
+    currentBlinds: { ...startBlinds },
+    startingStack: form.startingStack || null,
+    currentStack: form.startingStack || null,
+    averageStack: null,
+    buyIn: form.buyIn || null,
+    totalBuyIns: 1,
+    blinds:
+      startBlinds.smallBlind && startBlinds.bigBlind
+        ? `${startBlinds.smallBlind} / ${startBlinds.bigBlind}${startBlinds.ante ? ` (${startBlinds.ante})` : ''}`
+        : null,
+    currentBb: null,
+    averageBb: null,
+  }
+
+  let createdEventId = null
+  submitting.value = true
+  try {
+    const eventId = await handLogStore.createEvent({
+      name: runningTournament.name,
+      startingStack: parseNumber(form.startingStack),
+    })
+    if (!eventId) throw new Error('이벤트 생성에 실패했습니다.')
+    createdEventId = eventId
+
+    const firstLevel = await handLogStore.addBlindLevel(eventId, {
+      levelNo: Number(levelNumber),
+      smallBlind: parseNumber(form.smallBlind),
+      bigBlind: parseNumber(form.bigBlind),
+      ante: parseNumber(form.ante),
+      startStack: parseNumber(form.startingStack),
+      endStack: parseNumber(form.startingStack),
+    })
+    if (!firstLevel) throw new Error('시작 레벨 생성에 실패했습니다.')
+
+    runningTournament.eventId = eventId
+    runningTournament.currentBlindLevelId = firstLevel.id
+    const session = await createGameSession({
+      venueId: runningTournament.venueId,
+      playDate: formatLocalDate(),
+      sessionType: runningTournament.venueId ? 'VENUE' : 'OTHER',
+      gameType: 'TOURNAMENT',
+      tournamentName: runningTournament.name,
+      tournamentResult: null,
+      startLevel,
+      currentLevel: startLevel,
+      buyInPerEntry: parseNumber(form.buyIn),
+      entries: 1,
+      discount: 0,
+      prize: 0,
+      satelliteAwarded: false,
+      satelliteName: null,
+      notes: '',
+      gtdAmount: null,
+      fieldEntries: null,
+      isCollab: false,
+      collabLabel: null,
+      handLogEventId: eventId,
+      tournamentStatus: 'RUNNING',
+      startingStack: parseNumber(form.startingStack),
+      currentStack: parseNumber(form.startingStack),
+      averageStack: null,
+      currentSmallBlind: parseNumber(form.smallBlind),
+      currentBigBlind: parseNumber(form.bigBlind),
+      currentAnte: parseNumber(form.ante),
+      finalRank: null,
+    })
+    runningTournament.sessionId = session.id
+    localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+    router.push({
+      path: '/app/home',
+      query: { running: '1' },
+    })
+  } catch {
+    if (createdEventId) await deleteHandLogEvent(createdEventId).catch(() => null)
+    alert.show('토너먼트를 생성하지 못했습니다.', 'error')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -338,6 +571,16 @@ const submitTournament = () => {
   gap: 10px;
 }
 
+.venue-loading {
+  min-height: 72px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  color: var(--v2-text-sub);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
 .venue-empty .q-icon {
   color: var(--v2-primary);
 }
@@ -364,12 +607,61 @@ const submitTournament = () => {
   font-weight: 520;
 }
 
-.field-help {
-  margin: 0;
+.blind-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.blind-field {
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px 10px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  background: #ffffff;
+  display: grid;
+  gap: 5px;
+}
+
+.blind-field:focus-within {
+  border-color: rgba(109, 69, 232, 0.45);
+}
+
+.blind-field span {
   color: var(--v2-text-sub);
-  font-size: 12px;
-  font-weight: 430;
-  line-height: 1.45;
+  font-size: 10px;
+  font-weight: 520;
+}
+
+.blind-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 520;
+}
+
+.ante-help {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.ante-help button {
+  flex: 0 0 auto;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-primary);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 560;
 }
 
 .create-info {
@@ -378,9 +670,9 @@ const submitTournament = () => {
   background: var(--v2-primary-soft);
   color: var(--v2-text-main);
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr);
-  align-items: start;
-  gap: 10px;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
 }
 
 .create-info .q-icon {

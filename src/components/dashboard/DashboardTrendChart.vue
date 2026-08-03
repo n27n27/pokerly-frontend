@@ -25,7 +25,7 @@ const series = computed(() => [
     data: props.last6Months.map((m) => m.totalBuyIn),
   },
   {
-    name: '프라이즈',
+    name: '포인트',
     data: props.last6Months.map((m) => m.totalPrize),
   },
 ])

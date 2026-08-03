@@ -1,7 +1,7 @@
 <template>
   <q-page class="icm-page">
     <header class="calc-topbar">
-      <h1>ICM 찹 계산기</h1>
+      <h1>찹 계산기</h1>
     </header>
 
     <section class="player-count-card">
@@ -18,9 +18,21 @@
           <h2>플레이어 스택 입력</h2>
           <span>단위: 칩</span>
         </div>
+        <div class="player-input-head" aria-hidden="true">
+          <span></span>
+          <span>닉네임</span>
+          <span>현재 스택</span>
+        </div>
         <label v-for="(player, index) in players" :key="player.id" class="data-row">
-          <span><b>{{ index + 1 }}</b>{{ player.name }}</span>
-          <input v-model.number="player.stack" type="number" inputmode="numeric" />
+          <b>{{ index + 1 }}</b>
+          <input
+            v-model.trim="player.name"
+            class="name-input"
+            type="text"
+            :placeholder="index === 0 ? '내 닉네임' : `Player ${index + 1}`"
+            :aria-label="`${index + 1}번 플레이어 닉네임`"
+          />
+          <input v-model.number="player.stack" type="number" inputmode="numeric" :aria-label="`${player.name || `${index + 1}번 플레이어`} 현재 스택`" @focus="selectInputText" />
         </label>
         <div class="total-line">
           <span>총 스택 합계</span>
@@ -34,46 +46,77 @@
         </div>
         <label v-for="(prize, index) in prizes" :key="index" class="data-row">
           <span>{{ index + 1 }}등</span>
-          <input v-model.number="prizes[index]" type="number" inputmode="numeric" />
+          <input v-model.number="prizes[index]" type="number" inputmode="numeric" :aria-label="`${index + 1}등 지급액`" @focus="selectInputText" />
         </label>
         <div class="total-line">
-          <span>총 상금 합계</span>
+          <span>총 포인트 합계</span>
           <strong>{{ formatNumber(totalPrizes) }}</strong>
         </div>
       </div>
     </section>
 
-    <StickyPrimaryAction label="ICM 찹 계산하기" icon="calculate" @click="calculate" />
+    <section class="panel method-panel">
+      <div class="panel-header">
+        <h2>계산 방식</h2>
+      </div>
+      <div class="method-segment" role="radiogroup" aria-label="찹 계산 방식">
+        <button
+          v-for="method in chopMethods"
+          :key="method.value"
+          type="button"
+          role="radio"
+          :aria-checked="chopMethod === method.value"
+          :class="{ active: chopMethod === method.value }"
+          @click="chopMethod = method.value"
+        >
+          {{ method.label }}
+        </button>
+      </div>
+      <p>{{ activeMethod.description }}</p>
+    </section>
+
+    <StickyPrimaryAction label="찹 계산하기" icon="calculate" @click="calculate" />
 
     <section v-if="results.length" class="panel result-panel">
       <div class="panel-header">
-        <h2>ICM 계산 결과</h2>
+        <h2>{{ activeMethod.label }} 결과</h2>
       </div>
 
-      <div class="icm-table">
-        <div class="icm-table__head">
-          <span>순위</span>
-          <span>플레이어</span>
-          <span>현재 스택</span>
-          <span>스택 비율</span>
-          <span>ICM 총금액</span>
-          <span>차이</span>
-        </div>
-        <div v-for="row in results" :key="row.id">
-          <span>{{ row.rank }}</span>
-          <strong>{{ row.name }}</strong>
-          <span>{{ formatNumber(row.stack) }}</span>
-          <span>{{ row.stackShare }}%</span>
-          <b>{{ formatNumber(row.icmValue) }}</b>
-          <em :class="{ positive: row.diff >= 0 }">{{ row.diff >= 0 ? '+' : '' }}{{ formatNumber(row.diff) }}</em>
-        </div>
+      <div v-if="chopMethod === 'equal'" class="equal-result">
+        <span>1인당 균등 찹 금액</span>
+        <strong>{{ formatNumber(totalPrizes / Math.max(players.length, 1)) }}</strong>
+        <dl>
+          <div><dt>플레이어</dt><dd>{{ players.length }}명</dd></div>
+          <div><dt>총 포인트</dt><dd>{{ formatNumber(totalPrizes) }}</dd></div>
+        </dl>
+      </div>
+
+      <div v-else class="icm-results">
+        <article v-for="row in results" :key="row.id" class="icm-result-row">
+          <span class="result-rank">{{ row.rank }}</span>
+          <div class="result-player">
+            <strong>{{ row.name || `${row.seat}번 플레이어` }}</strong>
+            <span>스택 {{ formatNumber(row.stack) }} · {{ row.stackShare }}%</span>
+          </div>
+          <div class="result-value">
+            <small>{{ activeMethod.label }} 금액</small>
+            <b>{{ formatNumber(selectedChopValue(row)) }}</b>
+            <em
+              v-for="comparison in comparisonValues(row)"
+              :key="comparison.label"
+              :class="differenceClass(comparison.diff)"
+            >
+              {{ comparison.label }} {{ formatNumber(comparison.value) }} · {{ formatDifference(comparison.diff) }}
+            </em>
+          </div>
+        </article>
       </div>
 
       <p class="success-note">
         <q-icon name="check_circle" size="17px" />
-        ICM 찹 금액의 합계는 총 상금과 일치합니다.
+        {{ activeMethod.label }} 금액의 합계는 총 포인트와 일치합니다.
       </p>
-      <p class="muted-note">ICM(Independent Chip Model) 기준으로 계산된 값입니다.</p>
+      <p class="muted-note">{{ activeMethod.description }}</p>
     </section>
   </q-page>
 </template>
@@ -87,13 +130,20 @@ let nextId = 5
 
 const players = reactive([
   { id: 1, name: 'Hero (나)', stack: 350000 },
-  { id: 2, name: 'Player 2', stack: 420000 },
-  { id: 3, name: 'Player 3', stack: 280000 },
-  { id: 4, name: 'Player 4', stack: 560000 },
+  { id: 2, name: '', stack: 420000 },
+  { id: 3, name: '', stack: 280000 },
+  { id: 4, name: '', stack: 560000 },
 ])
 
 const prizes = reactive([1000000, 600000, 400000, 250000])
 const results = ref([])
+const chopMethod = ref('icm')
+const chopMethods = [
+  { value: 'icm', label: 'ICM 찹', description: '각 플레이어의 모든 최종 순위 확률과 지급 구조를 반영합니다.' },
+  { value: 'chip', label: '칩 비율 찹', description: '남은 총 포인트를 현재 보유 칩 비율대로 나눕니다.' },
+  { value: 'equal', label: '균등 찹', description: '남은 총 포인트를 플레이어 수대로 동일하게 나눕니다.' },
+]
+const activeMethod = computed(() => chopMethods.find((method) => method.value === chopMethod.value))
 
 const totalStacks = computed(() => players.reduce((sum, player) => sum + Number(player.stack || 0), 0))
 const totalPrizes = computed(() => prizes.reduce((sum, prize) => sum + Number(prize || 0), 0))
@@ -114,33 +164,66 @@ const calculateFinishProbabilities = (remainingPlayers, remainingPlaces, probabi
   })
 }
 
+const allocateRoundedTotal = (values, total) => {
+  const roundedTotal = Math.round(total)
+  const allocated = values.map((value) => Math.floor(value))
+  let remainder = roundedTotal - allocated.reduce((sum, value) => sum + value, 0)
+  const fractionalOrder = values
+    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
+    .sort((a, b) => b.fraction - a.fraction)
+
+  for (let index = 0; index < remainder; index += 1) {
+    allocated[fractionalOrder[index % fractionalOrder.length].index] += 1
+  }
+  return allocated
+}
+
 const calculate = () => {
   const probabilities = Object.fromEntries(players.map((player) => [player.id, Array(players.length).fill(0)]))
   calculateFinishProbabilities([...players], players.map((_, index) => index), 1, probabilities)
 
   const chipEvPerChip = totalPrizes.value / Math.max(totalStacks.value, 1)
+  const stackRanks = new Map(
+    [...players]
+      .sort((a, b) => Number(b.stack || 0) - Number(a.stack || 0))
+      .map((player, index) => [player.id, index + 1]),
+  )
 
-  results.value = players
-    .map((player) => {
+  const rawResults = players.map((player, playerIndex) => {
       const icmValue = probabilities[player.id].reduce((sum, probability, placeIndex) => {
         return sum + probability * Number(prizes[placeIndex] || 0)
       }, 0)
-      const chipEv = Number(player.stack || 0) * chipEvPerChip
+      const chipChopValue = Number(player.stack || 0) * chipEvPerChip
+      const stackRank = stackRanks.get(player.id)
+      const currentRankPrize = Number(prizes[stackRank - 1] || 0)
       return {
         ...player,
-        rank: 0,
+        seat: playerIndex + 1,
+        rank: stackRank,
         stackShare: ((Number(player.stack || 0) / Math.max(totalStacks.value, 1)) * 100).toFixed(2),
-        icmValue: Math.round(icmValue),
-        diff: Math.round(icmValue - chipEv),
+        icmValue,
+        chipChopValue,
+        equalChopValue: totalPrizes.value / Math.max(players.length, 1),
+        currentRankPrize,
       }
     })
-    .sort((a, b) => b.icmValue - a.icmValue)
-    .map((row, index) => ({ ...row, rank: index + 1 }))
+  const icmValues = allocateRoundedTotal(rawResults.map((row) => row.icmValue), totalPrizes.value)
+  const chipChopValues = allocateRoundedTotal(rawResults.map((row) => row.chipChopValue), totalPrizes.value)
+  const equalChopValues = allocateRoundedTotal(rawResults.map((row) => row.equalChopValue), totalPrizes.value)
+
+  results.value = rawResults
+    .map((row, index) => ({
+      ...row,
+      icmValue: icmValues[index],
+      chipChopValue: chipChopValues[index],
+      equalChopValue: equalChopValues[index],
+    }))
+    .sort((a, b) => a.rank - b.rank)
 }
 
 const adjustCount = (amount) => {
   if (amount > 0 && players.length < 15) {
-    players.push({ id: nextId, name: `Player ${nextId}`, stack: 250000 })
+    players.push({ id: nextId, name: '', stack: 250000 })
     prizes.push(Math.max(0, Number(prizes[prizes.length - 1] || 0) - 50000))
     nextId += 1
   }
@@ -153,6 +236,30 @@ const adjustCount = (amount) => {
 }
 
 const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('ko-KR')
+const formatDifference = (value) => `${value >= 0 ? '+' : ''}${formatNumber(value)}`
+const differenceClass = (value) => ({ positive: value > 0, negative: value < 0 })
+const selectedChopValue = (row) => ({
+  icm: row.icmValue,
+  chip: row.chipChopValue,
+  equal: row.equalChopValue,
+})[chopMethod.value]
+const comparisonValues = (row) => {
+  if (chopMethod.value === 'equal') return []
+  const selectedValue = selectedChopValue(row)
+  return [
+    { key: 'icm', label: 'ICM 찹', value: row.icmValue },
+    { key: 'chip', label: '칩 비율 찹', value: row.chipChopValue },
+  ]
+    .filter((comparison) => comparison.key !== chopMethod.value)
+    .map((comparison) => ({ ...comparison, diff: selectedValue - comparison.value }))
+    .concat({
+      key: 'payout',
+      label: '현재 순위 상금',
+      value: row.currentRankPrize,
+      diff: selectedValue - row.currentRankPrize,
+    })
+}
+const selectInputText = (event) => event.currentTarget.select()
 
 </script>
 
@@ -242,23 +349,24 @@ const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('k
 
 .dual-panel {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 8px;
 }
 
 .data-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
+  grid-template-columns: 22px minmax(92px, 1fr) minmax(120px, 180px);
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
-.data-row span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: #4f4a5e;
-  font-size: 12px;
+.player-input-head {
+  display: grid;
+  grid-template-columns: 22px minmax(92px, 1fr) minmax(120px, 180px);
+  gap: 8px;
+  padding: 0 9px;
+  color: var(--v2-text-sub);
+  font-size: 10px;
 }
 
 .data-row b {
@@ -285,6 +393,10 @@ const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('k
   text-align: right;
 }
 
+.data-row .name-input {
+  text-align: left;
+}
+
 .total-line {
   display: flex;
   justify-content: space-between;
@@ -296,52 +408,168 @@ const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('k
   font-weight: 560;
 }
 
-.icm-table {
-  overflow-x: auto;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-md);
-}
-
-.icm-table__head,
-.icm-table > div:not(.icm-table__head) {
-  min-width: 560px;
-  display: grid;
-  grid-template-columns: 46px 1fr 1fr 1fr 1fr 1fr;
-}
-
-.icm-table span,
-.icm-table strong,
-.icm-table b,
-.icm-table em {
-  min-height: 36px;
-  padding: 8px;
-  border-right: 1px solid var(--v2-border);
-  border-bottom: 1px solid var(--v2-border);
-  color: #4f4a5e;
-  font-size: 11px;
-  font-style: normal;
-}
-
-.icm-table__head span {
-  background: #faf9fc;
+.method-panel p {
+  margin: 0;
   color: var(--v2-text-sub);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.method-segment {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 3px;
+  border-radius: var(--v2-radius-md);
+  background: #f1eff6;
+}
+
+.method-segment button {
+  min-height: 36px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: var(--v2-radius-sm);
+  background: transparent;
+  color: var(--v2-text-sub);
+  font: inherit;
+  font-size: 11px;
   font-weight: 520;
 }
 
-.icm-table > div:last-child span,
-.icm-table > div:last-child strong,
-.icm-table > div:last-child b,
-.icm-table > div:last-child em {
+.method-segment button.active {
+  background: #ffffff;
+  color: var(--v2-primary);
+  box-shadow: 0 2px 7px rgba(35, 28, 54, 0.08);
+  font-weight: 620;
+}
+
+.icm-results {
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  overflow: hidden;
+}
+
+.equal-result {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 20px 14px 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  text-align: center;
+}
+
+.equal-result > span {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+}
+
+.equal-result > strong {
+  color: var(--v2-primary);
+  font-size: 24px;
+  font-weight: 650;
+}
+
+.equal-result dl {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 1fr 1fr;
+  margin: 8px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--v2-border);
+}
+
+.equal-result dl > div {
+  display: grid;
+  gap: 4px;
+}
+
+.equal-result dl > div + div {
+  border-left: 1px solid var(--v2-border);
+}
+
+.equal-result dt,
+.equal-result dd {
+  margin: 0;
+}
+
+.equal-result dt {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+}
+
+.equal-result dd {
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 580;
+}
+
+.icm-result-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) minmax(150px, 55%);
+  align-items: center;
+  gap: 10px;
+  min-height: 66px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--v2-border);
+}
+
+.icm-result-row:last-child {
   border-bottom: 0;
 }
 
-.icm-table b {
+.result-rank {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--v2-primary-soft);
   color: var(--v2-primary);
-  font-weight: 560;
+  font-size: 11px;
+  font-weight: 650;
 }
 
-.icm-table em.positive {
+.result-player,
+.result-value {
+  display: grid;
+  gap: 4px;
+}
+
+.result-player strong {
+  overflow: hidden;
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.result-player span,
+.result-value small,
+.result-value em {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  font-style: normal;
+}
+
+.result-value {
+  justify-items: end;
+  min-width: 0;
+  text-align: right;
+}
+
+.result-value b {
+  color: var(--v2-primary);
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.result-value em.positive {
   color: var(--v2-success);
+}
+
+.result-value em.negative {
+  color: var(--v2-danger);
 }
 
 .success-note,
@@ -366,9 +594,13 @@ const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('k
   color: var(--v2-text-sub);
 }
 
-@media (max-width: 420px) {
-  .dual-panel {
-    grid-template-columns: 1fr;
+@media (max-width: 360px) {
+  .data-row {
+    grid-template-columns: 20px minmax(82px, 1fr) 116px;
+  }
+
+  .player-input-head {
+    grid-template-columns: 20px minmax(82px, 1fr) 116px;
   }
 }
 </style>

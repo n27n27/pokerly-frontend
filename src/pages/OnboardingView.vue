@@ -231,7 +231,7 @@ const usageModes = [
     title: '뱅크 관리 모드',
     description: '수입과 지출, 대회 결과를 간편하게 관리합니다.',
     features: [
-      { icon: 'account_balance_wallet', label: '빠른 결과 기록', description: '참가비·리바인·상금을 간편하게 입력' },
+      { icon: 'account_balance_wallet', label: '빠른 결과 기록', description: '참가비·리바인·포인트를 간편하게 입력' },
       { icon: 'trending_up', label: '수익 관리', description: 'ROI와 손익 흐름을 한눈에 확인' },
     ],
   },
@@ -242,7 +242,7 @@ const usageModes = [
     features: [
       { icon: 'edit_note', label: '핸드 기록', description: '플레이한 주요 핸드를 빠르게 기록' },
       { icon: 'query_stats', label: '통계 분석', description: '포지션과 프리플랍 데이터를 분석' },
-      { icon: 'account_balance', label: '뱅크 관리', description: '참가비와 상금, 수익까지 함께 관리' },
+      { icon: 'account_balance', label: '뱅크 관리', description: '참가비와 포인트, 수익까지 함께 관리' },
     ],
   },
 ]
@@ -305,6 +305,7 @@ const confirmMode = async () => {
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
         termsAgreed: true,
         privacyAgreed: true,
+        marketingAgreed: marketingAgreed.value,
         recordMode: recordMode.value,
       })
     } else {

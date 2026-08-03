@@ -8,6 +8,16 @@
       <span aria-hidden="true"></span>
     </header>
 
+    <section class="feature-summary" aria-labelledby="feature-summary-title">
+      <h2 id="feature-summary-title">이번 대회 특징</h2>
+      <div class="feature-card">
+        <ul v-if="tournamentFeatures.length">
+          <li v-for="feature in tournamentFeatures" :key="feature">{{ feature }}</li>
+        </ul>
+        <p v-else>아직 요약할 핸드 기록이 없습니다.</p>
+      </div>
+    </section>
+
     <section class="kpi-grid" aria-label="핵심 지표">
       <div v-for="metric in metrics" :key="metric.label">
         <span>{{ metric.label }}</span>
@@ -31,61 +41,210 @@
       <h2>포지션별 참여율</h2>
       <div class="data-table position-table">
         <div class="table-head">
-          <span>포지션</span><span>VPIP</span><span>PFR</span><span>3Bet</span>
+          <span>포지션</span><span>VPIP</span><span>PFR</span><span>승률</span>
         </div>
         <div v-for="row in positions" :key="row.position">
-          <strong>{{ row.position }}</strong><span>{{ row.vpip }}</span><span>{{ row.pfr }}</span><span>{{ row.threeBet }}</span>
+          <strong>{{ row.position }}</strong><span>{{ row.vpip }}</span><span>{{ row.pfr }}</span><span>{{ row.winRate }}</span>
         </div>
       </div>
     </section>
 
-    <section class="stats-section">
-      <h2>핸드 순위 분포</h2>
-      <div class="data-table rank-table">
-        <div class="table-head"><span>구간</span><span>비율</span><span>핸드 수</span></div>
-        <div v-for="row in ranks" :key="row.label">
-          <strong>{{ row.label }}</strong><span>{{ row.rate }}</span><span>{{ row.count }}개</span>
-        </div>
-      </div>
-    </section>
   </q-page>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+import { fetchGameSession } from 'src/api/gameSession'
+import { useAlert } from 'src/composables/useAlert'
+import { useHandLogStore } from 'src/stores/handLog'
+import {
+  THREE_BET_PLUS_ACTIONS,
+  isPfrAction,
+  isVpipAction,
+  normalizeHand,
+} from 'src/utils/handLogHandAnalysis'
+
+const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
+const handLogStore = useHandLogStore()
+const tournamentId = computed(() => route.params.tournamentId)
+const session = ref(null)
+const eventId = computed(() => session.value?.handLogEventId || null)
+const event = computed(() =>
+  String(handLogStore.selectedEvent?.id) === String(eventId.value)
+    ? handLogStore.selectedEvent
+    : null,
+)
+const allHands = computed(() =>
+  (event.value?.blindLevels || []).flatMap((level) => level.hands || []),
+)
 
-const metrics = [
-  { label: 'VPIP', value: '23%' },
-  { label: 'PFR', value: '17%' },
-  { label: '3Bet', value: '8%' },
-  { label: '참여 핸드 수', value: '29' },
-]
+const metrics = computed(() => {
+  const hands = allHands.value
+  const total = hands.length
+  const vpipCount = hands.filter((hand) =>
+    isVpipAction(hand.actionType || hand.preflopAction || ''),
+  ).length
+  const pfrCount = hands.filter((hand) =>
+    isPfrAction(hand.actionType || hand.preflopAction || ''),
+  ).length
+  const threeBetCount = hands.filter((hand) =>
+    THREE_BET_PLUS_ACTIONS.has(hand.actionType || hand.preflopAction || ''),
+  ).length
 
-const actions = [
-  { label: '폴드', rate: '45%', count: 56 },
-  { label: '콜', rate: '19%', count: 24 },
-  { label: '오픈', rate: '28%', count: 35 },
-  { label: '3Bet+', rate: '8%', count: 10 },
-]
+  return [
+    { label: 'VPIP', value: formatRate(vpipCount, total) },
+    { label: 'PFR', value: formatRate(pfrCount, total) },
+    { label: '3Bet', value: formatRate(threeBetCount, total) },
+    { label: '참여 핸드 수', value: String(vpipCount) },
+  ]
+})
 
-const positions = [
-  { position: 'UTG', vpip: '14%', pfr: '10%', threeBet: '3%' },
-  { position: 'MP', vpip: '16%', pfr: '12%', threeBet: '4%' },
-  { position: 'HJ', vpip: '18%', pfr: '14%', threeBet: '5%' },
-  { position: 'CO', vpip: '26%', pfr: '21%', threeBet: '9%' },
-  { position: 'BTN', vpip: '31%', pfr: '25%', threeBet: '11%' },
-  { position: 'SB', vpip: '24%', pfr: '18%', threeBet: '7%' },
-  { position: 'BB', vpip: '17%', pfr: '8%', threeBet: '5%' },
+const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
+const winningResults = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
+const formatRate = (count, total) => (total > 0 ? `${Math.round((count / total) * 100)}%` : '-')
+const actionType = (hand) => hand.actionType || hand.preflopAction || ''
+const actionGroups = [
+  { label: '폴드', matches: (value) => value === 'FOLD' },
+  { label: '콜', matches: (value) => ['LIMP', 'CALL', 'BB_DEFENSE'].includes(value) },
+  {
+    label: '오픈',
+    matches: (value) =>
+      ['OPEN', 'ISO_RAISE', 'OPEN_FOLD_TO_3BET', 'OPEN_CALL_3BET'].includes(value),
+  },
+  { label: '3Bet+', matches: (value) => THREE_BET_PLUS_ACTIONS.has(value) },
 ]
+const actions = computed(() =>
+  actionGroups.map((group) => {
+    const count = allHands.value.filter((hand) => group.matches(actionType(hand))).length
+    return {
+      label: group.label,
+      count,
+      rate: allHands.value.length ? formatRate(count, allHands.value.length) : '0%',
+    }
+  }),
+)
+const joinKorean = (values) => {
+  if (values.length <= 1) return values[0] || ''
+  return `${values.slice(0, -1).join(', ')}와 ${values.at(-1)}`
+}
+const tournamentFeatures = computed(() => {
+  const hands = allHands.value
+  if (!hands.length) return []
 
-const ranks = [
-  { label: 'Top 10%', rate: '12%', count: 15 },
-  { label: 'Top 20%', rate: '18%', count: 23 },
-  { label: 'Top 30%', rate: '23%', count: 29 },
-  { label: '기타', rate: '47%', count: 58 },
-]
+  const features = []
+  const participatedByPosition = new Map()
+  hands.forEach((hand) => {
+    if (!hand.position || !isVpipAction(actionType(hand))) return
+    participatedByPosition.set(
+      hand.position,
+      (participatedByPosition.get(hand.position) || 0) + 1,
+    )
+  })
+  const maxPositionCount = Math.max(0, ...participatedByPosition.values())
+  if (maxPositionCount > 0) {
+    const topPositions = positionOrder.filter(
+      (position) => participatedByPosition.get(position) === maxPositionCount,
+    )
+    features.push(`${joinKorean(topPositions)}에서 가장 많이 참여했습니다.`)
+  }
+
+  const maxActionCount = Math.max(0, ...actions.value.map((item) => item.count))
+  if (maxActionCount > 0) {
+    const topActions = actions.value
+      .filter((item) => item.count === maxActionCount)
+      .map((item) => item.label)
+    const label = joinKorean(topActions)
+    const particle = topActions.length > 1 || ['폴드', '3Bet+'].includes(label) ? '가' : '이'
+    features.push(`${label}${particle} 가장 많이 기록된 프리플랍 액션입니다.`)
+  }
+
+  const threeBetCount = hands.filter((hand) =>
+    THREE_BET_PLUS_ACTIONS.has(actionType(hand)),
+  ).length
+  if (threeBetCount > 0) features.push(`3Bet은 ${threeBetCount}회 기록했습니다.`)
+
+  const bbDefenseCount = hands.filter(
+    (hand) =>
+      hand.position === 'BB' &&
+      ['CALL', 'BB_DEFENSE'].includes(actionType(hand)),
+  ).length
+  if (bbDefenseCount > 0) features.push(`BB 방어는 ${bbDefenseCount}회 기록했습니다.`)
+
+  const premiumHands = new Set(['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AKo', 'AK', 'AQs'])
+  const premiumCount = hands.filter((hand) =>
+    premiumHands.has(normalizeHand(hand.holeCards || hand.hand)),
+  ).length
+  if (premiumCount > 0) features.push(`프리미엄 핸드는 ${premiumCount}회 기록했습니다.`)
+
+  return features.slice(0, 4)
+})
+
+const positions = computed(() => {
+  const hands = allHands.value.filter((hand) => hand.position)
+
+  const grouped = new Map()
+  hands.forEach((hand) => {
+    const position = hand.position
+    if (!grouped.has(position)) grouped.set(position, [])
+    grouped.get(position).push(hand)
+  })
+
+  return [...grouped.entries()]
+    .sort(([a], [b]) => {
+      const aIndex = positionOrder.indexOf(a)
+      const bIndex = positionOrder.indexOf(b)
+      return (aIndex < 0 ? positionOrder.length : aIndex) -
+        (bIndex < 0 ? positionOrder.length : bIndex)
+    })
+    .map(([position, positionHands]) => {
+      const vpipHands = positionHands.filter((hand) =>
+        isVpipAction(hand.actionType || hand.preflopAction || ''),
+      )
+      const pfrCount = positionHands.filter((hand) =>
+        isPfrAction(hand.actionType || hand.preflopAction || ''),
+      ).length
+      const winCount = vpipHands.filter((hand) =>
+        winningResults.has(hand.resultType || hand.result),
+      ).length
+
+      return {
+        position,
+        vpip: formatRate(vpipHands.length, positionHands.length),
+        pfr: formatRate(pfrCount, positionHands.length),
+        winRate: formatRate(winCount, vpipHands.length),
+      }
+    })
+})
+
+onMounted(async () => {
+  if (!tournamentId.value) return
+  try {
+    session.value = await fetchGameSession(tournamentId.value)
+  } catch {
+    session.value = null
+    alert.show('프리플랍 통계를 불러오지 못했습니다.', 'error')
+    return
+  }
+
+  if (!eventId.value) {
+    handLogStore.selectedEvent = null
+    return
+  }
+
+  try {
+    await handLogStore.fetchEventDetail(eventId.value)
+  } catch (error) {
+    handLogStore.selectedEvent = null
+    if (error?.response?.status !== 404) {
+      alert.show('프리플랍 통계를 불러오지 못했습니다.', 'error')
+    }
+  }
+})
+
 </script>
 
 <style scoped>
@@ -100,7 +259,7 @@ const ranks = [
   display: flex;
   min-height: 100%;
   flex-direction: column;
-  padding: 0 var(--v2-page-padding-x) 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
 }
 
 .detail-topbar {
@@ -130,6 +289,61 @@ const ranks = [
   margin: 0;
   font-size: 17px;
   font-weight: 560;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.feature-summary {
+  display: grid;
+  gap: 9px;
+  margin-top: 20px;
+}
+
+.feature-summary h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.feature-card {
+  padding: 14px 16px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
+}
+
+.feature-card ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-card li {
+  position: relative;
+  padding-left: 12px;
+  color: #4f495a;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.feature-card li::before {
+  position: absolute;
+  top: .65em;
+  left: 0;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--v2-primary);
+  content: '';
+}
+
+.feature-card p {
+  margin: 0;
+  color: var(--v2-text-sub);
+  font-size: 12px;
   text-align: center;
 }
 
@@ -137,7 +351,7 @@ const ranks = [
   display: grid;
   overflow: hidden;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-top: 36px;
+  margin-top: 20px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
   background: #fff;

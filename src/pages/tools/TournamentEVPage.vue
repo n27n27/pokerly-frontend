@@ -124,9 +124,9 @@
                     </div>
 
                     <div class="col-12 col-sm-7 text-grey-7 text-caption">
-                      · <b>GTD + 기준 엔트리</b>: 최소 상금(GTD) & 기준 엔트리 제공<br />
-                      · <b>고정 프라이즈</b>: 엔트리 관계없이 상금 고정<br />
-                      · <b>프라이즈 비율</b>: 프라이즈·레이크 퍼센트 제공
+                      · <b>GTD + 기준 엔트리</b>: 최소 포인트(GTD) & 기준 엔트리 제공<br />
+                      · <b>고정 포인트</b>: 엔트리 관계없이 포인트 고정<br />
+                      · <b>포인트 비율</b>: 포인트·레이크 퍼센트 제공
                     </div>
                   </div>
 
@@ -195,7 +195,7 @@
                           filled
                           dense
                           readonly
-                          label="추정 프라이즈 비율"
+                          label="추정 포인트 비율"
                           suffix="%"
                         />
                       </div>
@@ -210,7 +210,7 @@
                           filled
                           dense
                           :name="`fixedPrize-${t.id}`"
-                          label="고정 프라이즈 풀"
+                          label="고정 포인트 풀"
                           placeholder="예: 5000000"
                           :id="`fixedPrize-${t.id}`"
                         />
@@ -229,7 +229,7 @@
                           :min="0"
                           :max="100"
                           :name="`ratio-${t.id}`"
-                          label="프라이즈 비율 (%)"
+                          label="포인트 비율 (%)"
                           placeholder="예: 70"
                           :id="`ratio-${t.id}`"
                         />
@@ -298,7 +298,7 @@
                               총 바인 대비 매장 수익 비율을 의미합니다.<br /><br />
 
                               <b>오버레이</b><br />
-                              GTD 미달 시 매장이 채워 넣는 추가 상금으로, 플레이어에게 매우
+                              GTD 미달 시 매장이 채워 넣는 추가 포인트로, 플레이어에게 매우
                               유리합니다.
                             </div>
                           </q-tooltip>
@@ -462,8 +462,8 @@ function setCardRef(el, id) {
 /* 모드 선택 옵션 */
 const modeOptions = [
   { label: 'GTD + 기준 엔트리', value: 'GTD_BASE' },
-  { label: '고정 프라이즈', value: 'FIXED_PRIZE' },
-  { label: '프라이즈 비율', value: 'PERCENTAGE' },
+  { label: '고정 포인트', value: 'FIXED_PRIZE' },
+  { label: '포인트 비율', value: 'PERCENTAGE' },
 ]
 
 /* 필드 난이도 -> ROI 배율 */
@@ -488,8 +488,8 @@ const RAKE_PENALTY = 1.0 // 레이크 초과분에 대한 ROI 감쇠 비율
 /* 모드 라벨 (헤더 요약용) */
 const MODE_LABEL = {
   GTD_BASE: 'GTD 기반',
-  FIXED_PRIZE: '고정 프라이즈',
-  PERCENTAGE: '프라이즈 비율',
+  FIXED_PRIZE: '고정 포인트',
+  PERCENTAGE: '포인트 비율',
 }
 
 function headerSubtitle(t) {

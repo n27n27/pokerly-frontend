@@ -117,7 +117,7 @@ const goLegacyLogin = () => {
 
 const initGoogleLogin = async () => {
   if (!GOOGLE_CLIENT_ID) {
-    alert.show('Google 로그인 설정이 누락되었습니다.', 'negative')
+    alert.show('Google 로그인 설정이 누락되었습니다.', 'error')
     return
   }
 
@@ -149,7 +149,7 @@ const initGoogleLogin = async () => {
             return
           }
 
-          alert.show(message || 'Google 로그인에 실패했습니다.', 'negative')
+          alert.show(message || 'Google 로그인에 실패했습니다.', 'error')
         } finally {
           loading.value = null
         }
@@ -173,7 +173,7 @@ const initGoogleLogin = async () => {
   } catch (e) {
     console.error(e)
     googleReady.value = false
-    alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'negative')
+    alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'error')
   }
 }
 

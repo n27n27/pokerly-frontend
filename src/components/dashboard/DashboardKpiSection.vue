@@ -68,7 +68,7 @@ const kpiItems = computed(() => {
     },
     {
       key: 'prize',
-      label: '이번 달 총 프라이즈',
+      label: '이번 달 총 포인트',
       value: formatMoney(k.totalPrize),
       icon: 'emoji_events',
       iconClass: 'text-warning',

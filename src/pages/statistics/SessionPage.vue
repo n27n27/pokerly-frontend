@@ -32,7 +32,7 @@
             icon="account_balance_wallet"
           />
           <KpiCard
-            title="총 프라이즈"
+            title="총 포인트"
             :value="summary ? formatMoney(summary.totalPrize) : '-'"
             icon="payments"
           />

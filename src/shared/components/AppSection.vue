@@ -6,9 +6,11 @@
         <p v-if="caption" class="app-section__caption">{{ caption }}</p>
       </div>
 
-      <button v-if="actionLabel" class="app-section__action" type="button" @click="emit('action')">
-        {{ actionLabel }}
-      </button>
+      <slot name="action">
+        <button v-if="actionLabel" class="app-section__action" type="button" @click="emit('action')">
+          {{ actionLabel }}
+        </button>
+      </slot>
     </div>
 
     <div class="app-section__content">

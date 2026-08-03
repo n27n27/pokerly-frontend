@@ -9,8 +9,8 @@
     </header>
 
     <section class="tournament-heading">
-      <strong>프라임 0704</strong>
-      <span>2026.07.23</span>
+      <strong>{{ tournamentName }}</strong>
+      <span>{{ tournamentDate }}</span>
     </section>
 
     <section class="result-section">
@@ -25,7 +25,7 @@
           :key="result.value"
           type="button"
           :class="{ selected: form.result === result.value }"
-          @click="form.result = result.value"
+          @click="selectResult(result.value)"
         >
           <q-icon :name="result.icon" size="25px" />
           <strong>{{ result.label }}</strong>
@@ -47,8 +47,36 @@
         </label>
 
         <label class="field-row">
-          <span>상금</span>
-          <input v-model="form.prize" inputmode="numeric" placeholder="예) 450,000" />
+          <span>포인트</span>
+          <input
+            :value="form.prize"
+            inputmode="numeric"
+            placeholder="예) 450,000"
+            @input="updateMoneyField('prize', $event)"
+          />
+        </label>
+
+        <div class="field-row satellite-toggle-row">
+          <span>새틀 획득</span>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="form.satelliteAwarded"
+            :class="{ active: form.satelliteAwarded }"
+            @click="toggleSatellite"
+          >
+            <i></i>
+            <b>{{ form.satelliteAwarded ? 'ON' : 'OFF' }}</b>
+          </button>
+        </div>
+
+        <label v-if="form.satelliteAwarded" class="field-row">
+          <span>새틀명 <small>선택</small></span>
+          <input
+            v-model.trim="form.satelliteName"
+            maxlength="100"
+            placeholder="예) Prime Main Event"
+          />
         </label>
 
         <label class="field-row">
@@ -73,7 +101,12 @@
 
         <label class="field-row">
           <span>할인 금액</span>
-          <input v-model="form.discount" inputmode="numeric" placeholder="예) 50,000" />
+          <input
+            :value="form.discount"
+            inputmode="numeric"
+            placeholder="예) 50,000"
+            @input="updateMoneyField('discount', $event)"
+          />
         </label>
 
         <label class="field-row memo-row">
@@ -84,19 +117,35 @@
       </div>
     </section>
 
-    <StickyPrimaryAction :label="isEdit ? '수정 완료' : '결과 확정'" :disabled="!form.result" @click="confirmResult" />
+    <StickyPrimaryAction :label="isEdit ? '수정 완료' : '결과 확정'" :disabled="!form.result" :loading="submitting" loading-label="저장 중..." @click="confirmResult" />
   </q-page>
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { fetchGameSession, updateGameSession } from 'src/api/gameSession'
+import { formatLocalDate } from 'src/utils/localDate'
 
 const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
+const submitting = ref(false)
 const isEdit = computed(() => route.query.mode === 'edit')
+const runningTournament = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
+  } catch {
+    return {}
+  }
+})()
+const tournamentName = computed(() => runningTournament.name || '이름 없는 토너먼트')
+const tournamentDate = computed(
+  () => runningTournament.date || formatLocalDate(new Date(), '.'),
+)
 
 const results = [
   { value: 'BUST', label: '탈락', icon: 'cancel' },
@@ -113,12 +162,127 @@ const form = reactive({
   entries: isEdit.value ? '289' : '',
   buyIns: isEdit.value ? 2 : 1,
   discount: '',
-  memo: isEdit.value ? '초반 타이트하게 운영 후, L10 이후 적극적으로 플레이.' : '',
+  memo: '',
+  satelliteAwarded: false,
+  satelliteName: '',
 })
 
-const confirmResult = () => {
-  if (!form.result) return
-  const tournamentId = route.query.tournamentId || '1'
+onMounted(async () => {
+  const sessionId = route.query.tournamentId || runningTournament.sessionId
+  if (!sessionId) return
+  try {
+    const session = await fetchGameSession(sessionId)
+    Object.assign(form, {
+      result: session.tournamentResult || '',
+      rank: session.finalRank || '',
+      prize: formatMoneyInput(session.prize),
+      entries: session.fieldEntries || '',
+      buyIns: session.entries || 1,
+      discount: formatMoneyInput(session.discount),
+      memo: session.notes || '',
+      satelliteAwarded: Boolean(session.satelliteAwarded),
+      satelliteName: session.satelliteName || '',
+    })
+  } catch {
+    if (isEdit.value) alert.show('대회 결과를 불러오지 못했습니다.', 'error')
+  }
+})
+
+const selectResult = (result) => {
+  if (form.satelliteAwarded && ['BUST', 'BUBBLE'].includes(result)) {
+    alert.show('새틀 획득은 ITM 이상에서만 가능합니다.', 'warning')
+    return
+  }
+  form.result = result
+}
+
+const toggleSatellite = () => {
+  form.satelliteAwarded = !form.satelliteAwarded
+  if (form.satelliteAwarded && !['ITM', 'CHOP', 'WIN'].includes(form.result)) {
+    form.result = 'ITM'
+  }
+  if (!form.satelliteAwarded) form.satelliteName = ''
+}
+
+const formatMoneyInput = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? Number(digits).toLocaleString('ko-KR') : ''
+}
+
+const updateMoneyField = (field, event) => {
+  const formatted = formatMoneyInput(event.target.value)
+  form[field] = formatted
+  event.target.value = formatted
+}
+
+const confirmResult = async () => {
+  if (!form.result || submitting.value) return
+  const tournamentId = route.query.tournamentId || runningTournament.sessionId
+  if (!tournamentId) return
+  const result = {
+    id: tournamentId,
+    tournamentName: tournamentName.value,
+    playDate: tournamentDate.value,
+    tournamentResult: form.result,
+    finalRank: Number(form.rank) || null,
+    prize: Number(String(form.prize).replaceAll(',', '')) || 0,
+    fieldEntries: Number(form.entries) || null,
+    entries: Number(form.buyIns) || 1,
+    discount: Number(String(form.discount).replaceAll(',', '')) || 0,
+    notes: form.memo,
+    satelliteAwarded: form.satelliteAwarded,
+    satelliteName: form.satelliteAwarded ? form.satelliteName : '',
+  }
+  const savedResults = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('pokerly-tournament-results')) || []
+    } catch {
+      return []
+    }
+  })()
+  const resultIndex = savedResults.findIndex((item) => String(item.id) === String(tournamentId))
+  if (resultIndex >= 0) savedResults[resultIndex] = result
+  else savedResults.unshift(result)
+  submitting.value = true
+  try {
+    await updateGameSession(tournamentId, {
+      venueId: runningTournament.venueId || null,
+      playDate: String(tournamentDate.value).replaceAll('.', '-'),
+      sessionType: runningTournament.venueId ? 'VENUE' : 'OTHER',
+      gameType: 'TOURNAMENT',
+      tournamentName: tournamentName.value,
+      tournamentResult: form.result,
+      startLevel: runningTournament.startLevel,
+      currentLevel: runningTournament.currentLevel,
+      buyInPerEntry: Number(String(runningTournament.buyIn || '').replaceAll(',', '')) || null,
+      entries: result.entries,
+      discount: result.discount,
+      prize: result.prize,
+      satelliteAwarded: result.satelliteAwarded,
+      satelliteName: result.satelliteName,
+      notes: result.notes,
+      gtdAmount: null,
+      fieldEntries: result.fieldEntries,
+      isCollab: false,
+      collabLabel: null,
+      handLogEventId: runningTournament.eventId,
+      tournamentStatus: 'COMPLETED',
+      startingStack: Number(String(runningTournament.startingStack || '').replaceAll(',', '')) || null,
+      currentStack: Number(String(runningTournament.currentStack || '').replaceAll(',', '')) || null,
+      averageStack: Number(String(runningTournament.averageStack || '').replaceAll(',', '')) || null,
+      currentSmallBlind: Number(String(runningTournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) || null,
+      currentBigBlind: Number(String(runningTournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) || null,
+      currentAnte: Number(String(runningTournament.currentBlinds?.ante || '').replaceAll(',', '')) || null,
+      finalRank: result.finalRank,
+    })
+    localStorage.setItem('pokerly-tournament-results', JSON.stringify(savedResults))
+    localStorage.setItem('pokerly-last-tournament-result', JSON.stringify(result))
+  } catch {
+    alert.show('대회 결과를 저장하지 못했습니다.', 'error')
+    return
+  } finally {
+    submitting.value = false
+  }
   router.replace(`/app/tournament/${tournamentId}/summary`)
 }
 </script>
@@ -273,6 +437,7 @@ const confirmResult = () => {
   font-size: 13px;
   font-weight: 520;
 }
+.field-row > span small { margin-left: 4px; color: var(--v2-text-sub); font-size: 10px; font-weight: 430; }
 
 .field-row input,
 .field-row textarea {
@@ -299,6 +464,13 @@ const confirmResult = () => {
   font-style: normal;
   font-weight: 520;
 }
+.satellite-toggle-row { grid-template-columns: 94px minmax(0, 1fr); }
+.satellite-toggle-row > button { display: flex; width: 62px; height: 32px; align-items: center; justify-self: end; gap: 5px; padding: 3px 7px 3px 4px; border: 0; border-radius: 999px; background: #efedf4; color: var(--v2-text-sub); font: inherit; }
+.satellite-toggle-row > button i { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(28, 18, 60, .16); transition: transform .18s ease; }
+.satellite-toggle-row > button b { flex: 1; font-size: 9px; font-weight: 650; }
+.satellite-toggle-row > button.active { padding-right: 4px; padding-left: 7px; background: var(--v2-primary); color: #fff; }
+.satellite-toggle-row > button.active i { order: 2; }
+.satellite-toggle-row > button.active b { order: 1; }
 
 .buy-in-row {
   grid-template-columns: 94px minmax(0, 1fr) 26px;

@@ -26,7 +26,7 @@
             <q-form class="column q-gutter-md">
               <!-- 1. 비용 / 상금 -->
               <div>
-                <div class="text-caption text-grey-7 q-mb-xs">1. 비용 / 상금</div>
+                <div class="text-caption text-grey-7 q-mb-xs">1. 비용 / 포인트</div>
 
                 <div class="row q-col-gutter-sm">
                   <div class="col-12 col-sm-6">
@@ -56,7 +56,7 @@
                       type="number"
                       filled
                       dense
-                      label="총 상금 (예상)"
+                      label="총 포인트 (예상)"
                       :min="0"
                       hint="예: 8000000 (800만 보장)"
                     >
@@ -64,7 +64,7 @@
                         <q-icon name="help_outline" size="16px">
                           <q-tooltip>
                             GTD 보장금이나, 상향이 거의 확실하면 상향된 금액을 대략 적어주세요.
-                            <br />상금 구조 EV 자체는 토너먼트 EV 계산기에서 미리 계산해 base ROI에
+                            <br />포인트 구조 EV 자체는 토너먼트 EV 계산기에서 미리 계산해 base ROI에
                             반영하는 것이 좋습니다.
                           </q-tooltip>
                         </q-icon>
@@ -165,13 +165,13 @@
                       label="ITM 인원 수 (머니인)"
                       :min="1"
                       suffix="명"
-                      hint="예: 10등까지 상금이면 10 입력"
+                      hint="예: 10등까지 포인트 지급이면 10 입력"
                     >
                       <template #append>
                         <q-icon name="help_outline" size="16px">
                           <q-tooltip>
-                            이 토너먼트에서 상금을 받는 인원 수입니다.
-                            <br />예: 10등까지 상금 → 10
+                            이 토너먼트에서 포인트를 받는 인원 수입니다.
+                            <br />예: 10등까지 포인트 지급 → 10
                           </q-tooltip>
                         </q-icon>
                       </template>
@@ -259,7 +259,7 @@
               <!-- 부가 정보 -->
               <div class="text-caption text-grey-7 column q-gutter-xs">
                 <div>
-                  • 총 상금 (입력 기준):
+                  • 총 포인트 (입력 기준):
                   <b>{{ formatMoney(prizePool) }}</b>
                 </div>
                 <div v-if="survivalRatioText">

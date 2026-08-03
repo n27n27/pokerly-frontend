@@ -6,7 +6,7 @@
         :key="item.name"
         type="button"
         class="nav-item"
-        :class="{ active: route.name === item.name }"
+        :class="{ active: isActive(item) }"
         @click="go(item.to)"
       >
         <q-icon :name="item.icon" size="22px" />
@@ -23,11 +23,13 @@ const route = useRoute()
 const router = useRouter()
 
 const items = [
-  { name: 'home', label: '홈', icon: 'home', to: '/app/home' },
-  { name: 'statistics', label: '통계', icon: 'query_stats', to: '/app/statistics' },
-  { name: 'tools', label: '도구', icon: 'construction', to: '/app/tools' },
-  { name: 'my', label: 'My', icon: 'person', to: '/app/my' },
+  { name: 'home', label: '홈', icon: 'home', to: '/app/home', prefixes: ['/app/home', '/app/tournament', '/app/bank-records', '/app/simple-record'] },
+  { name: 'statistics', label: '통계', icon: 'query_stats', to: '/app/statistics', prefixes: ['/app/statistics'] },
+  { name: 'tools', label: '도구', icon: 'construction', to: '/app/tools', prefixes: ['/app/tools'] },
+  { name: 'my', label: 'My', icon: 'person', to: '/app/my', prefixes: ['/app/my'] },
 ]
+
+const isActive = (item) => item.prefixes.some((prefix) => route.path.startsWith(prefix))
 
 const go = (to) => {
   if (route.path !== to) router.push(to)

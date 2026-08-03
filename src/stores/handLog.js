@@ -21,6 +21,13 @@ import {
 
 import { getHandStrength } from 'src/utils/handLogHandAnalysis'
 
+const normalizeCardRankForApi = (rank) => {
+  const value = String(rank || '').trim().toUpperCase()
+
+  if (!value) return null
+  return value === '10' ? 'T' : value
+}
+
 export const useHandLogStore = defineStore('handLog', () => {
   const events = ref([])
   const selectedEvent = ref(null)
@@ -570,10 +577,13 @@ export const useHandLogStore = defineStore('handLog', () => {
       const saved = await createHandLogHand(eventId, levelId, {
         holeCards: payload.holeCards?.trim() || handValue,
         hand: payload.hand || handValue,
-        firstRank: payload.firstRank || null,
-        secondRank: payload.secondRank || null,
+        firstRank: normalizeCardRankForApi(payload.firstRank),
+        secondRank: normalizeCardRankForApi(payload.secondRank),
+        firstSuit: payload.firstSuit || null,
+        secondSuit: payload.secondSuit || null,
         suited: Boolean(payload.suited),
         position: payload.position || null,
+        handedCount: payload.handedCount || null,
         actionType: payload.actionType || null,
         actionLabel: payload.actionLabel || '',
         preflopAllIn: Boolean(payload.preflopAllIn),
@@ -581,6 +591,8 @@ export const useHandLogStore = defineStore('handLog', () => {
         resultLabel: payload.resultLabel || '',
         reviewRequired: Boolean(payload.reviewRequired),
         memo: payload.memo || '',
+        boardCards: payload.boardCards || null,
+        actionTimeline: payload.actionTimeline || null,
         handStrengthTier: payload.handStrengthTier || handStrength.tier,
         handStrengthLabel: payload.handStrengthLabel || handStrength.label,
         handStrengthColor: payload.handStrengthColor || handStrength.color,
@@ -631,10 +643,13 @@ export const useHandLogStore = defineStore('handLog', () => {
       const saved = await updateHandLogHand(eventId, levelId, handId, {
         holeCards: payload.holeCards?.trim() || handValue,
         hand: payload.hand || handValue,
-        firstRank: payload.firstRank || null,
-        secondRank: payload.secondRank || null,
+        firstRank: normalizeCardRankForApi(payload.firstRank),
+        secondRank: normalizeCardRankForApi(payload.secondRank),
+        firstSuit: payload.firstSuit || null,
+        secondSuit: payload.secondSuit || null,
         suited: Boolean(payload.suited),
         position: payload.position || null,
+        handedCount: payload.handedCount ?? selectedHand.value?.handedCount ?? null,
         actionType: payload.actionType || null,
         actionLabel: payload.actionLabel || '',
         preflopAllIn: Boolean(payload.preflopAllIn),
@@ -642,6 +657,8 @@ export const useHandLogStore = defineStore('handLog', () => {
         resultLabel: payload.resultLabel || '',
         reviewRequired: Boolean(payload.reviewRequired),
         memo: payload.memo || '',
+        boardCards: payload.boardCards ?? selectedHand.value?.boardCards ?? null,
+        actionTimeline: payload.actionTimeline ?? selectedHand.value?.actionTimeline ?? null,
         handStrengthTier: payload.handStrengthTier || handStrength.tier,
         handStrengthLabel: payload.handStrengthLabel || handStrength.label,
         handStrengthColor: payload.handStrengthColor || handStrength.color,

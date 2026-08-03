@@ -73,10 +73,13 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { fetchAllGameSessions } from 'src/api/gameSession'
+import { fetchVenues } from 'src/api/venue'
+import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
 const search = ref('')
@@ -85,28 +88,31 @@ const viewMode = ref('recent')
 const returnMode = ref('recent')
 const page = ref(1)
 
-const tournaments = [
-  { id: 'prime-daily', storeId: 'prime', name: 'Prime Daily', venue: 'Prime', stack: '60,000', buyIn: '100,000', recent: true },
-  { id: 'royce-daily', storeId: 'royce', name: 'Royce Daily', venue: 'Royce', stack: '60,000', buyIn: '100,000', recent: true },
-  { id: 'tt-championship', storeId: 'tt', name: 'TT 최강자전', venue: 'TT', stack: '70,000', buyIn: '150,000', recent: true },
-  { id: 'mango-daily', storeId: 'mango', name: 'Mango Daily', venue: 'Mango', stack: '60,000', buyIn: '100,000', recent: true },
-  { id: 'prime-championship', storeId: 'prime', name: 'Prime Championship', venue: 'Prime', stack: '100,000', buyIn: '200,000', recent: true },
-  { id: 'prime-turbo', storeId: 'prime', name: 'Prime Turbo', venue: 'Prime', stack: '40,000', buyIn: '80,000' },
-  { id: 'prime-deep-stack', storeId: 'prime', name: 'Prime Deep Stack', venue: 'Prime', stack: '150,000', buyIn: '300,000' },
-  { id: 'prime-high-roller', storeId: 'prime', name: 'Prime High Roller', venue: 'Prime', stack: '200,000', buyIn: '400,000' },
-  { id: 'prime-super-stack', storeId: 'prime', name: 'Prime Super Stack', venue: 'Prime', stack: '250,000', buyIn: '500,000' },
-  { id: 'prime-ko', storeId: 'prime', name: 'Prime KO', venue: 'Prime', stack: '60,000', buyIn: '120,000' },
-  { id: 'prime-omaha', storeId: 'prime', name: 'Prime Omaha', venue: 'Prime', stack: '80,000', buyIn: '160,000' },
-  { id: 'prime-mega-stack', storeId: 'prime', name: 'Prime Mega Stack', venue: 'Prime', stack: '300,000', buyIn: '600,000' },
-  { id: 'prime-deep-turbo', storeId: 'prime', name: 'Prime Deep Turbo', venue: 'Prime', stack: '100,000', buyIn: '200,000' },
-  { id: 'prime-ultra-deep', storeId: 'prime', name: 'Prime Ultra Deep', venue: 'Prime', stack: '200,000', buyIn: '400,000' },
-  { id: 'royce-turbo', storeId: 'royce', name: 'Royce Turbo', venue: 'Royce', stack: '40,000', buyIn: '80,000' },
-  { id: 'mango-deep-stack', storeId: 'mango', name: 'Mango Deep Stack', venue: 'Mango', stack: '120,000', buyIn: '250,000' },
-  { id: 'tt-daily', storeId: 'tt', name: 'TT Daily', venue: 'TT', stack: '60,000', buyIn: '100,000' },
-  { id: 'kiki-night', storeId: 'kiki', name: 'Kiki Night', venue: 'Kiki', stack: '50,000', buyIn: '90,000' },
-  { id: 'royce-championship', storeId: 'royce', name: 'Royce Championship', venue: 'Royce', stack: '150,000', buyIn: '300,000' },
-  { id: 'mango-turbo', storeId: 'mango', name: 'Mango Turbo', venue: 'Mango', stack: '40,000', buyIn: '80,000' },
-]
+const tournaments = ref([])
+onMounted(async () => {
+  const [sessions, venues] = await Promise.all([
+    fetchAllGameSessions(),
+    fetchVenues(),
+  ])
+  const venueById = new Map(
+    (venues || []).map((venue) => [String(venue.id), venue]),
+  )
+
+  tournaments.value = (sessions || [])
+    .filter((session) => session.handLogEventId)
+    .map((session, index) => ({
+      id: session.id,
+      name: tournamentDisplayName(session),
+      venue:
+        venueById.get(String(session.venueId))?.name ||
+        session.collabLabel ||
+        (session.sessionType === 'VENUE' ? '등록 장소' : '기타'),
+      venueLocation: venueById.get(String(session.venueId))?.location || '',
+      stack: Number(session.startingStack || 0).toLocaleString('ko-KR') || '-',
+      buyIn: Number(session.buyInPerEntry || 0).toLocaleString('ko-KR') || '-',
+      recent: index < 5,
+    }))
+})
 
 const searchPlaceholder = computed(() => {
   if (viewMode.value === 'recent') return '대회명 또는 매장 검색'
@@ -119,23 +125,26 @@ const listTitle = computed(() => {
   return '최근 사용'
 })
 
-const recentTournaments = computed(() => tournaments.filter((item) => item.recent).slice(0, 5))
+const recentTournaments = computed(() => tournaments.value.filter((item) => item.recent).slice(0, 5))
 const searchResults = computed(() => {
   const keyword = search.value.trim().toLowerCase()
   if (!keyword) return []
 
-  return tournaments.filter(
-    (item) => item.name.toLowerCase().includes(keyword) || item.venue.toLowerCase().includes(keyword),
+  return tournaments.value.filter(
+    (item) =>
+      item.name.toLowerCase().includes(keyword) ||
+      item.venue.toLowerCase().includes(keyword) ||
+      item.venueLocation.toLowerCase().includes(keyword),
   )
 })
 
 const visibleTournaments = computed(() => {
   if (viewMode.value === 'search') return searchResults.value
-  if (viewMode.value === 'all') return tournaments.slice(0, page.value * 15)
+  if (viewMode.value === 'all') return tournaments.value.slice(0, page.value * 15)
   return recentTournaments.value
 })
 
-const canLoadMore = computed(() => visibleTournaments.value.length < tournaments.length)
+const canLoadMore = computed(() => visibleTournaments.value.length < tournaments.value.length)
 
 const scrollToTop = () => {
   nextTick(() => {

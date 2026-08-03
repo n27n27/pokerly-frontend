@@ -62,7 +62,7 @@
                 >
                   {{ formatValue(summary.totalProfit) }}
                 </div>
-                <div class="core-sub text-grey-7">바인 · 프라이즈 합산</div>
+                <div class="core-sub text-grey-7">바인 · 포인트 합산</div>
               </div>
             </q-card-section>
           </q-card>
@@ -103,6 +103,22 @@
                   </div>
                 </div>
                 <div class="core-sub text-grey-7">머니인 빈도</div>
+              </div>
+            </q-card-section>
+          </q-card>
+
+          <q-card flat bordered class="core-card">
+            <q-card-section class="row items-center no-wrap">
+              <q-icon name="confirmation_number" size="24px" class="q-mr-sm text-deep-purple-5" />
+              <div>
+                <div class="core-label">새틀 획득</div>
+                <div class="row items-baseline q-gutter-xs">
+                  <div class="core-value">{{ summary.satelliteAwardCount ?? 0 }}회</div>
+                  <div class="text-caption text-grey-7">
+                    ({{ ((summary.satelliteAwardRatio ?? 0) * 100).toFixed(1) }}%)
+                  </div>
+                </div>
+                <div class="core-sub text-grey-7">ROI와 별도 집계</div>
               </div>
             </q-card-section>
           </q-card>
@@ -227,7 +243,7 @@
                   {{ formatDate(item.date) }}
                 </q-item-label>
                 <q-item-label caption class="text-grey-7">
-                  세션 {{ item.sessionCount }}회 · 바인 {{ formatValue(item.buyIn) }} · 프라이즈
+                  세션 {{ item.sessionCount }}회 · 바인 {{ formatValue(item.buyIn) }} · 포인트
                   {{ formatValue(item.prize) }}
                 </q-item-label>
               </q-item-section>

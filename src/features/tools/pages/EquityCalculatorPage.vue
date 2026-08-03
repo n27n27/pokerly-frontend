@@ -83,7 +83,7 @@
 
     <section v-if="results.length" class="panel">
       <div class="panel-header">
-        <h2>결과 <span>(에퀴티)</span></h2>
+        <h2>결과 <span>(승률)</span></h2>
       </div>
       <div class="result-list">
         <article v-for="result in results" :key="result.id" class="result-row">
@@ -94,12 +94,8 @@
               {{ card.rank }}{{ card.suit }}
             </span>
           </span>
-          <em>{{ result.equity.toFixed(2) }}%</em>
+          <em>{{ result.win.toFixed(2) }}%</em>
         </article>
-      </div>
-      <div class="total-row">
-        <strong>합계</strong>
-        <em>{{ totalEquity.toFixed(2) }}%</em>
       </div>
     </section>
 
@@ -112,7 +108,7 @@
       <div v-if="heroVsOthersSummary" class="heads-up">
         <div>
           <strong>{{ heroVsOthersSummary.hero.name }}</strong>
-          <em>{{ heroVsOthersSummary.hero.equity.toFixed(2) }}%</em>
+          <em>{{ heroVsOthersSummary.hero.win.toFixed(2) }}%</em>
         </div>
         <dl>
           <div>
@@ -126,7 +122,7 @@
         </dl>
         <div>
           <strong>{{ heroVsOthersSummary.others.name }}</strong>
-          <em>{{ heroVsOthersSummary.others.equity.toFixed(2) }}%</em>
+          <em>{{ heroVsOthersSummary.others.win.toFixed(2) }}%</em>
         </div>
       </div>
 
@@ -161,13 +157,11 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 
 import CardPickerSheet from 'src/shared/components/CardPickerSheet.vue'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 
-const ranks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
-const suits = ['♠', '♥', '♦', '♣']
 const rankValue = { A: 14, K: 13, Q: 12, J: 11, T: 10, 9: 9, 8: 8, 7: 7, 6: 6, 5: 5, 4: 4, 3: 3, 2: 2 }
 const handRanks = [
   { key: 'straightFlush', label: '스트레이트 플러시' },
@@ -190,14 +184,14 @@ const makeCard = (rank, suit) => ({
   red: suit === '♥' || suit === '♦',
 })
 
-const deck = ranks.flatMap((rank) => suits.map((suit) => makeCard(rank, suit)))
 const players = reactive([
-  { id: 1, name: 'Hero', cards: [makeCard('A', '♠'), makeCard('K', '♥')] },
-  { id: 2, name: 'Villain 1', cards: [makeCard('Q', '♣'), makeCard('Q', '♦')] },
+  { id: 1, name: 'Hero', cards: [null, null] },
+  { id: 2, name: 'Villain 1', cards: [null, null] },
   { id: 3, name: 'Villain 2', cards: [null, null] },
 ])
 const board = reactive([null, null, null, null, null])
 const results = ref([])
+const resultCache = new Map()
 const calculating = ref(false)
 const pickerOpen = ref(false)
 const pickerTarget = ref(null)
@@ -215,16 +209,16 @@ const pickerUsedCodes = computed(() => usedCodes.value
   .filter((code) => code !== activePickerCard.value?.code)
   .map((code) => code.replace(/^T/, '10')))
 
-const totalEquity = computed(() => results.value.reduce((sum, result) => sum + result.equity, 0))
 const heroVsOthersSummary = computed(() => {
   if (results.value.length < 2) return null
   const hero = results.value[0]
+  const others = results.value.slice(1)
 
   return {
     hero,
     others: {
       name: 'Others',
-      equity: Math.max(0, 100 - hero.equity),
+      win: others.reduce((sum, result) => sum + result.win, 0),
     },
     tie: hero.tie,
   }
@@ -256,11 +250,23 @@ const openPicker = (type, playerIndex, cardIndex) => {
 
 const selectCard = (card) => {
   if (!pickerTarget.value) return
+  const target = { ...pickerTarget.value }
   const normalizedCard = makeCard(card.rank === '10' ? 'T' : card.rank, card.suit)
-  if (pickerTarget.value.type === 'player') {
-    players[pickerTarget.value.playerIndex].cards[pickerTarget.value.cardIndex] = normalizedCard
+  if (target.type === 'player') {
+    const playerCards = players[target.playerIndex].cards
+    playerCards[target.cardIndex] = normalizedCard
+    const nextCardIndex = playerCards.findIndex((item, index) => !item && index !== target.cardIndex)
+    if (nextCardIndex >= 0) {
+      pickerTarget.value = { ...target, cardIndex: nextCardIndex }
+      return
+    }
   } else {
-    board[pickerTarget.value.cardIndex] = normalizedCard
+    board[target.cardIndex] = normalizedCard
+    const nextCardIndex = board.findIndex((item, index) => !item && index > target.cardIndex)
+    if (nextCardIndex >= 0) {
+      pickerTarget.value = { ...target, cardIndex: nextCardIndex }
+      return
+    }
   }
   pickerOpen.value = false
 }
@@ -288,148 +294,64 @@ const clearBoard = () => {
   board.splice(0, board.length, null, null, null, null, null)
 }
 
-const emptyDistribution = () => handRanks.reduce((map, rank) => ({ ...map, [rank.key]: 0 }), {})
 const handLabel = (cards) => (cards.every(Boolean) ? cards.map((card) => `${card.rank}${card.suit}`).join(' ') : '—')
-const combinations = (items, size) => {
-  if (size === 0) return [[]]
-  const result = []
-  const walk = (start, combo) => {
-    if (combo.length === size) {
-      result.push(combo)
-      return
-    }
-    for (let i = start; i <= items.length - (size - combo.length); i += 1) walk(i + 1, [...combo, items[i]])
+const suitCodes = { '♠': 's', '♥': 'h', '♦': 'd', '♣': 'c' }
+const toEvaluatorCard = (card) => `${card.rank}${suitCodes[card.suit]}`
+const equityWorker = new Worker(new URL('../workers/equity.worker.js', import.meta.url), { type: 'module' })
+let nextRequestId = 0
+
+const calculateInWorker = (payload) => new Promise((resolve, reject) => {
+  const requestId = ++nextRequestId
+  const handleMessage = ({ data }) => {
+    if (data.requestId !== requestId) return
+    equityWorker.removeEventListener('message', handleMessage)
+    equityWorker.removeEventListener('error', handleError)
+    if (data.error) reject(new Error(data.error))
+    else resolve(data.results)
   }
-  walk(0, [])
-  return result
-}
-
-const countCombinations = (n, r) => {
-  if (r < 0 || r > n) return 0
-  if (r === 0 || r === n) return 1
-  let result = 1
-  for (let i = 1; i <= r; i += 1) {
-    result = (result * (n - r + i)) / i
+  const handleError = (event) => {
+    equityWorker.removeEventListener('message', handleMessage)
+    equityWorker.removeEventListener('error', handleError)
+    reject(event.error || new Error(event.message || '에큐티 계산에 실패했습니다.'))
   }
-  return Math.round(result)
-}
+  equityWorker.addEventListener('message', handleMessage)
+  equityWorker.addEventListener('error', handleError)
+  equityWorker.postMessage({ requestId, payload })
+})
 
-const sampledCombinations = (items, size, count) => {
-  if (size === 0) return [[]]
-  const samples = []
+onBeforeUnmount(() => equityWorker.terminate())
 
-  for (let sampleIndex = 0; sampleIndex < count; sampleIndex += 1) {
-    const pool = [...items]
-    const combo = []
-    let seed = (sampleIndex + 1) * 9301 + size * 49297
-
-    for (let pick = 0; pick < size; pick += 1) {
-      seed = (seed * 233280 + 49297) % 233281
-      const index = seed % pool.length
-      combo.push(pool.splice(index, 1)[0])
-    }
-
-    samples.push(combo)
-  }
-
-  return samples
-}
-
-const compareScore = (a, b) => {
-  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-    if ((a[i] ?? 0) !== (b[i] ?? 0)) return (a[i] ?? 0) - (b[i] ?? 0)
-  }
-  return 0
-}
-
-const evaluateFive = (cards) => {
-  const values = cards.map((card) => card.value).sort((a, b) => b - a)
-  const counts = values.reduce((map, value) => ({ ...map, [value]: (map[value] || 0) + 1 }), {})
-  const groups = Object.entries(counts)
-    .map(([value, count]) => ({ value: Number(value), count }))
-    .sort((a, b) => b.count - a.count || b.value - a.value)
-  const flush = cards.every((card) => card.suit === cards[0].suit)
-  const unique = [...new Set(values)]
-  if (unique.includes(14)) unique.push(1)
-  let straightHigh = 0
-  for (let i = 0; i <= unique.length - 5; i += 1) {
-    const run = unique.slice(i, i + 5)
-    if (run[0] - run[4] === 4) {
-      straightHigh = run[0]
-      break
-    }
-  }
-
-  if (flush && straightHigh) return { key: 'straightFlush', score: [8, straightHigh] }
-  if (groups[0].count === 4) return { key: 'quads', score: [7, groups[0].value, groups[1].value] }
-  if (groups[0].count === 3 && groups[1].count === 2) return { key: 'fullHouse', score: [6, groups[0].value, groups[1].value] }
-  if (flush) return { key: 'flush', score: [5, ...values] }
-  if (straightHigh) return { key: 'straight', score: [4, straightHigh] }
-  if (groups[0].count === 3) return { key: 'trips', score: [3, groups[0].value, ...groups.slice(1).map((group) => group.value)] }
-  if (groups[0].count === 2 && groups[1].count === 2) return { key: 'twoPair', score: [2, groups[0].value, groups[1].value, groups[2].value] }
-  if (groups[0].count === 2) return { key: 'pair', score: [1, groups[0].value, ...groups.slice(1).map((group) => group.value)] }
-  return { key: 'highCard', score: [0, ...values] }
-}
-
-const evaluateBest = (cards) => {
-  return combinations(cards, 5).reduce((best, combo) => {
-    const current = evaluateFive(combo)
-    return !best || compareScore(current.score, best.score) > 0 ? current : best
-  }, null)
-}
-
-const calculateEquity = () => {
+const calculateEquity = async () => {
   const activePlayers = players.filter((player) => player.cards.every(Boolean))
   if (activePlayers.length < 2) return
-  calculating.value = true
-  const knownBoard = board.filter(Boolean)
-  const remaining = deck.filter((card) => !usedCodes.value.includes(card.code))
-  const cardsToCome = 5 - knownBoard.length
-  const totalRunoutCount = countCombinations(remaining.length, cardsToCome)
-  const runouts =
-    totalRunoutCount > 12000
-      ? sampledCombinations(remaining, cardsToCome, 6000)
-      : combinations(remaining, cardsToCome)
-  const accum = activePlayers.map((player) => ({
-    id: player.id,
-    name: player.name,
-    hand: handLabel(player.cards),
-    cards: player.cards.map((card) => ({ ...card })),
-    equity: 0,
-    win: 0,
-    tie: 0,
-    distribution: emptyDistribution(),
-  }))
-
-  runouts.forEach((runout) => {
-    const fullBoard = [...knownBoard, ...runout]
-    const evaluated = activePlayers.map((player, index) => ({
-      index,
-      result: evaluateBest([...player.cards, ...fullBoard]),
-    }))
-    const bestScore = evaluated.reduce((best, item) => (compareScore(item.result.score, best) > 0 ? item.result.score : best), evaluated[0].result.score)
-    const winners = evaluated.filter((item) => compareScore(item.result.score, bestScore) === 0)
-
-    evaluated.forEach((item) => {
-      accum[item.index].distribution[item.result.key] += 1
-    })
-    winners.forEach((winner) => {
-      accum[winner.index].equity += 1 / winners.length
-      if (winners.length === 1) accum[winner.index].win += 1
-      else accum[winner.index].tie += 1
-    })
+  const cacheKey = JSON.stringify({
+    players: activePlayers.map((player) => player.cards.map((card) => card.code)),
+    board: board.map((card) => card?.code || null),
   })
-
-  const total = Math.max(1, runouts.length)
-  results.value = accum.map((item, index) => ({
-    ...item,
-    index: index + 1,
-    equity: (item.equity / total) * 100,
-    win: (item.win / total) * 100,
-    tie: (item.tie / total) * 100,
-    distribution: Object.fromEntries(Object.entries(item.distribution).map(([key, value]) => [key, (value / total) * 100])),
-  }))
-  calculating.value = false
+  if (resultCache.has(cacheKey)) {
+    results.value = resultCache.get(cacheKey)
+    return
+  }
+  calculating.value = true
+  try {
+    const calculated = await calculateInWorker({
+      players: activePlayers.map((player) => ({
+        cards: player.cards.map(toEvaluatorCard),
+      })),
+      board: board.filter(Boolean).map(toEvaluatorCard),
+    })
+    results.value = activePlayers.map((player, index) => ({
+      ...calculated[index],
+      id: player.id,
+      index: index + 1,
+      name: player.name,
+      hand: handLabel(player.cards),
+      cards: player.cards.map((card) => ({ ...card })),
+    }))
+    resultCache.set(cacheKey, results.value)
+  } finally {
+    calculating.value = false
+  }
 }
 
 </script>

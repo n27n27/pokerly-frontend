@@ -7,7 +7,7 @@
           <div class="text-h5 text-weight-bold">ICM 계산기</div>
         </div>
         <div class="text-body2 text-grey-7">
-          남은 상금(1등부터)과 스택을 입력하면 각 순위의 결과(ICM 기대값)를 계산합니다.
+          남은 포인트(1등부터)와 스택을 입력하면 각 순위의 결과(ICM 기대값)를 계산합니다.
         </div>
       </div>
 
@@ -73,14 +73,14 @@
             <q-space />
 
             <div class="summary-item text-right">
-              <div class="label">총 상금</div>
+              <div class="label">총 포인트</div>
               <div class="value">{{ formatNumber(totalPrize) }}</div>
             </div>
           </div>
 
           <div class="row items-center q-mt-sm">
             <q-space />
-            <div class="text-caption text-grey-6">상금은 1등부터 입력</div>
+            <div class="text-caption text-grey-6">포인트는 1등부터 입력</div>
           </div>
         </q-card-section>
       </q-card>
@@ -96,7 +96,7 @@
         <q-card-section class="q-pb-sm">
           <div class="row items-center justify-between">
             <div class="text-subtitle1 text-weight-bold">입력</div>
-            <div class="text-body2 text-grey-7">상금 / 스택 / 결과</div>
+            <div class="text-body2 text-grey-7">포인트 / 스택 / 결과</div>
           </div>
         </q-card-section>
 
@@ -116,7 +116,7 @@
                     type="number"
                     min="0"
                     step="1000"
-                    placeholder="상금"
+                    placeholder="포인트"
                     class="num-input"
                     :input-class="'text-right'"
                   />
@@ -154,7 +154,7 @@
         <q-card-section class="q-pb-sm">
           <div class="row items-center justify-between">
             <div class="text-subtitle1 text-weight-bold">입력</div>
-            <div class="text-body2 text-grey-7">상금은 1등부터</div>
+            <div class="text-body2 text-grey-7">포인트는 1등부터</div>
           </div>
         </q-card-section>
 
@@ -250,7 +250,7 @@ let pcPulseTimer = null
 
 const pcColumns = [
   { name: 'rank', label: '순위', field: 'rank', align: 'left' },
-  { name: 'payout', label: '상금', field: 'payout', align: 'right' },
+  { name: 'payout', label: '포인트', field: 'payout', align: 'right' },
   { name: 'stack', label: '스택', field: 'stack', align: 'right' },
   { name: 'result', label: '결과', field: 'result', align: 'right' },
 ]
@@ -359,9 +359,9 @@ function validate() {
     const rank = i + 1
 
     if (r.payout === null || r.payout === '' || !Number.isFinite(Number(r.payout))) {
-      return { ok: false, message: `${rank}등 상금이 비어있습니다.` }
+      return { ok: false, message: `${rank}등 포인트가 비어있습니다.` }
     }
-    if (Number(r.payout) < 0) return { ok: false, message: `${rank}등 상금은 0 이상이어야 합니다.` }
+    if (Number(r.payout) < 0) return { ok: false, message: `${rank}등 포인트는 0 이상이어야 합니다.` }
 
     if (r.stack === null || r.stack === '' || !Number.isFinite(Number(r.stack))) {
       return { ok: false, message: `${rank}등 스택이 비어있습니다.` }
@@ -369,7 +369,7 @@ function validate() {
     if (Number(r.stack) < 0) return { ok: false, message: `${rank}등 스택은 0 이상이어야 합니다.` }
   }
 
-  if (totalPrize.value <= 0) return { ok: false, message: '총 상금이 0입니다.' }
+  if (totalPrize.value <= 0) return { ok: false, message: '총 포인트가 0입니다.' }
   if (totalChips.value <= 0) return { ok: false, message: '총 스택이 0입니다.' }
 
   return { ok: true }

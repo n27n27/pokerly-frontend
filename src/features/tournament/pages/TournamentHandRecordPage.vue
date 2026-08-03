@@ -4,7 +4,7 @@
       <button class="cancel-button" type="button" @click="router.back()">
         취소
       </button>
-      <h1>핸드 기록</h1>
+      <h1>{{ isEditMode ? '핸드 수정' : '핸드 기록' }}</h1>
       <span aria-hidden="true"></span>
     </header>
 
@@ -33,13 +33,35 @@
 
       <div class="record-section">
         <h2>2. 포지션</h2>
+        <div class="handed-count">
+          <span>현재 인원</span>
+          <div>
+            <button
+              type="button"
+              aria-label="인원 줄이기"
+              :disabled="handedCount <= 4"
+              @click="changeHandedCount(-1)"
+            >
+              −
+            </button>
+            <strong>{{ handedCount }}명</strong>
+            <button
+              type="button"
+              aria-label="인원 늘리기"
+              :disabled="handedCount >= 10"
+              @click="changeHandedCount(1)"
+            >
+              +
+            </button>
+          </div>
+        </div>
         <div class="position-grid">
           <button
             v-for="position in positions"
             :key="position"
             type="button"
             :class="{ selected: form.position === position }"
-            @click="form.position = position"
+            @click="selectPosition(position)"
           >
             {{ position }}
           </button>
@@ -68,11 +90,11 @@
         <div class="result-grid">
           <button
             v-for="result in handResults"
-            :key="result.value"
-            type="button"
-            :class="{ selected: form.result === result.value }"
-            :disabled="form.preflopAction === 'FOLD'"
-            @click="form.result = result.value"
+              :key="result.value"
+              type="button"
+              :class="{ selected: form.result === result.value }"
+              :disabled="['FOLD', 'WALK'].includes(form.preflopAction)"
+              @click="form.result = result.value"
           >
             {{ result.label }}
           </button>
@@ -94,7 +116,12 @@
         </button>
       </div>
     </section>
-    <StickyPrimaryAction v-if="!pickerOpen" label="저장" :disabled="!canSave" @click="saveHand" />
+    <StickyPrimaryAction
+      v-if="!pickerOpen"
+      label="저장"
+      :disabled="!canSave || handLogStore.saving"
+      @click="saveHand"
+    />
 
     <CardPickerSheet
       v-model="pickerOpen"
@@ -108,20 +135,65 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import { useAlert } from 'src/composables/useAlert'
 import CardPickerSheet from 'src/shared/components/CardPickerSheet.vue'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { useHandLogStore } from 'src/stores/handLog'
 
 const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
+const handLogStore = useHandLogStore()
 
-const levelName = computed(() => route.params.levelName || 'L3')
-const positions = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
-const preflopActions = [
+const levelId = computed(() => String(route.params.levelName || ''))
+const levelName = computed(() => String(route.query.levelName || '') || '-')
+const handId = computed(() => String(route.params.handId || ''))
+const isEditMode = computed(() => Boolean(handId.value))
+const positionMap = {
+  4: ['CO', 'BTN', 'SB', 'BB'],
+  5: ['HJ', 'CO', 'BTN', 'SB', 'BB'],
+  6: ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  7: ['UTG', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  8: ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  9: ['UTG', 'UTG+1', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  10: ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+}
+const storedTournament = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
+  } catch {
+    return {}
+  }
+})()
+const handedCount = ref(
+  Math.min(10, Math.max(4, Number(storedTournament.currentHandedCount) || 10)),
+)
+const positions = computed(() => positionMap[handedCount.value])
+const lastSavedPosition = ref(
+  storedTournament.lastHandPosition ||
+    handLogStore.selectedBlindLevel?.hands?.at(-1)?.position ||
+    '',
+)
+const getSuggestedPosition = () => {
+  const options = positions.value
+  const previousIndex = options.indexOf(lastSavedPosition.value)
+  if (previousIndex < 0) return options[0]
+  return options[(previousIndex - 1 + options.length) % options.length]
+}
+const basePreflopActions = [
   { value: 'FOLD', label: '폴드' },
   { value: 'CALL', label: '콜' },
+  { value: 'OPEN', label: '오픈' },
+  { value: 'THREE_BET_PLUS', label: '3벳+' },
+]
+const bbPreflopActions = [
+  { value: 'FOLD', label: '폴드' },
+  { value: 'CHECK', label: '체크' },
+  { value: 'CALL', label: '콜' },
+  { value: 'WALK', label: '앞에서 올폴드' },
   { value: 'OPEN', label: '오픈' },
   { value: 'THREE_BET_PLUS', label: '3벳+' },
 ]
@@ -136,11 +208,78 @@ const heroCards = ref([null, null])
 const activeCardIndex = ref(0)
 const pickerOpen = ref(false)
 const form = reactive({
-  position: '',
-  preflopAction: '',
-  result: '',
+  position: getSuggestedPosition(),
+  preflopAction: 'FOLD',
+  result: 'LOSS',
   reviewRequired: false,
 })
+const preflopActions = computed(() =>
+  form.position === 'BB' ? bbPreflopActions : basePreflopActions,
+)
+
+const loadHandForEdit = async () => {
+  if (!isEditMode.value || !storedTournament.eventId || !levelId.value) return
+  try {
+    const hand = await handLogStore.fetchHandDetail(
+      storedTournament.eventId,
+      levelId.value,
+      handId.value,
+    )
+    if (!hand) return
+
+    const action =
+      hand.actionType === 'THREE_BET' || hand.actionType === 'FOUR_BET_PLUS'
+        ? 'THREE_BET_PLUS'
+        : hand.actionType || 'FOLD'
+    const result = ['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN'].includes(hand.resultType)
+      ? 'WIN'
+      : hand.resultType === 'CHOP'
+        ? 'DRAW'
+        : 'LOSS'
+    const minimumHandedCount = Number(
+      Object.entries(positionMap).find(([, options]) => options.includes(hand.position))?.[0] ||
+        handedCount.value,
+    )
+    handedCount.value = hand.handedCount
+      ? Math.min(10, Math.max(4, Number(hand.handedCount)))
+      : Math.max(minimumHandedCount, handedCount.value)
+    form.position = hand.position || positions.value[0]
+    form.preflopAction = action
+    form.result = result
+    form.reviewRequired = Boolean(hand.reviewRequired)
+    heroCards.value = [hand.firstRank, hand.secondRank].map((rank, index) => ({
+      rank,
+      suit:
+        (index === 0 ? hand.firstSuit : hand.secondSuit) ||
+        (hand.suited || index === 0 ? '♠' : '♥'),
+      red: ['♥', '♦'].includes(
+        (index === 0 ? hand.firstSuit : hand.secondSuit) ||
+          (hand.suited || index === 0 ? '♠' : '♥'),
+      ),
+    }))
+  } catch {
+    alert.show('핸드 정보를 불러오지 못했습니다.', 'error')
+  }
+}
+
+onMounted(loadHandForEdit)
+
+const changeHandedCount = (change) => {
+  handedCount.value = Math.min(10, Math.max(4, handedCount.value + change))
+  form.position = getSuggestedPosition()
+  if (form.position !== 'BB' && ['CHECK', 'WALK'].includes(form.preflopAction)) {
+    form.preflopAction = 'FOLD'
+    form.result = 'LOSS'
+  }
+}
+
+const selectPosition = (position) => {
+  form.position = position
+  if (position !== 'BB' && ['CHECK', 'WALK'].includes(form.preflopAction)) {
+    form.preflopAction = 'FOLD'
+    form.result = 'LOSS'
+  }
+}
 
 const canSave = computed(() => {
   const hasRequiredInput = heroCards.value.every(Boolean) && form.position && form.preflopAction
@@ -167,31 +306,85 @@ const clearCards = () => {
 }
 
 const selectPreflopAction = (action) => {
-  const wasFold = form.preflopAction === 'FOLD'
+  const hadAutomaticResult = ['FOLD', 'WALK'].includes(form.preflopAction)
   form.preflopAction = action
 
   if (action === 'FOLD') {
     form.result = 'LOSS'
-  } else if (wasFold) {
+  } else if (action === 'WALK') {
+    form.result = 'WIN'
+  } else if (hadAutomaticResult) {
     form.result = ''
   }
 }
 
-const saveHand = () => {
+const saveHand = async () => {
   if (!canSave.value) return
 
-  const payload = {
-    holeCards: heroCards.value.map((card) => ({ rank: card.rank, suit: card.suit })),
-    position: form.position,
-    preflopAction: form.preflopAction,
-    result: form.result,
-    reviewRequired: form.reviewRequired,
+  if (!storedTournament.eventId || !levelId.value) {
+    alert.show('토너먼트 정보를 찾을 수 없습니다.', 'error')
+    return
   }
 
-  router.replace({
-    path: `/app/tournament/running/level/${levelName.value}`,
-    state: { savedHand: payload },
-  })
+  const suited = heroCards.value[0].suit === heroCards.value[1].suit
+  const ranks = heroCards.value.map((card) => card.rank)
+  const resultType =
+    form.preflopAction === 'FOLD'
+      ? 'PREFLOP_FOLD'
+      : form.preflopAction === 'WALK'
+        ? 'NON_SHOWDOWN_WIN'
+      : { WIN: 'SHOWDOWN_WIN', DRAW: 'CHOP', LOSS: 'SHOWDOWN_LOSS' }[form.result]
+  const payload = {
+    holeCards: `${ranks.join('')}${ranks[0] === ranks[1] ? '' : suited ? 's' : 'o'}`,
+    firstRank: ranks[0],
+    secondRank: ranks[1],
+    firstSuit: heroCards.value[0].suit,
+    secondSuit: heroCards.value[1].suit,
+    suited,
+    position: form.position,
+    handedCount: handedCount.value,
+    actionType: form.preflopAction === 'THREE_BET_PLUS' ? 'THREE_BET' : form.preflopAction,
+    actionLabel:
+      preflopActions.value.find((action) => action.value === form.preflopAction)?.label || '',
+    resultType,
+    reviewRequired: form.reviewRequired,
+    memo: isEditMode.value ? handLogStore.selectedHand?.memo || '' : '',
+  }
+
+  try {
+    if (isEditMode.value) {
+      await handLogStore.updateHandInBlindLevel(
+        storedTournament.eventId,
+        levelId.value,
+        handId.value,
+        payload,
+      )
+    } else {
+      await handLogStore.addHandToBlindLevel(
+        storedTournament.eventId,
+        levelId.value,
+        payload,
+      )
+    }
+    storedTournament.currentHandedCount = handedCount.value
+    storedTournament.lastHandPosition = form.position
+    localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+    router.replace(
+      isEditMode.value
+        ? {
+            name: 'tournament-hand-detail',
+            params: { levelName: levelId.value, handId: handId.value },
+            query: { levelName: levelName.value },
+          }
+        : {
+            name: 'tournament-level-detail',
+            params: { levelName: levelId.value },
+            query: { levelName: levelName.value },
+          },
+    )
+  } catch {
+    alert.show('핸드를 저장하지 못했습니다.', 'error')
+  }
 }
 </script>
 
@@ -315,6 +508,55 @@ const saveHand = () => {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
+}
+
+.handed-count {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.handed-count > span {
+  color: var(--v2-text-sub);
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.handed-count > div {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+}
+
+.handed-count button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  font: inherit;
+  font-size: 19px;
+  line-height: 1;
+}
+
+.handed-count button:disabled {
+  background: #f4f3f7;
+  color: #c4bfce;
+}
+
+.handed-count strong {
+  min-width: 32px;
+  color: var(--v2-text-main);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
 }
 
 .position-grid button,

@@ -627,7 +627,7 @@ const saveLevelInfo = async () => {
     })
     await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
 
-    alert.show('레벨 정보를 저장했습니다.', 'positive')
+    alert.show('레벨 정보를 저장했습니다.', 'success')
     levelInfoDialog.value = false
     levelInfoExpanded.value = true
   } catch (error) {
@@ -647,7 +647,7 @@ const copyLevelReviewText = async () => {
 
   try {
     await copyToClipboard(text)
-    alert.show('레벨 복기 텍스트를 복사했습니다.', 'positive')
+    alert.show('레벨 복기 텍스트를 복사했습니다.', 'success')
   } catch (error) {
     console.error(error)
     alert.show('복사에 실패했습니다.', 'error')
@@ -755,7 +755,7 @@ const moveSelectedHands = async () => {
   try {
     await handLogStore.moveHandsToBlindLevel(eventId.value, levelId.value, handIds, targetLevelId)
 
-    alert.show(`${handIds.length}개 핸드를 이동했습니다.`, 'positive')
+    alert.show(`${handIds.length}개 핸드를 이동했습니다.`, 'success')
 
     resetBulkMoveState()
   } catch (error) {

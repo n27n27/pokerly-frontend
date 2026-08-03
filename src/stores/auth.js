@@ -108,6 +108,7 @@ export const useAuthStore = defineStore('auth', () => {
     timezone,
     termsAgreed,
     privacyAgreed,
+    marketingAgreed,
     recordMode,
   }) => {
     const res = await api.post('/users/me/onboarding', {
@@ -116,6 +117,7 @@ export const useAuthStore = defineStore('auth', () => {
       timezone,
       termsAgreed,
       privacyAgreed,
+      marketingAgreed,
       recordMode,
     })
 
@@ -128,6 +130,12 @@ export const useAuthStore = defineStore('auth', () => {
     const res = await api.patch('/users/me/record-mode', { recordMode })
     user.value = unwrap(res)
     localStorage.setItem('pokerly-record-mode', user.value.recordMode)
+    return user.value
+  }
+
+  const updateMarketingConsent = async (agreed) => {
+    const res = await api.patch('/users/me/marketing-consent', { agreed })
+    user.value = unwrap(res)
     return user.value
   }
 
@@ -155,8 +163,13 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const logout = async () => {
-    clearTokens()
-    user.value = null
+    try {
+      await api.post('/auth/logout')
+    } finally {
+      clearTokens()
+      user.value = null
+      localStorage.removeItem('pokerly-record-mode')
+    }
   }
   return {
     user,
@@ -173,6 +186,7 @@ export const useAuthStore = defineStore('auth', () => {
     linkApple,
     completeOnboarding,
     updateRecordMode,
+    updateMarketingConsent,
     fetchMe,
     checkNickname,
     logout,

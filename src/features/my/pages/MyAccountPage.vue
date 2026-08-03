@@ -38,7 +38,7 @@ const logout = async () => {
 </script>
 
 <style scoped>
-.account-page { display: grid; align-content: start; gap: 18px; min-height: 100%; padding: 0 var(--v2-page-padding-x) 100px; }
+.account-page { display: grid; align-content: start; gap: 12px; min-height: 100%; padding: 0 var(--v2-page-padding-x) 100px; }
 .detail-topbar { display: grid; min-height: 36px; grid-template-columns: 40px minmax(0,1fr) 40px; align-items: center; }
 .detail-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .detail-topbar h1 { margin: 0; font-size: 17px; font-weight: 560; text-align: center; }

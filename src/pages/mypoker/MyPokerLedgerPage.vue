@@ -37,7 +37,7 @@
           </q-card>
 
           <q-card class="kpi-card">
-            <div class="kpi-label">총 상금</div>
+            <div class="kpi-label">총 포인트</div>
             <div class="kpi-value">{{ money(summary.totalPrize) }}</div>
           </q-card>
 
@@ -103,7 +103,7 @@
                     </q-badge>
                   </div>
                   <div class="text-caption text-grey-7 q-mt-xs">
-                    {{ s.playDate }} · 바인 {{ money(s.totalBuyIn) }} · 상금 {{ money(s.prize) }}
+                    {{ s.playDate }} · 바인 {{ money(s.totalBuyIn) }} · 포인트 {{ money(s.prize) }}
                   </div>
                 </div>
 
@@ -393,13 +393,13 @@
                     form.prize = $fmt.parseNum(v) ?? 0
                   }
                 "
-                label="상금"
+                label="포인트"
                 filled
                 dense
                 color="primary"
                 inputmode="numeric"
                 placeholder="예: 0"
-                :rules="[() => (form.prize ?? 0) >= 0 || '상금은 0 이상이어야 합니다.']"
+                :rules="[() => (form.prize ?? 0) >= 0 || '포인트는 0 이상이어야 합니다.']"
               />
 
               <q-item class="q-mt-sm q-pa-none">
@@ -834,7 +834,7 @@ const onSubmit = async () => {
     return
   }
   if (form.prize < 0) {
-    alert.show('상금은 0 이상이어야 합니다.', 'warning')
+    alert.show('포인트는 0 이상이어야 합니다.', 'warning')
     return
   }
 

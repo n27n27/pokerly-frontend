@@ -11,8 +11,8 @@
     <section class="running-summary">
       <div class="running-summary__main">
         <div>
-          <strong>프라임 0704</strong>
-          <p>바인 100,000 <span>·</span> 리바인 2회</p>
+          <strong>{{ tournamentName }}</strong>
+          <p>바인 {{ runningTournament.buyIn || '-' }} <span>·</span> 총 바인 {{ totalBuyIns }}회</p>
         </div>
 
         <button class="manage-link" type="button" @click="openManage">
@@ -25,14 +25,20 @@
     <section class="level-section">
       <div class="level-section__header">
         <h2>레벨 목록</h2>
-        <button type="button">
+        <button type="button" @click="openLevelSheet()">
           <q-icon name="add" size="19px" />
           레벨 추가
         </button>
       </div>
 
       <div class="level-list">
-        <article class="current-level-card" role="button" tabindex="0" @click="openLevel(currentLevel.name)">
+        <article
+          v-if="currentLevel"
+          class="current-level-card"
+          role="button"
+          tabindex="0"
+          @click="openLevel(currentLevel)"
+        >
           <div class="current-level-card__accent"></div>
           <button
             class="level-menu-button"
@@ -43,14 +49,8 @@
             <q-icon name="more_vert" size="22px" />
           </button>
           <div v-if="showLevelMenu" class="level-menu" @click.stop>
-            <button type="button" @click.stop="closeLevelMenu">
-              <q-icon name="edit" size="18px" />
-              수정
-            </button>
-            <button class="danger" type="button" @click.stop="closeLevelMenu">
-              <q-icon name="delete_outline" size="18px" />
-              삭제
-            </button>
+            <button type="button" @click.stop="openLevelSheet(currentLevel)">수정</button>
+            <button class="danger" type="button" @click.stop="requestRemoveLevel(currentLevel)">삭제</button>
           </div>
 
           <div class="current-level-card__head">
@@ -65,82 +65,551 @@
               <em>{{ currentLevel.bb }}</em>
             </div>
             <div>
-              <span>핸드</span>
+              <span>핸드 수</span>
               <strong>{{ currentLevel.hands }}</strong>
-              <em>핸드</em>
             </div>
           </div>
         </article>
 
         <button
           v-for="level in otherLevels"
-          :key="level.name"
+          :key="level.id"
           class="level-row"
           type="button"
-          @click="openLevel(level.name)"
+          @click="openLevel(level)"
         >
-          <strong>{{ level.name }}</strong>
-          <span class="level-row__blinds">{{ level.blinds }}</span>
-          <span class="level-row__metric">
-            <small>핸드</small>
-            {{ level.hands }}
+          <strong class="level-row__level">{{ level.name }}</strong>
+          <span class="level-row__content">
+            <span class="level-row__blinds">{{ level.blinds }}</span>
+            <span class="level-row__bottom">
+              <span class="level-row__metric">
+                <small>핸드 수</small>
+                <b>{{ level.hands }}</b>
+              </span>
+              <span class="level-row__stack">
+                <small>스택</small>
+                <b>{{ formatCompactStack(level.endStack) }}</b>
+              </span>
+            </span>
           </span>
-          <span class="level-row__stack">
-            <small>스택</small>
-            {{ level.endStack }}
-            <em v-if="level.bb">{{ level.bb }}</em>
-          </span>
-          <span class="level-row__menu" aria-hidden="true">
+          <span
+            class="level-row__menu"
+            role="button"
+            aria-label="레벨 수정"
+            @click.stop="openLevelSheet(level)"
+          >
             <q-icon name="more_vert" size="22px" />
           </span>
         </button>
+
+        <div v-if="!loading && levels.length === 0" class="level-list__empty">
+          등록된 레벨이 없습니다.
+        </div>
       </div>
     </section>
 
-    <section class="finish-panel">
-      <div>
-        <strong>세션 종료</strong>
-        <p>대회를 종료하고 결과를 생성합니다.</p>
+    <TournamentHandOverview
+      v-if="!loading && levels.length"
+      :hands="tournamentHands"
+      title="대회 요약"
+      @open-hand="openSummaryHand"
+    />
+
+    <StickyPrimaryAction label="토너먼트 종료" @click="openFinish" />
+
+    <q-dialog v-model="levelSheetOpen" position="bottom">
+      <q-card class="level-sheet">
+        <div class="level-sheet__handle" aria-hidden="true"></div>
+        <h2>{{ editingLevelId ? '레벨 수정' : '레벨 추가' }}</h2>
+
+        <label>
+          <span>레벨</span>
+          <input v-model="levelForm.levelNo" inputmode="numeric" />
+        </label>
+
+        <div class="level-sheet__blinds">
+          <label>
+            <span>SB</span>
+            <input
+              :value="levelForm.smallBlind"
+              inputmode="numeric"
+              @input="setLevelNumber('smallBlind', $event)"
+            />
+          </label>
+          <label>
+            <span>BB</span>
+            <input
+              :value="levelForm.bigBlind"
+              inputmode="numeric"
+              @input="updateLevelBigBlind"
+            />
+          </label>
+          <label>
+            <span>Ante</span>
+            <input
+              :value="levelForm.ante"
+              inputmode="numeric"
+              @input="updateLevelAnte"
+            />
+          </label>
+        </div>
+
+        <label v-if="editingLevelId">
+          <span>현재 스택</span>
+          <input
+            :value="levelForm.endStack"
+            inputmode="numeric"
+            @input="setLevelNumber('endStack', $event)"
+          />
+        </label>
+
+        <div v-if="editingLevelId && editingIsCurrent" class="level-sheet__current-status">
+          현재 진행 중인 레벨
+        </div>
+        <label v-else-if="editingLevelId" class="level-sheet__current">
+          <input v-model="levelForm.makeCurrent" type="checkbox" />
+          <span>진행 레벨로 전환</span>
+        </label>
+
+        <div class="level-sheet__actions">
+          <button
+            class="level-sheet__save"
+            type="button"
+            :disabled="handLogStore.saving"
+            @click="saveLevel"
+          >
+            저장
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
+
+    <q-dialog v-model="deleteConfirmOpen">
+      <div class="delete-confirm" @click.stop>
+        <h2>레벨을 삭제할까요?</h2>
+        <p>삭제한 레벨은 다시 복구할 수 없습니다.</p>
+        <div>
+          <button type="button" @click="deleteConfirmOpen = false">취소</button>
+          <button class="danger" type="button" @click="removeLevel">삭제</button>
+        </div>
       </div>
-      <button type="button" @click="openFinish">대회 종료</button>
-    </section>
+    </q-dialog>
   </q-page>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+import { useAlert } from 'src/composables/useAlert'
+import TournamentHandOverview from 'src/features/tournament/components/TournamentHandOverview.vue'
+import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { useHandLogStore } from 'src/stores/handLog'
+import { fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
+import { formatLocalDate } from 'src/utils/localDate'
 
 const router = useRouter()
+const route = useRoute()
+const alert = useAlert()
+const handLogStore = useHandLogStore()
+const runningTournament = reactive(
+  (() => {
+    try {
+      return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
+    } catch {
+      return {}
+    }
+  })(),
+)
+const totalBuyIns = computed(() => runningTournament.totalBuyIns ?? runningTournament.entries ?? 1)
+const event = computed(() => handLogStore.selectedEvent)
+const loading = computed(() => handLogStore.detailLoading)
+const tournamentName = computed(() => event.value?.name || runningTournament.name || '-')
 
-const levels = [
-  { name: 'L1', blinds: '100 / 200 / 200', hands: '7', endStack: '132,000', bb: '(264BB)' },
-  { name: 'L2', blinds: '200 / 300 / 300', hands: '16', endStack: '138,500', bb: '(231BB)' },
-  { name: 'L3', blinds: '300 / 500 / 500', hands: '11', endStack: '132,000', bb: '176 BB', current: true },
-  { name: 'L4', blinds: '400 / 800 / 800', hands: '0', endStack: '-', bb: '' },
-  { name: 'L5', blinds: '600 / 1,200 / 1,200', hands: '0', endStack: '-', bb: '' },
-  { name: 'L8', blinds: '1,500 / 3,000 / 3,000', hands: '0', endStack: '-', bb: '' },
-]
+const formatValue = (value) =>
+  value === null || value === undefined ? '-' : Number(value).toLocaleString('ko-KR')
+const formatBlind = (value) => (Number(value) > 0 ? formatValue(value) : '-')
 
-const currentLevel = computed(() => levels.find((level) => level.current) || levels[0])
-const otherLevels = computed(() => levels.filter((level) => !level.current))
+const currentLevelNumber = computed(() => {
+  const value = String(runningTournament.currentLevel || runningTournament.startLevel || '')
+  const number = Number(value.replace(/\D/g, ''))
+  return Number.isFinite(number) && number > 0 ? number : null
+})
+
+const levels = computed(() =>
+  (event.value?.blindLevels || []).map((level) => {
+    const stack = level.endStack ?? level.displayStartStack ?? level.startStack
+    const isCurrent = runningTournament.currentBlindLevelId
+      ? String(level.id) === String(runningTournament.currentBlindLevelId)
+      : level.levelNo === currentLevelNumber.value
+    const bbCount = stack != null && level.bigBlind > 0 ? stack / level.bigBlind : null
+
+    return {
+      id: level.id,
+      name: `L${level.levelNo}`,
+      blinds: [level.smallBlind, level.bigBlind, level.ante].map(formatBlind).join(' / '),
+      hands: String(level.handCount ?? level.hands?.length ?? 0),
+      endStack: formatValue(stack),
+      bb: bbCount == null ? '-' : `${Number.isInteger(bbCount) ? bbCount : bbCount.toFixed(1)} BB`,
+      current: isCurrent,
+    }
+  }),
+)
+
+const currentLevel = computed(() => levels.value.find((level) => level.current) || null)
+const otherLevels = computed(() =>
+  levels.value.filter((level) => !currentLevel.value || level.id !== currentLevel.value.id),
+)
+const tournamentHands = computed(() =>
+  (event.value?.blindLevels || []).flatMap((level) =>
+    (level.hands || []).map((hand) => ({
+      ...hand,
+      __levelId: level.id,
+      __levelNo: level.levelNo,
+      __levelLabel: `L${level.levelNo}`,
+    })),
+  ),
+)
 const showLevelMenu = ref(false)
+const levelSheetOpen = ref(false)
+const editingLevelId = ref(null)
+const editingIsCurrent = computed(
+  () =>
+    editingLevelId.value &&
+    runningTournament.currentBlindLevelId &&
+    String(editingLevelId.value) === String(runningTournament.currentBlindLevelId),
+)
+const deleteConfirmOpen = ref(false)
+const deletingLevel = ref(null)
+const levelAnteManuallyEdited = ref(false)
+const activateNewLevelAfterSave = ref(false)
+const levelForm = reactive({
+  levelNo: '',
+  smallBlind: '',
+  bigBlind: '',
+  ante: '',
+  endStack: '',
+  makeCurrent: false,
+})
 
-const openLevel = (levelName) => {
-  router.push(`/app/tournament/running/level/${levelName}`)
+const formatCompactStack = (value) => {
+  if (!value || value === '-') return '-'
+
+  const number = Number(String(value).replaceAll(',', ''))
+  if (!Number.isFinite(number) || number < 1000) return value
+
+  const thousands = number / 1000
+  return `${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}K`
+}
+
+const parseStoredNumber = (value) => {
+  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  if (!normalized) return null
+  const number = Number(normalized)
+  return Number.isFinite(number) ? number : null
+}
+
+const formatInputNumber = (value) => {
+  const digits = String(value ?? '').replace(/\D/g, '')
+  return digits ? Number(digits).toLocaleString('ko-KR') : ''
+}
+
+const persistRunningSession = async () => {
+  if (!runningTournament.sessionId) return
+  const blinds = runningTournament.currentBlinds || {}
+  await updateGameSession(runningTournament.sessionId, {
+    venueId: runningTournament.venueId || null,
+    playDate: runningTournament.date?.replaceAll('.', '-') || formatLocalDate(),
+    sessionType: runningTournament.venueId ? 'VENUE' : 'OTHER',
+    gameType: 'TOURNAMENT',
+    tournamentName: runningTournament.name,
+    tournamentResult: null,
+    startLevel: runningTournament.startLevel,
+    currentLevel: runningTournament.currentLevel,
+    buyInPerEntry: parseStoredNumber(runningTournament.buyIn),
+    entries: runningTournament.totalBuyIns || 1,
+    discount: parseStoredNumber(runningTournament.discountAmount) || 0,
+    prize: 0,
+    satelliteAwarded: false,
+    notes: runningTournament.memo || '',
+    handLogEventId: runningTournament.eventId,
+    tournamentStatus: 'RUNNING',
+    startingStack: parseStoredNumber(runningTournament.startingStack),
+    currentStack: parseStoredNumber(runningTournament.currentStack),
+    averageStack: parseStoredNumber(runningTournament.averageStack),
+    currentSmallBlind: parseStoredNumber(blinds.smallBlind),
+    currentBigBlind: parseStoredNumber(blinds.bigBlind),
+    currentAnte: parseStoredNumber(blinds.ante),
+  })
+}
+
+const getBackendLevel = (levelId) =>
+  event.value?.blindLevels?.find((level) => String(level.id) === String(levelId)) || null
+
+const setLevelNumber = (field, inputEvent) => {
+  levelForm[field] = formatInputNumber(inputEvent.target.value)
+}
+
+const updateLevelBigBlind = (inputEvent) => {
+  levelForm.bigBlind = formatInputNumber(inputEvent.target.value)
+  if (!levelAnteManuallyEdited.value) levelForm.ante = levelForm.bigBlind
+}
+
+const updateLevelAnte = (inputEvent) => {
+  levelForm.ante = formatInputNumber(inputEvent.target.value)
+  levelAnteManuallyEdited.value = true
+}
+
+const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave = false) => {
+  const source = level ? getBackendLevel(level.id) : null
+  const nextLevelNo = requestedLevelNo
+    ? Number(requestedLevelNo)
+    : Math.max(0, ...(event.value?.blindLevels || []).map((item) => Number(item.levelNo) || 0)) + 1
+
+  editingLevelId.value = source?.id || null
+  activateNewLevelAfterSave.value = !source && activateAfterSave
+  Object.assign(levelForm, {
+    levelNo: String(source?.levelNo ?? nextLevelNo),
+    smallBlind: formatInputNumber(source?.smallBlind),
+    bigBlind: formatInputNumber(source?.bigBlind),
+    ante: formatInputNumber(source?.ante),
+    endStack: source
+      ? formatInputNumber(source.endStack ?? source.displayStartStack ?? source.startStack)
+      : '',
+    makeCurrent: Boolean(
+      source &&
+        runningTournament.currentBlindLevelId &&
+        String(source.id) === String(runningTournament.currentBlindLevelId),
+    ),
+  })
+  levelAnteManuallyEdited.value = Boolean(source && source.ante !== source.bigBlind)
+  showLevelMenu.value = false
+  levelSheetOpen.value = true
+}
+
+const saveLevel = async () => {
+  const eventId = runningTournament.eventId
+  if (!eventId || !levelForm.levelNo || !levelForm.smallBlind || !levelForm.bigBlind) {
+    alert.show('레벨과 블라인드를 입력해 주세요.', 'warning')
+    return
+  }
+
+  try {
+    let saved
+    if (editingLevelId.value) {
+      await handLogStore.updateBlindLevelStructure(eventId, editingLevelId.value, {
+        levelNo: Number(levelForm.levelNo),
+        smallBlind: parseStoredNumber(levelForm.smallBlind),
+        bigBlind: parseStoredNumber(levelForm.bigBlind),
+        ante: parseStoredNumber(levelForm.ante),
+      })
+      saved = await handLogStore.updateBlindLevelInfo(eventId, editingLevelId.value, {
+        startStack: getBackendLevel(editingLevelId.value)?.startStack,
+        endStack: parseStoredNumber(levelForm.endStack),
+        averageStack: getBackendLevel(editingLevelId.value)?.averageStack,
+        memo: getBackendLevel(editingLevelId.value)?.memo,
+      })
+    } else {
+      saved = await handLogStore.addBlindLevel(eventId, {
+        levelNo: Number(levelForm.levelNo),
+        smallBlind: parseStoredNumber(levelForm.smallBlind),
+        bigBlind: parseStoredNumber(levelForm.bigBlind),
+        ante: parseStoredNumber(levelForm.ante),
+        endStack: null,
+        averageStack: null,
+      })
+    }
+
+    await handLogStore.fetchEventDetail(eventId)
+    const shouldActivate =
+      saved &&
+      ((!editingLevelId.value &&
+        (activateNewLevelAfterSave.value ||
+          (!runningTournament.currentBlindLevelId &&
+            (event.value?.blindLevels?.length || 0) === 1))) ||
+        (editingLevelId.value && levelForm.makeCurrent))
+
+    if (shouldActivate) {
+      runningTournament.currentBlindLevelId = saved.id
+      runningTournament.currentLevel = `L${saved.levelNo}`
+      runningTournament.currentBlinds = {
+        smallBlind: formatInputNumber(saved.smallBlind),
+        bigBlind: formatInputNumber(saved.bigBlind),
+        ante: formatInputNumber(saved.ante),
+      }
+      runningTournament.blinds = [saved.smallBlind, saved.bigBlind, saved.ante]
+        .map((value) => (Number(value) > 0 ? formatInputNumber(value) : '-'))
+        .join(' / ')
+      const inheritedStack =
+        saved.endStack ??
+        saved.displayStartStack ??
+        saved.startStack ??
+        parseStoredNumber(runningTournament.currentStack)
+      runningTournament.currentStack = formatInputNumber(inheritedStack)
+      runningTournament.currentBb =
+        inheritedStack != null && saved.bigBlind > 0
+          ? Number((inheritedStack / saved.bigBlind).toFixed(1))
+          : null
+      localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+      await persistRunningSession()
+    }
+    activateNewLevelAfterSave.value = false
+    levelSheetOpen.value = false
+  } catch {
+    alert.show('레벨을 저장하지 못했습니다.', 'error')
+  }
+}
+
+const requestRemoveLevel = (level) => {
+  showLevelMenu.value = false
+  deletingLevel.value = level
+  deleteConfirmOpen.value = true
+}
+
+const removeLevel = async () => {
+  const level = deletingLevel.value
+  if (!runningTournament.eventId || !level?.id) return
+
+  try {
+    const wasCurrent =
+      runningTournament.currentBlindLevelId &&
+      String(runningTournament.currentBlindLevelId) === String(level.id)
+    const deletedLevelNo = getBackendLevel(level.id)?.levelNo ?? Number(level.name?.replace(/\D/g, ''))
+    await handLogStore.deleteBlindLevel(runningTournament.eventId, level.id)
+    const remaining = event.value?.blindLevels || []
+    const nextCurrent = wasCurrent
+      ? remaining.find((item) => item.levelNo > deletedLevelNo) ||
+        [...remaining].reverse().find((item) => item.levelNo < deletedLevelNo) ||
+        null
+      : getBackendLevel(runningTournament.currentBlindLevelId)
+
+    if (wasCurrent) {
+      runningTournament.currentBlindLevelId = nextCurrent?.id || null
+      runningTournament.currentLevel = nextCurrent ? `L${nextCurrent.levelNo}` : null
+    }
+    if (wasCurrent && !nextCurrent) {
+      runningTournament.currentBlinds = null
+      runningTournament.blinds = null
+      runningTournament.currentStack = null
+      runningTournament.averageStack = null
+      runningTournament.currentBb = null
+      runningTournament.averageBb = null
+    }
+    localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+    await persistRunningSession()
+    deleteConfirmOpen.value = false
+    deletingLevel.value = null
+  } catch {
+    alert.show('핸드가 기록된 레벨은 삭제할 수 없습니다.', 'error')
+  }
+}
+
+const ensureEventId = async () => {
+  if (runningTournament.eventId) return runningTournament.eventId
+
+  const eventId = await handLogStore.createEvent({
+    name: runningTournament.name || '이름 없는 토너먼트',
+    startingStack: parseStoredNumber(runningTournament.startingStack),
+  })
+  if (!eventId) return null
+
+  const levelNo = currentLevelNumber.value || 1
+  const blinds = runningTournament.currentBlinds || runningTournament.startBlinds || {}
+  const firstLevel = await handLogStore.addBlindLevel(eventId, {
+    levelNo,
+    smallBlind: parseStoredNumber(blinds.smallBlind) ?? 0,
+    bigBlind: parseStoredNumber(blinds.bigBlind) ?? 0,
+    ante: parseStoredNumber(blinds.ante) ?? 0,
+    startStack: parseStoredNumber(runningTournament.startingStack),
+    endStack: parseStoredNumber(runningTournament.currentStack),
+    averageStack: parseStoredNumber(runningTournament.averageStack),
+  })
+
+  runningTournament.eventId = eventId
+  runningTournament.currentBlindLevelId = firstLevel?.id || null
+  localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+  return eventId
+}
+
+const openRequestedLevelSheet = async () => {
+  if (route.query.addLevel !== '1') return
+
+  const requestedLevelNo = route.query.nextLevelNo
+  const activateAfterSave = route.query.activateLevel === '1'
+  const query = { ...route.query }
+  delete query.addLevel
+  delete query.nextLevelNo
+  delete query.activateLevel
+  await router.replace({ query })
+  await nextTick()
+  openLevelSheet(null, requestedLevelNo, activateAfterSave)
+}
+
+onMounted(async () => {
+  try {
+    const serverRunning = await fetchRunningGameSession()
+    if (serverRunning) {
+      Object.assign(runningTournament, {
+        sessionId: serverRunning.id,
+        eventId: serverRunning.handLogEventId,
+        name: serverRunning.tournamentName,
+        venueId: serverRunning.venueId,
+        startLevel: serverRunning.startLevel,
+        currentLevel: serverRunning.currentLevel,
+        startingStack: formatInputNumber(serverRunning.startingStack),
+        currentStack: formatInputNumber(serverRunning.currentStack),
+        averageStack: formatInputNumber(serverRunning.averageStack),
+        buyIn: formatInputNumber(serverRunning.buyInPerEntry),
+        totalBuyIns: serverRunning.entries,
+        currentBlinds: {
+          smallBlind: formatInputNumber(serverRunning.currentSmallBlind),
+          bigBlind: formatInputNumber(serverRunning.currentBigBlind),
+          ante: formatInputNumber(serverRunning.currentAnte),
+        },
+      })
+      localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+    }
+    const eventId = await ensureEventId()
+    if (eventId) {
+      await handLogStore.fetchEventDetail(eventId)
+      await Promise.allSettled(
+        (event.value?.blindLevels || []).map((level) =>
+          handLogStore.fetchBlindLevelDetail(eventId, level.id),
+        ),
+      )
+    }
+  } catch {
+    alert.show('토너먼트 데이터를 불러오지 못했습니다.', 'error')
+  } finally {
+    await openRequestedLevelSheet()
+  }
+})
+
+const openLevel = (level) => {
+  router.push({
+    name: 'tournament-level-detail',
+    params: { levelName: level.id },
+    query: { levelName: level.name },
+  })
 }
 
 const openManage = () => {
   router.push('/app/tournament/running/manage')
 }
 
+const openSummaryHand = (hand) => {
+  if (!hand?.__levelId || !hand?.id) return
+  router.push({
+    name: 'tournament-hand-detail',
+    params: { levelName: hand.__levelId, handId: hand.id },
+    query: { levelName: hand.__levelLabel },
+  })
+}
+
 const openFinish = () => {
   router.push('/app/tournament/running/finish')
 }
 
-const closeLevelMenu = () => {
-  showLevelMenu.value = false
-}
 </script>
 
 <style scoped>
@@ -149,7 +618,7 @@ const closeLevelMenu = () => {
   align-content: start;
   gap: 20px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
 }
 
 .running-topbar {
@@ -269,6 +738,16 @@ const closeLevelMenu = () => {
 .level-list {
   display: grid;
   gap: 8px;
+}
+
+.level-list__empty {
+  padding: 28px 16px;
+  border: 1px solid rgba(230, 226, 240, 0.9);
+  border-radius: var(--v2-radius-lg);
+  background: #ffffff;
+  color: var(--v2-text-sub);
+  font-size: 14px;
+  text-align: center;
 }
 
 .current-level-card {
@@ -393,6 +872,10 @@ const closeLevelMenu = () => {
   line-height: 1.2;
 }
 
+.current-level-card__body > div > span {
+  display: block;
+}
+
 .current-level-card__body strong {
   display: inline-block;
   margin-top: 9px;
@@ -413,64 +896,71 @@ const closeLevelMenu = () => {
 
 .current-level-card__body div:last-child strong {
   color: var(--v2-primary);
-}
-
-.current-level-card__body div:last-child em {
-  display: inline;
-  margin-left: 6px;
-  color: #5f596b;
+  font-size: 28px;
 }
 
 .level-row {
   width: 100%;
-  min-height: 62px;
-  padding: 12px 12px 12px 16px;
+  min-height: 82px;
+  padding: 13px 12px 12px 16px;
   border: 1px solid rgba(230, 226, 240, 0.9);
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
   box-shadow: 0 4px 12px rgba(28, 18, 60, 0.018);
   color: var(--v2-text-main);
   display: grid;
-  grid-template-columns: 54px minmax(0, 1.35fr) minmax(54px, 0.55fr) minmax(94px, 0.85fr) 24px;
+  grid-template-columns: 44px minmax(0, 1fr) 24px;
   align-items: center;
-  gap: 8px;
+  column-gap: 12px;
   font: inherit;
   text-align: left;
 }
 
-.level-row > strong {
+.level-row__content {
+  display: grid;
+  gap: 8px;
+}
+
+.level-row__level {
+  align-self: center;
   color: var(--v2-text-main);
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 620;
 }
 
 .level-row__blinds {
-  overflow: hidden;
   color: var(--v2-text-main);
   font-size: 14px;
   font-weight: 450;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.level-row__bottom {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  color: var(--v2-text-sub);
 }
 
 .level-row__metric,
 .level-row__stack {
   min-width: 0;
-  padding-left: 14px;
-  border-left: 1px solid var(--v2-border);
-  display: grid;
-  gap: 3px;
-  color: var(--v2-text-main);
-  font-size: 14px;
-  font-weight: 540;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 450;
   line-height: 1.1;
+  white-space: nowrap;
 }
 
-.level-row__stack em {
+.level-row__metric b,
+.level-row__stack b {
+  font: inherit;
   color: #5f596b;
-  font-size: 12px;
-  font-style: normal;
-  font-weight: 430;
+  font-weight: 520;
 }
 
 .level-row__menu {
@@ -479,46 +969,171 @@ const closeLevelMenu = () => {
   justify-content: flex-end;
 }
 
-.finish-panel {
-  margin-top: 6px;
-  padding: 16px 16px;
-  border: 1px solid rgba(239, 68, 68, 0.28);
-  border-radius: var(--v2-radius-md);
-  background: #fffdfc;
+.level-sheet {
+  width: min(100%, 520px);
+  max-height: 88vh;
+  overflow-y: auto;
+  margin: 0 auto;
+  padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
+  gap: 18px;
 }
 
-.finish-panel strong {
+.level-sheet__handle {
+  width: 38px;
+  height: 5px;
+  margin: 0 auto 2px;
+  border-radius: 999px;
+  background: #d4d0dc;
+}
+
+.level-sheet h2 {
+  margin: 0 0 4px;
   color: var(--v2-text-main);
-  font-size: 16px;
+  font-size: 20px;
+  font-weight: 620;
+  text-align: center;
+}
+
+.level-sheet label {
+  display: grid;
+  gap: 8px;
+}
+
+.level-sheet label > span {
+  color: var(--v2-text-main);
+  font-size: 14px;
   font-weight: 560;
 }
 
-.finish-panel p {
-  margin: 6px 0 0;
-  color: #5f596b;
-  font-size: 13px;
+.level-sheet label > span em {
+  margin-left: 4px;
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-style: normal;
   font-weight: 430;
 }
 
-.finish-panel button {
-  min-height: 42px;
-  padding: 0 20px;
-  border: 1px solid var(--v2-danger);
+.level-sheet input {
+  width: 100%;
+  height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  outline: 0;
+  background: #ffffff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 16px;
+}
+
+.level-sheet input:focus {
+  border-color: rgba(109, 69, 232, 0.6);
+}
+
+.level-sheet__blinds {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.level-sheet__actions {
+  margin-top: 4px;
+}
+
+.level-sheet__save {
+  width: 100%;
+  height: 52px;
+  border-radius: var(--v2-radius-sm);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 620;
+}
+
+.level-sheet__save {
+  border: 0;
+  background: var(--v2-primary);
+  color: #ffffff;
+}
+
+.level-sheet__save:disabled {
+  opacity: 0.55;
+}
+
+.level-sheet .level-sheet__current {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.level-sheet .level-sheet__current input {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  accent-color: var(--v2-primary);
+}
+
+.level-sheet .level-sheet__current span {
+  font-size: 14px;
+}
+
+.level-sheet__current-status {
+  padding: 12px 14px;
+  border-radius: var(--v2-radius-sm);
+  background: #f3efff;
+  color: var(--v2-primary);
+  font-size: 14px;
+  font-weight: 560;
+  text-align: center;
+}
+
+.delete-confirm {
+  width: min(calc(100vw - 40px), 360px);
+  padding: 24px;
+  border-radius: var(--v2-radius-lg);
+  background: #ffffff;
+}
+
+.delete-confirm h2 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 19px;
+  font-weight: 620;
+}
+
+.delete-confirm p {
+  margin: 10px 0 22px;
+  color: var(--v2-text-sub);
+  font-size: 14px;
+}
+
+.delete-confirm > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delete-confirm button {
+  height: 44px;
+  border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-sm);
   background: #ffffff;
-  color: var(--v2-danger);
+  color: var(--v2-text-main);
   font: inherit;
   font-size: 14px;
   font-weight: 560;
 }
 
+.delete-confirm button.danger {
+  border-color: var(--v2-danger);
+  color: var(--v2-danger);
+}
+
 @media (max-width: 420px) {
   .running-page {
-    padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
+    padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
   }
 
   .running-summary {
@@ -554,27 +1169,26 @@ const closeLevelMenu = () => {
   }
 
   .level-row {
-    grid-template-columns: 46px minmax(0, 1.2fr) 54px minmax(76px, 0.75fr) 20px;
-    gap: 7px;
     padding: 11px 10px 11px 14px;
   }
 
-  .level-row > strong {
-    font-size: 20px;
+  .level-row {
+    grid-template-columns: 38px minmax(0, 1fr) 20px;
+    column-gap: 8px;
   }
 
-  .level-row__blinds,
-  .level-row__metric,
-  .level-row__stack {
+  .level-row__level {
+    font-size: 19px;
+  }
+
+  .level-row__bottom {
+    grid-template-columns: 78px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+
+  .level-row__blinds {
     font-size: 13px;
   }
 
-  .finish-panel {
-    padding: 14px;
-  }
-
-  .finish-panel button {
-    padding: 0 16px;
-  }
 }
 </style>

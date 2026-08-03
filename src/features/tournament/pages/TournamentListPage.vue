@@ -1,5 +1,5 @@
 <template>
-  <q-page class="tournament-list-page">
+  <q-page class="tournament-list-page" @click="venueMenuOpen = false">
     <header class="list-topbar">
       <button class="list-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
         <q-icon name="chevron_left" size="28px" />
@@ -11,16 +11,35 @@
     <div class="control-row">
       <label class="search-field">
         <q-icon name="search" size="18px" />
-        <input v-model="search" placeholder="검색" type="search" />
+        <input v-model="search" placeholder="대회명 검색" type="search" />
       </label>
 
-      <button class="filter-button" type="button">
-        매장 전체
-        <q-icon name="expand_more" size="18px" />
-      </button>
-      <button class="filter-button filter-button--sort" type="button">
-        최신순
-        <q-icon name="expand_more" size="18px" />
+      <div class="venue-filter">
+        <button class="filter-button" type="button" @click.stop="venueMenuOpen = !venueMenuOpen">
+          {{ selectedVenueLabel }}
+          <q-icon name="expand_more" size="18px" />
+        </button>
+        <div v-if="venueMenuOpen" class="venue-menu" @click.stop>
+          <button type="button" :class="{ selected: selectedVenue === 'all' }" @click="selectVenue('all')">
+            매장 전체
+          </button>
+          <button
+            v-for="venue in venues"
+            :key="venue.id"
+            type="button"
+            :class="{ selected: selectedVenue === String(venue.id) }"
+            @click="selectVenue(String(venue.id))"
+          >
+            {{ venue.name }}
+          </button>
+          <button type="button" :class="{ selected: selectedVenue === 'other' }" @click="selectVenue('other')">
+            기타
+          </button>
+        </div>
+      </div>
+      <button class="filter-button filter-button--sort" type="button" @click="toggleSort">
+        {{ sortOrder === 'desc' ? '최신순' : '오래된순' }}
+        <q-icon name="swap_vert" size="17px" />
       </button>
     </div>
 
@@ -28,6 +47,9 @@
       <h2>토너먼트 목록</h2>
 
       <div class="tournament-card">
+        <div v-if="filteredTournaments.length === 0" class="tournament-empty">
+          조건에 맞는 토너먼트가 없습니다.
+        </div>
         <button
           v-for="tournament in filteredTournaments"
           :key="tournament.id"
@@ -52,31 +74,77 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { fetchAllGameSessions } from 'src/api/gameSession'
+import { fetchVenues } from 'src/api/venue'
+import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
 const search = ref('')
+const venues = ref([])
+const selectedVenue = ref('all')
+const venueMenuOpen = ref(false)
+const sortOrder = ref('desc')
 
-const tournaments = [
-  { id: 'prime-0702', title: '프라임 0702', date: '2025.07.02', badge: '완료', tone: 'success' },
-  { id: 'mango-0630', title: 'Mango 2nd', date: '2024.06.30', badge: '탈락', tone: 'default' },
-  { id: 'kiki-3000-gtd', title: 'KIKI 3000 GTD', date: '2024.06.29', badge: 'Bubble', tone: 'default' },
-  { id: 'royce-championship', title: '로이스 챔피언십', date: '2024.06.28', badge: '완료', tone: 'success' },
-  { id: 'tt-masters-2500', title: 'TT 마스터즈 2500 GTD', date: '2024.06.27', badge: '탈락', tone: 'default' },
-  { id: 'prime-0626', title: '프라임 0626', date: '2024.06.26', badge: '완료', tone: 'success' },
-  { id: 'mango-deepstack', title: 'Mango Deepstack', date: '2024.06.25', badge: '탈락', tone: 'default' },
-  { id: 'kiki-championship-0715', title: 'KIKI 챔피언십 0715', date: '2024.06.24', badge: '탈락', tone: 'default' },
-]
+const tournaments = ref([])
+const labels = { BUST: '탈락', BUBBLE: 'Bubble', ITM: 'ITM', CHOP: '찹', WIN: '우승' }
+
+onMounted(async () => {
+  const [sessions, venueItems] = await Promise.all([
+    fetchAllGameSessions(),
+    fetchVenues(),
+  ])
+  venues.value = venueItems || []
+  const venueById = new Map(venues.value.map((venue) => [String(venue.id), venue.name]))
+  tournaments.value = (sessions || [])
+    .filter((session) => session.tournamentStatus !== 'RUNNING')
+    .map((session) => ({
+      id: session.id,
+      title: tournamentDisplayName(session),
+      date: session.playDate?.replaceAll('-', '.') || '-',
+      rawDate: session.playDate || '',
+      venueId: session.venueId == null ? null : String(session.venueId),
+      venueName:
+        venueById.get(String(session.venueId)) ||
+        session.collabLabel ||
+        '기타',
+      badge: labels[session.tournamentResult] || '완료',
+      tone: session.tournamentResult === 'WIN' ? 'success' : 'default',
+    }))
+})
+
+const selectedVenueLabel = computed(() => {
+  if (selectedVenue.value === 'all') return '매장 전체'
+  if (selectedVenue.value === 'other') return '기타'
+  return venues.value.find((venue) => String(venue.id) === selectedVenue.value)?.name || '매장 전체'
+})
 
 const filteredTournaments = computed(() => {
   const keyword = search.value.trim().toLowerCase()
-  if (!keyword) return tournaments
-
-  return tournaments.filter((item) => {
-    return item.title.toLowerCase().includes(keyword) || item.date.includes(keyword)
-  })
+  return tournaments.value
+    .filter((item) => !keyword || item.title.toLowerCase().includes(keyword))
+    .filter((item) => {
+      if (selectedVenue.value === 'all') return true
+      if (selectedVenue.value === 'other') return item.venueId == null
+      return item.venueId === selectedVenue.value
+    })
+    .sort((a, b) => {
+      const dateCompare = String(a.rawDate).localeCompare(String(b.rawDate))
+      const idCompare = Number(a.id || 0) - Number(b.id || 0)
+      return sortOrder.value === 'desc'
+        ? -(dateCompare || idCompare)
+        : dateCompare || idCompare
+    })
 })
+
+const selectVenue = (venueId) => {
+  selectedVenue.value = venueId
+  venueMenuOpen.value = false
+}
+const toggleSort = () => {
+  sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
+}
 
 const openTournament = (id) => {
   router.push(`/app/tournament/${id}/summary`)
@@ -95,7 +163,7 @@ const openTournament = (id) => {
 .list-topbar {
   display: grid;
   grid-template-columns: 40px minmax(0, 1fr) 40px;
-  align-items: start;
+  align-items: center;
   min-height: 36px;
 }
 
@@ -113,13 +181,13 @@ const openTournament = (id) => {
   color: var(--v2-text-main);
   font-size: 17px;
   font-weight: 560;
-  line-height: 1.2;
+  line-height: 36px;
   text-align: center;
 }
 
 .control-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 90px 90px;
   align-items: center;
   gap: 8px;
 }
@@ -135,7 +203,8 @@ const openTournament = (id) => {
 }
 
 .filter-button {
-  min-width: 100px;
+  width: 100%;
+  min-width: 0;
   padding: 0 9px 0 11px;
   display: flex;
   align-items: center;
@@ -148,7 +217,50 @@ const openTournament = (id) => {
 }
 
 .filter-button--sort {
-  min-width: 76px;
+  min-width: 0;
+}
+
+.venue-filter {
+  position: relative;
+}
+
+.venue-menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 7px);
+  right: 0;
+  width: max(142px, 100%);
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(28, 18, 60, .14);
+}
+
+.venue-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 13px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: #fff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+}
+
+.venue-menu button:last-child {
+  border-bottom: 0;
+}
+
+.venue-menu button.selected {
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  font-weight: 600;
 }
 
 .search-field {
@@ -195,6 +307,16 @@ const openTournament = (id) => {
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
   box-shadow: 0 8px 22px rgba(28, 18, 60, 0.035);
+}
+
+.tournament-empty {
+  display: grid;
+  min-height: 108px;
+  place-items: center;
+  padding: 20px;
+  color: var(--v2-text-sub);
+  font-size: 13px;
+  text-align: center;
 }
 
 .tournament-row {
@@ -270,12 +392,12 @@ const openTournament = (id) => {
   }
 
   .filter-button {
-    min-width: 90px;
+    min-width: 0;
     padding: 0 8px;
   }
 
   .filter-button--sort {
-    min-width: 70px;
+    min-width: 0;
   }
 
   .tournament-row {

@@ -5,7 +5,7 @@
       <q-card flat bordered class="q-pa-md dashboard-card">
         <div class="row items-center justify-between q-mb-sm">
           <div class="text-subtitle1 text-weight-bold">최근 6개월 손익 추세</div>
-          <div class="text-caption text-grey-6">월별 바인 / 프라이즈 / 이익</div>
+          <div class="text-caption text-grey-6">월별 바인 / 상금 / 이익</div>
         </div>
 
         <div v-if="!last6Months?.length" class="text-caption text-grey-6">
@@ -35,7 +35,7 @@
                 {{ s.playDate }} · {{ s.venueName || '매장 없음' }}
               </q-item-label>
               <q-item-label caption class="text-grey-7">
-                바인 {{ formatMoney(s.totalBuyIn) }} · 프라이즈 {{ formatMoney(s.prize) }}
+                바인 {{ formatMoney(s.totalBuyIn) }} · 상금 {{ formatMoney(s.prize) }}
               </q-item-label>
             </q-item-section>
 

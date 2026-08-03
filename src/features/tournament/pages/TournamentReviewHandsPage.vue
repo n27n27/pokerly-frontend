@@ -34,65 +34,106 @@
           {{ hand.result }}
         </span>
       </article>
+      <div v-if="!hands.length" class="hand-list__empty">복기할 핸드가 없습니다.</div>
     </section>
   </q-page>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
+import { fetchGameSession } from 'src/api/gameSession'
+import { useAlert } from 'src/composables/useAlert'
+import { useHandLogStore } from 'src/stores/handLog'
+
+const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
+const handLogStore = useHandLogStore()
+const runningTournament = (() => {
+  try {
+    return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
+  } catch {
+    return {}
+  }
+})()
+const tournamentId = computed(() => route.params.tournamentId)
 
-const hands = [
-  {
-    id: 1,
-    level: 'L14',
-    position: 'CO',
-    result: '승리',
-    tone: 'win',
-    cards: [
-      { rank: 'A', suit: '♠' },
-      { rank: 'K', suit: '♥', red: true },
-    ],
-  },
-  {
-    id: 2,
-    level: 'L11',
-    position: 'BTN',
-    result: '패배',
-    tone: 'lose',
-    cards: [
-      { rank: 'Q', suit: '♣' },
-      { rank: '8', suit: '♦', red: true },
-    ],
-  },
-  {
-    id: 3,
-    level: 'L8',
-    position: 'SB',
-    result: '승리',
-    tone: 'win',
-    cards: [
-      { rank: 'K', suit: '♠' },
-      { rank: 'J', suit: '♥', red: true },
-    ],
-  },
-  {
-    id: 4,
-    level: 'L6',
-    position: 'BB',
-    result: '승리',
-    tone: 'win',
-    cards: [
-      { rank: '7', suit: '♥', red: true },
-      { rank: '7', suit: '♣' },
-    ],
-  },
-]
+const cardsOf = (hand) => {
+  const ranks =
+    [hand.firstRank, hand.secondRank].filter(Boolean).length === 2
+      ? [hand.firstRank, hand.secondRank]
+      : String(hand.holeCards || hand.hand || '').match(/10|[AKQJT2-9]/gi)?.slice(0, 2) || []
+  const suits = [hand.firstSuit, hand.secondSuit]
+  return ranks.map((rank, index) => {
+    const suit = suits[index] || (hand.suited ? '♠' : index === 0 ? '♠' : '♥')
+    return {
+      rank: String(rank).toUpperCase() === '10' ? 'T' : String(rank).toUpperCase(),
+      suit,
+      red: ['♥', '♦'].includes(suit),
+    }
+  })
+}
+
+const resultOf = (hand) => {
+  const value = hand.resultType || hand.result
+  if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(value)) {
+    return { result: '승리', tone: 'win' }
+  }
+  if (['CHOP', 'DRAW'].includes(value)) return { result: '찹', tone: 'draw' }
+  if (['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'].includes(value)) {
+    return { result: '패배', tone: 'lose' }
+  }
+  return { result: '미기록', tone: 'neutral' }
+}
+
+const hands = computed(() =>
+  (handLogStore.selectedEvent?.blindLevels || []).flatMap((level) =>
+    (level.hands || [])
+      .filter((hand) => hand.reviewRequired)
+      .map((hand) => ({
+        id: hand.id,
+        levelId: level.id,
+        level: `L${level.levelNo}`,
+        position: hand.position || '-',
+        cards: cardsOf(hand),
+        ...resultOf(hand),
+      })),
+  ),
+)
 
 const openHand = (hand) => {
-  router.push(`/app/tournament/running/level/${hand.level}/hand/${hand.id}`)
+  router.push({
+    name: 'tournament-hand-detail',
+    params: { levelName: hand.levelId, handId: hand.id },
+    query: { levelName: hand.level },
+  })
 }
+
+onMounted(async () => {
+  if (!tournamentId.value) return
+  try {
+    const session = await fetchGameSession(tournamentId.value)
+    const eventId = session?.handLogEventId ||
+      (String(runningTournament.sessionId) === String(tournamentId.value)
+        ? runningTournament.eventId
+        : null)
+
+    if (!eventId) {
+      handLogStore.selectedEvent = null
+      return
+    }
+
+    await handLogStore.fetchEventDetail(eventId)
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      handLogStore.selectedEvent = null
+      return
+    }
+    alert.show('복기 핸드를 불러오지 못했습니다.', 'error')
+  }
+})
 </script>
 
 <style scoped>
@@ -143,6 +184,14 @@ const openHand = (hand) => {
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
+}
+
+.hand-list__empty {
+  display: grid;
+  min-height: 110px;
+  place-items: center;
+  color: var(--v2-text-sub);
+  font-size: 13px;
 }
 
 .hand-row {

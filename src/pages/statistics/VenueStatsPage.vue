@@ -227,7 +227,7 @@ const columns = [
   { name: 'venueName', label: '매장', field: 'venueName', align: 'left' },
   { name: 'sessions', label: '세션 수', field: 'sessions', align: 'right' },
   { name: 'totalBuyIn', label: '총 바인', field: 'totalBuyIn', align: 'right' },
-  { name: 'totalPrize', label: '총 프라이즈', field: 'totalPrize', align: 'right' },
+  { name: 'totalPrize', label: '총 포인트', field: 'totalPrize', align: 'right' },
   { name: 'totalProfit', label: '누적 수익', field: 'totalProfit', align: 'right' },
   { name: 'roi', label: 'ROI', field: 'roi', align: 'right' },
   { name: 'itmRatio', label: 'ITM률', field: 'itmRatio', align: 'right' },

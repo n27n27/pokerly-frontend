@@ -9,8 +9,14 @@
 
     <section class="tournament-summary">
       <div class="tournament-summary__main">
-        <strong>{{ selectedTournament.name }}</strong>
-        <span>{{ selectedTournament.venue }}</span>
+        <div>
+          <span>대회명</span>
+          <strong>{{ selectedTournament.name }}</strong>
+        </div>
+        <div>
+          <span>매장</span>
+          <strong>{{ selectedTournament.venue }}</strong>
+        </div>
       </div>
 
       <dl>
@@ -58,39 +64,71 @@
       </div>
 
     </form>
-    <StickyPrimaryAction label="토너먼트 시작" @click="startTournament" />
+    <StickyPrimaryAction label="토너먼트 시작" :loading="submitting" loading-label="시작 중..." @click="startTournament" />
   </q-page>
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { useAlert } from 'src/composables/useAlert'
+import { useHandLogStore } from 'src/stores/handLog'
+import { createGameSession, fetchGameSession } from 'src/api/gameSession'
+import { deleteHandLogEvent } from 'src/api/handLogApi'
+import { fetchVenue } from 'src/api/venue'
+import { formatLocalDate } from 'src/utils/localDate'
+import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const route = useRoute()
 const router = useRouter()
+const alert = useAlert()
+const handLogStore = useHandLogStore()
 const levelOpen = ref(false)
+const submitting = ref(false)
 
-const tournaments = [
-  { id: 1, name: 'Prime Daily', venue: 'Prime', stack: '60,000', buyIn: '100,000' },
-  { id: 2, name: 'Royce Daily', venue: 'Royce', stack: '60,000', buyIn: '100,000' },
-  { id: 3, name: 'Mango Daily', venue: 'Mango', stack: '60,000', buyIn: '100,000' },
-  { id: 4, name: 'Prime Championship', venue: 'Prime', stack: '100,000', buyIn: '200,000' },
-  { id: 5, name: 'Ati Daily', venue: 'Ati', stack: '60,000', buyIn: '100,000' },
-]
+const sourceSession = ref(null)
+const selectedTournament = reactive({ name: '-', venue: '-', stack: '', buyIn: '' })
 
-const selectedTournament = computed(() => {
-  const presetId = Number(route.query.presetId)
-  return tournaments.find((item) => item.id === presetId) || tournaments[0]
-})
-
-const levels = ['L1', 'L2', 'L3', 'L4', 'L5']
+const levels = ref([])
 
 const form = reactive({
   level: 'L1',
-  stack: selectedTournament.value.stack,
-  buyIn: selectedTournament.value.buyIn,
+  stack: '',
+  buyIn: '',
+})
+
+onMounted(async () => {
+  try {
+    sourceSession.value = await fetchGameSession(route.query.presetId)
+    const venue = sourceSession.value.venueId
+      ? await fetchVenue(sourceSession.value.venueId).catch(() => null)
+      : null
+    Object.assign(selectedTournament, {
+      name: tournamentDisplayName(sourceSession.value),
+      venue:
+        venue?.name ||
+        sourceSession.value.collabLabel ||
+        (sourceSession.value.sessionType === 'VENUE' ? '등록 장소' : '기타'),
+      stack: Number(sourceSession.value.startingStack || 0).toLocaleString('ko-KR'),
+      buyIn: Number(sourceSession.value.buyInPerEntry || 0).toLocaleString('ko-KR'),
+    })
+    const sourceEvent = sourceSession.value.handLogEventId
+      ? await handLogStore.fetchEventDetail(sourceSession.value.handLogEventId)
+      : null
+    levels.value = [...(sourceEvent?.blindLevels || [])]
+      .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
+      .map((level) => `L${level.levelNo}`)
+    const sourceStartLevel = sourceSession.value.startLevel || ''
+    form.level = levels.value.includes(sourceStartLevel)
+      ? sourceStartLevel
+      : levels.value[0] || ''
+    form.stack = selectedTournament.stack
+    form.buyIn = selectedTournament.buyIn
+  } catch {
+    alert.show('기존 대회 정보를 불러오지 못했습니다.', 'error')
+  }
 })
 
 const selectLevel = (level) => {
@@ -98,11 +136,105 @@ const selectLevel = (level) => {
   levelOpen.value = false
 }
 
-const startTournament = () => {
-  router.push({
-    path: '/app/home',
-    query: { running: '1' },
-  })
+const parseNumber = (value) => {
+  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  if (!normalized) return null
+  const number = Number(normalized)
+  return Number.isFinite(number) ? number : null
+}
+
+const startTournament = async () => {
+  if (submitting.value) return
+  if (!form.level) {
+    alert.show('선택할 수 있는 블라인드 레벨이 없습니다.', 'warning')
+    return
+  }
+  const startLevel = form.level
+  const runningTournament = {
+    name: selectedTournament.name,
+    venueId: sourceSession.value?.venueId || null,
+    venueName: selectedTournament.venue,
+    startLevel,
+    currentLevel: startLevel,
+    startingStack: form.stack || null,
+    currentStack: form.stack || null,
+    averageStack: null,
+    buyIn: form.buyIn || null,
+    totalBuyIns: 1,
+    blinds: null,
+    currentBb: null,
+    averageBb: null,
+  }
+
+  let createdEventId = null
+  submitting.value = true
+  try {
+    const eventId = await handLogStore.createEvent({
+      name: runningTournament.name,
+      startingStack: parseNumber(form.stack),
+    })
+    if (!eventId) throw new Error('이벤트 생성에 실패했습니다.')
+    createdEventId = eventId
+
+    let firstLevel
+    if (sourceSession.value?.handLogEventId) {
+      await handLogStore.copyBlindLevelsFromEvent(eventId, sourceSession.value.handLogEventId)
+      const copiedEvent = await handLogStore.fetchEventDetail(eventId)
+      firstLevel =
+        copiedEvent?.blindLevels?.find(
+          (level) => level.levelNo === (Number(String(startLevel).replace(/\D/g, '')) || 1),
+        ) || copiedEvent?.blindLevels?.[0]
+    } else {
+      firstLevel = await handLogStore.addBlindLevel(eventId, {
+        levelNo: Number(String(startLevel).replace(/\D/g, '')) || 1,
+        smallBlind: 0,
+        bigBlind: 0,
+        ante: 0,
+        startStack: parseNumber(form.stack),
+        endStack: parseNumber(form.stack),
+      })
+    }
+    if (!firstLevel) throw new Error('시작 레벨 생성에 실패했습니다.')
+
+    runningTournament.eventId = eventId
+    runningTournament.currentBlindLevelId = firstLevel.id
+    const session = await createGameSession({
+      venueId: sourceSession.value?.venueId || null,
+      playDate: formatLocalDate(),
+      sessionType: sourceSession.value?.sessionType || 'OTHER',
+      gameType: 'TOURNAMENT',
+      tournamentName: runningTournament.name,
+      tournamentResult: null,
+      startLevel,
+      currentLevel: startLevel,
+      buyInPerEntry: parseNumber(form.buyIn),
+      entries: 1,
+      discount: 0,
+      prize: 0,
+      satelliteAwarded: false,
+      notes: '',
+      isCollab: Boolean(sourceSession.value?.isCollab),
+      collabLabel: sourceSession.value?.collabLabel || null,
+      handLogEventId: eventId,
+      tournamentStatus: 'RUNNING',
+      startingStack: parseNumber(form.stack),
+      currentStack: parseNumber(form.stack),
+      currentSmallBlind: firstLevel.smallBlind,
+      currentBigBlind: firstLevel.bigBlind,
+      currentAnte: firstLevel.ante,
+    })
+    runningTournament.sessionId = session.id
+    localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+    router.push({
+      path: '/app/home',
+      query: { running: '1' },
+    })
+  } catch {
+    if (createdEventId) await deleteHandLogEvent(createdEventId).catch(() => null)
+    alert.show('토너먼트를 시작하지 못했습니다.', 'error')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -142,21 +274,31 @@ const startTournament = () => {
 
 .tournament-summary__main {
   display: grid;
-  gap: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
   align-content: center;
   min-width: 0;
 }
 
+.tournament-summary__main > div {
+  display: grid;
+  min-width: 0;
+  gap: 7px;
+}
+
 .tournament-summary__main strong {
+  overflow: hidden;
   color: var(--v2-text-main);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 560;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .tournament-summary__main span {
-  color: var(--v2-text-main);
-  font-size: 14px;
+  color: var(--v2-text-sub);
+  font-size: 12px;
   font-weight: 430;
   line-height: 1.2;
 }

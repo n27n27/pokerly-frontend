@@ -9,7 +9,15 @@
       <label v-for="field in fields" :key="field.key" class="input-row">
         <span>{{ field.label }}</span>
         <div>
-          <input v-model.number="form[field.key]" type="number" inputmode="decimal" />
+          <input
+            :value="inputValues[field.key]"
+            type="text"
+            inputmode="decimal"
+            :aria-label="field.label"
+            @focus="beginEditing(field.key)"
+            @input="updateField(field.key, $event.target.value)"
+            @blur="finishEditing(field.key)"
+          />
           <em>{{ field.unit }}</em>
         </div>
       </label>
@@ -26,11 +34,11 @@
           <strong>{{ oddsRatio }} : 1</strong>
         </div>
         <div>
-          <span>필요한 에퀴티</span>
+          <span>필요 에퀴티</span>
           <strong class="primary">{{ requiredEquity }}%</strong>
         </div>
         <div>
-          <span>내 에퀴티</span>
+          <span>예상 에퀴티</span>
           <strong class="success">{{ myEquity }}%</strong>
         </div>
       </div>
@@ -38,9 +46,9 @@
       <div class="decision-card" :class="{ good: isProfitable }">
         <q-icon :name="isProfitable ? 'check_circle' : 'cancel'" size="20px" />
         <div>
-          <strong>{{ isProfitable ? '콜이 수익적입니다!' : '콜이 부족합니다' }}</strong>
+          <strong>{{ isProfitable ? '콜이 수익적입니다' : '콜에 필요한 에퀴티가 부족합니다' }}</strong>
           <span>
-            내 에퀴티({{ myEquity }}%)가 필요한 에퀴티({{ requiredEquity }}%)보다
+            예상 에퀴티({{ myEquity }}%)가 필요 에퀴티({{ requiredEquity }}%)보다
             {{ isProfitable ? '높습니다.' : '낮습니다.' }}
           </span>
         </div>
@@ -50,16 +58,23 @@
     <section class="panel detail-panel">
       <div class="panel-header">
         <h2>상세 계산 과정</h2>
-        <q-icon name="keyboard_arrow_up" size="20px" />
+        <button
+          type="button"
+          :aria-expanded="detailsOpen"
+          :aria-label="`상세 계산 과정 ${detailsOpen ? '접기' : '펼치기'}`"
+          @click="detailsOpen = !detailsOpen"
+        >
+          <q-icon :name="detailsOpen ? 'keyboard_arrow_up' : 'keyboard_arrow_down'" size="20px" />
+        </button>
       </div>
-      <dl>
+      <dl v-if="detailsOpen">
         <div>
           <dt>총 팟 (현재 팟 + 콜 비용)</dt>
           <dd>{{ formatNumber(totalPot) }}</dd>
         </div>
         <div>
-          <dt>팟 오즈 (콜 비용 : 총 팟)</dt>
-          <dd>{{ formatNumber(form.callAmount) }} : {{ formatNumber(form.potSize) }} ({{ oddsRatio }} : 1)</dd>
+          <dt>팟 오즈 (현재 팟 : 콜 비용)</dt>
+          <dd>{{ formatNumber(form.potSize) }} : {{ formatNumber(form.callAmount) }} ({{ oddsRatio }} : 1)</dd>
         </div>
         <div>
           <dt>필요한 에퀴티 = 1 / (팟 오즈 + 1)</dt>
@@ -71,18 +86,24 @@
 </template>
 
 <script setup>
-import { computed, reactive } from 'vue'
+import { computed, reactive, ref } from 'vue'
 
 const form = reactive({
   potSize: 100000,
   callAmount: 20000,
   myEquity: 35,
 })
+const inputValues = reactive({
+  potSize: '100,000',
+  callAmount: '20,000',
+  myEquity: '35',
+})
+const detailsOpen = ref(true)
 
 const fields = [
-  { key: 'potSize', label: '팟 크기', unit: '' },
+  { key: 'potSize', label: '현재 팟', unit: '' },
   { key: 'callAmount', label: '콜 비용', unit: '' },
-  { key: 'myEquity', label: '내 에퀴티', unit: '%' },
+  { key: 'myEquity', label: '예상 에퀴티', unit: '%' },
 ]
 
 const totalPot = computed(() => Math.max(0, form.potSize + form.callAmount))
@@ -93,6 +114,24 @@ const myEquity = computed(() => Number(form.myEquity || 0).toFixed(2))
 const isProfitable = computed(() => Number(myEquity.value) >= Number(requiredEquity.value))
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR')
+const sanitizeNumber = (value) => {
+  const cleaned = String(value).replace(/[^\d.]/g, '')
+  const [integer = '', ...decimals] = cleaned.split('.')
+  return decimals.length ? `${integer}.${decimals.join('')}` : integer
+}
+const beginEditing = (key) => {
+  inputValues[key] = String(form[key] || '')
+}
+const updateField = (key, value) => {
+  const sanitized = sanitizeNumber(value)
+  inputValues[key] = sanitized
+  form[key] = Number(sanitized || 0)
+}
+const finishEditing = (key) => {
+  const maximum = key === 'myEquity' ? 100 : Number.MAX_SAFE_INTEGER
+  form[key] = Math.min(maximum, Math.max(0, Number(form[key]) || 0))
+  inputValues[key] = formatNumber(form[key])
+}
 </script>
 
 <style scoped>
@@ -143,6 +182,17 @@ const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR')
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 0;
+}
+
+.panel-header button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-main);
 }
 
 .input-row {

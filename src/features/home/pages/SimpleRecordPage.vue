@@ -1,9 +1,7 @@
 <template>
   <q-page class="simple-record-page">
     <header class="simple-record-topbar">
-      <button type="button" aria-label="뒤로 가기" @click="router.back()">
-        <q-icon name="chevron_left" size="28px" />
-      </button>
+      <button type="button" @click="router.back()">취소</button>
       <h1>{{ isEdit ? '기록 수정' : '새 기록' }}</h1>
       <span aria-hidden="true"></span>
     </header>
@@ -58,13 +56,13 @@
       </div>
     </section>
 
-    <section class="record-form-card">
+    <section class="record-form-card record-form-card--result">
       <h2>결과</h2>
       <div class="form-fields">
         <div class="amount-grid">
           <label class="form-field form-field--suffix">
             <span>최종 순위</span>
-            <span><input v-model="form.rank" inputmode="numeric" placeholder="순위 입력" /><em>위</em></span>
+            <span><input v-model="form.rank" inputmode="numeric" aria-label="최종 순위" /><em>위</em></span>
           </label>
           <label class="form-field">
             <span>상금</span>
@@ -74,7 +72,7 @@
       </div>
     </section>
 
-    <StickyPrimaryAction label="저장하기" :disabled="!canSave" @click="saveRecord" />
+    <StickyPrimaryAction :label="isEdit ? '수정하기' : '저장하기'" :disabled="!canSave" :loading="saving" loading-label="저장 중..." @click="saveRecord" />
 
     <q-dialog v-model="venuePickerOpen" position="bottom">
       <q-card class="venue-sheet">
@@ -128,41 +126,39 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { createGameSession, fetchGameSession, updateSimpleGameSession } from 'src/api/gameSession'
+import { useVenueStore } from 'src/stores/venue'
+import { formatLocalDate } from 'src/utils/localDate'
 
 const router = useRouter()
 const route = useRoute()
 const alert = useAlert()
+const venueStore = useVenueStore()
 const isEdit = computed(() => Boolean(route.query.recordId))
-const loadCustomVenues = () => {
-  try {
-    return JSON.parse(localStorage.getItem('pokerly-custom-venues') || '[]')
-  } catch {
-    return []
-  }
-}
-const customVenues = ref(loadCustomVenues())
-const venues = ref(['Prime', 'Royce', 'Mango', 'KIKI', ...customVenues.value.map((venue) => venue.name)])
+const venueRecords = ref([])
+const venues = computed(() => venueRecords.value.map((venue) => venue.name))
 const venuePickerOpen = ref(false)
 const venueAddOpen = ref(false)
 const newVenueName = ref('')
 const newVenueLocation = ref('')
 const newVenueMemo = ref('')
 const venueSelectionMade = ref(isEdit.value)
+const saving = ref(false)
 
 const form = reactive({
-  venue: isEdit.value ? 'Prime' : '',
-  tournamentName: isEdit.value ? 'Prime Daily' : '',
-  date: '2026-07-23',
-  buyIn: isEdit.value ? '100,000' : '',
+  venue: '',
+  tournamentName: '',
+  date: formatLocalDate(),
+  buyIn: '',
   discount: '',
-  entries: isEdit.value ? 2 : 1,
-  rank: isEdit.value ? '17' : '',
-  prize: isEdit.value ? '320,000' : '',
+  entries: 1,
+  rank: '',
+  prize: '',
 })
 const canSave = computed(() => Boolean(form.tournamentName.trim() && form.date && form.buyIn))
 
@@ -180,52 +176,120 @@ const openVenueAdd = () => {
   venueAddOpen.value = true
 }
 
-const addVenue = () => {
+const addVenue = async () => {
   if (!newVenueName.value) return
   if (!venues.value.includes(newVenueName.value)) {
-    venues.value.push(newVenueName.value)
-    customVenues.value.push({
+    const created = await venueStore.addVenue({
       name: newVenueName.value,
       location: newVenueLocation.value,
-      memo: newVenueMemo.value,
+      notes: newVenueMemo.value,
+      pointBalance: 0,
     })
-    localStorage.setItem('pokerly-custom-venues', JSON.stringify(customVenues.value))
+    venueRecords.value.push(created)
   }
   form.venue = newVenueName.value
   venueSelectionMade.value = true
   venueAddOpen.value = false
 }
 
-const saveRecord = () => {
-  if (!canSave.value) return
-  alert.show(isEdit.value ? '기록이 수정되었습니다.' : '기록이 저장되었습니다.', 'success')
-  router.replace('/app/home')
+const number = (value) => Number(String(value || '').replaceAll(',', '')) || 0
+
+onMounted(async () => {
+  await venueStore.loadVenues()
+  venueRecords.value = [...venueStore.venues]
+  if (!isEdit.value) return
+  const session = await fetchGameSession(route.query.recordId)
+  const venue = venueRecords.value.find((item) => item.id === session.venueId)
+  Object.assign(form, {
+    venue: venue?.name || '',
+    tournamentName: session.tournamentName || '',
+    date: session.playDate,
+    buyIn: number(session.buyInPerEntry).toLocaleString('ko-KR'),
+    discount: number(session.discount).toLocaleString('ko-KR'),
+    entries: session.entries || 1,
+    rank: session.finalRank || '',
+    prize: number(session.prize).toLocaleString('ko-KR'),
+  })
+  venueSelectionMade.value = Boolean(venue)
+})
+
+const saveRecord = async () => {
+  if (!canSave.value || saving.value) return
+  saving.value = true
+  const venueId = venueRecords.value.find((venue) => venue.name === form.venue)?.id || null
+  const payload = {
+    venueId,
+    playDate: form.date,
+    sessionType: venueId ? 'VENUE' : 'OTHER',
+    gameType: 'TOURNAMENT',
+    tournamentName: form.tournamentName.trim(),
+    tournamentResult: number(form.prize) > 0 ? 'ITM' : 'BUST',
+    startLevel: null,
+    currentLevel: null,
+    buyInPerEntry: number(form.buyIn),
+    entries: Number(form.entries) || 1,
+    discount: number(form.discount),
+    prize: number(form.prize),
+    satelliteAwarded: false,
+    notes: '',
+    tournamentStatus: 'COMPLETED',
+    finalRank: Number(form.rank) || null,
+  }
+  try {
+    if (isEdit.value) {
+      await updateSimpleGameSession(route.query.recordId, {
+      venueId: payload.venueId,
+      playDate: payload.playDate,
+      tournamentName: payload.tournamentName,
+      buyInPerEntry: payload.buyInPerEntry,
+      entries: payload.entries,
+      discount: payload.discount,
+      prize: payload.prize,
+      finalRank: payload.finalRank,
+      })
+    } else {
+      await createGameSession(payload)
+    }
+    alert.show(isEdit.value ? '기록이 수정되었습니다.' : '기록이 저장되었습니다.', 'success')
+    const [year, month] = form.date.split('-').map(Number)
+    await router.replace({
+      name: 'bank-records',
+      query: Number.isInteger(year) && Number.isInteger(month) ? { year, month } : {},
+    })
+  } catch {
+    alert.show('기록을 저장하지 못했습니다.', 'error')
+  } finally {
+    saving.value = false
+  }
 }
 </script>
 
 <style scoped>
 .simple-record-page {
-  display: flex;
+  display: grid;
   min-height: 100%;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: flex-start;
-  gap: 12px;
-  padding: 0 var(--v2-page-padding-x) 180px;
+  align-content: start;
+  gap: 14px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
 }
 
 .simple-record-page * { box-sizing: border-box; }
-.simple-record-page > * { flex: 0 0 auto; }
-.simple-record-topbar { display: grid; min-height: 36px; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; }
-.simple-record-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.simple-record-topbar h1 { margin: 0; font-size: 17px; font-weight: 560; text-align: center; }
+.simple-record-topbar { display: grid; min-height: 36px; grid-template-columns: 56px minmax(0, 1fr) 56px; align-items: center; }
+.simple-record-topbar button { min-width: 44px; height: 36px; padding: 0; border: 0; background: transparent; color: var(--v2-text-sub); font: inherit; font-size: 13px; font-weight: 520; text-align: left; }
+.simple-record-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 17px; font-weight: 560; line-height: 1.2; text-align: center; }
 .record-form-card { padding: 16px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: var(--v2-shadow-card); }
 .record-form-card > h2 { margin: 0 0 14px; font-size: 15px; font-weight: 620; }
+.record-form-card--result { padding: 13px 16px 14px; }
+.record-form-card--result > h2 { margin-bottom: 9px; }
+.record-form-card--result .form-fields { gap: 8px; }
+.record-form-card--result .form-field input { height: 42px; }
 .form-fields { display: grid; gap: 12px; }
 .form-field { display: grid; gap: 7px; min-width: 0; }
-.form-field > span:first-child, .buy-in-control > span:first-child { color: #4f4a5e; font-size: 11px; font-weight: 580; }
-.form-field > span:first-child b { color: var(--v2-primary); font-weight: 650; }
+.form-field > span:first-child { display: inline-flex; width: max-content; align-items: baseline; gap: 2px; color: #4f4a5e; font-size: 11px; font-weight: 580; line-height: 1.2; }
+.buy-in-control > span:first-child { color: #4f4a5e; font-size: 11px; font-weight: 580; }
+.form-field > span:first-child b { display: inline-block; color: var(--v2-primary); font-size: 11px; font-weight: 650; line-height: 1; transform: translateY(1px); vertical-align: baseline; }
 .form-field input { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--v2-border); border-radius: 10px; outline: 0; background: #fbfaff; color: var(--v2-text-main); font: inherit; font-size: 13px; }
+.form-field input[inputmode="numeric"] { text-align: right; font-variant-numeric: tabular-nums; }
 .form-field textarea { width: 100%; min-height: 76px; resize: none; padding: 11px 12px; border: 1px solid var(--v2-border); border-radius: 10px; outline: 0; background: #fbfaff; color: var(--v2-text-main); font: inherit; font-size: 13px; line-height: 1.45; }
 .form-field input:focus, .form-field textarea:focus { border-color: rgba(109, 69, 232, .48); background: #fff; box-shadow: 0 0 0 3px rgba(109, 69, 232, .08); }
 .form-field input::placeholder, .form-field textarea::placeholder { color: #aaa5b7; }

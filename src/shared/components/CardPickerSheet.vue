@@ -1,5 +1,5 @@
 <template>
-  <div v-if="modelValue" class="picker-backdrop" @click="close">
+  <div v-if="modelValue" class="picker-backdrop" @click.self="closeFromBackdrop">
     <section class="card-picker" @click.stop>
       <div class="picker-handle"></div>
 
@@ -30,7 +30,7 @@
 
       <div class="picker-actions">
         <button class="danger" type="button" @click="$emit('clear')">{{ clearLabel }}</button>
-        <button type="button" @click="close">완료</button>
+        <button type="button" :disabled="doneDisabled" @click="close">완료</button>
       </div>
     </section>
   </div>
@@ -53,6 +53,10 @@ const props = defineProps({
     type: String,
     default: '카드 삭제',
   },
+  doneDisabled: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'select', 'clear'])
@@ -74,7 +78,13 @@ watch(
   },
 )
 
-const close = () => emit('update:modelValue', false)
+const close = () => {
+  if (props.doneDisabled) return
+  emit('update:modelValue', false)
+}
+const closeFromBackdrop = () => {
+  emit('update:modelValue', false)
+}
 const selectRank = (rank) => emit('select', {
   rank,
   suit: selectedSuit.value.symbol,
@@ -96,5 +106,6 @@ const selectRank = (rank) => emit('select', {
 .suit-grid button:not(.red).selected { background: #f4f1ff; box-shadow: inset 0 0 0 1px rgba(109, 69, 232, .12); }
 .picker-actions { display: flex; align-items: center; justify-content: space-between; padding: 0 6px; }
 .picker-actions button { min-height: 38px; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 14px; font-weight: 560; }
+.picker-actions button:disabled { color: #c8c3d2; }
 .picker-actions .danger { color: var(--v2-danger); }
 </style>
