@@ -112,13 +112,18 @@ onMounted(async () => {
   ])
   venues.value = venueItems || []
   const venueById = new Map(venues.value.map((venue) => [String(venue.id), venue.name]))
+  const eventById = new Map((legacyEvents || []).map((event) => [String(event.id), event]))
   const sessionItems = (sessions || [])
     .filter((session) => session.tournamentStatus !== 'RUNNING' && session.handLogEventId)
     .map((session) => ({
       key: `session-${session.id}`,
       id: session.id,
       source: 'session',
-      title: tournamentDisplayName(session),
+      title: tournamentDisplayName({
+        ...session,
+        tournamentName:
+          session.tournamentName || eventById.get(String(session.handLogEventId))?.name,
+      }),
       date: session.playDate?.replaceAll('-', '.') || '-',
       rawDate: session.playDate || '',
       venueId: session.venueId == null ? null : String(session.venueId),

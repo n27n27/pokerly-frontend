@@ -23,7 +23,7 @@
       </label>
     </section>
 
-    <section class="panel result-panel">
+    <section v-if="hasInput" class="panel result-panel">
       <div class="panel-header">
         <h2>결과</h2>
       </div>
@@ -55,7 +55,11 @@
       </div>
     </section>
 
-    <section class="panel detail-panel">
+    <section v-else class="panel empty-result">
+      팟, 콜 비용과 예상 에퀴티를 입력하면 결과가 표시됩니다.
+    </section>
+
+    <section v-if="hasInput" class="panel detail-panel">
       <div class="panel-header">
         <h2>상세 계산 과정</h2>
         <button
@@ -89,14 +93,14 @@
 import { computed, reactive, ref } from 'vue'
 
 const form = reactive({
-  potSize: 100000,
-  callAmount: 20000,
-  myEquity: 35,
+  potSize: null,
+  callAmount: null,
+  myEquity: null,
 })
 const inputValues = reactive({
-  potSize: '100,000',
-  callAmount: '20,000',
-  myEquity: '35',
+  potSize: '',
+  callAmount: '',
+  myEquity: '',
 })
 const detailsOpen = ref(true)
 
@@ -105,6 +109,14 @@ const fields = [
   { key: 'callAmount', label: '콜 비용', unit: '' },
   { key: 'myEquity', label: '예상 에퀴티', unit: '%' },
 ]
+
+const hasInput = computed(() =>
+  inputValues.potSize !== '' &&
+  inputValues.callAmount !== '' &&
+  inputValues.myEquity !== '' &&
+  Number(form.potSize) > 0 &&
+  Number(form.callAmount) > 0,
+)
 
 const totalPot = computed(() => Math.max(0, form.potSize + form.callAmount))
 const potOdds = computed(() => (form.callAmount > 0 ? form.potSize / form.callAmount : 0))
@@ -128,6 +140,10 @@ const updateField = (key, value) => {
   form[key] = Number(sanitized || 0)
 }
 const finishEditing = (key) => {
+  if (inputValues[key] === '') {
+    form[key] = null
+    return
+  }
   const maximum = key === 'myEquity' ? 100 : Number.MAX_SAFE_INTEGER
   form[key] = Math.min(maximum, Math.max(0, Number(form[key]) || 0))
   inputValues[key] = formatNumber(form[key])
@@ -174,6 +190,14 @@ const finishEditing = (key) => {
   font-size: 14px;
   font-weight: 560;
   line-height: 1;
+}
+
+.empty-result {
+  min-height: 88px;
+  place-items: center;
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  text-align: center;
 }
 
 .panel-header {

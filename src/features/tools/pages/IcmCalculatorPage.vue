@@ -75,7 +75,7 @@
       <p>{{ activeMethod.description }}</p>
     </section>
 
-    <StickyPrimaryAction label="찹 계산하기" icon="calculate" @click="calculate" />
+    <StickyPrimaryAction label="찹 계산하기" icon="calculate" :disabled="!canCalculate" @click="calculate" />
 
     <section v-if="results.length" class="panel result-panel">
       <div class="panel-header">
@@ -122,20 +122,20 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref } from 'vue'
+import { computed, reactive, ref, watch } from 'vue'
 
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 
 let nextId = 5
 
 const players = reactive([
-  { id: 1, name: 'Hero (나)', stack: 350000 },
-  { id: 2, name: '', stack: 420000 },
-  { id: 3, name: '', stack: 280000 },
-  { id: 4, name: '', stack: 560000 },
+  { id: 1, name: '', stack: null },
+  { id: 2, name: '', stack: null },
+  { id: 3, name: '', stack: null },
+  { id: 4, name: '', stack: null },
 ])
 
-const prizes = reactive([1000000, 600000, 400000, 250000])
+const prizes = reactive([null, null, null, null])
 const results = ref([])
 const chopMethod = ref('icm')
 const chopMethods = [
@@ -147,6 +147,15 @@ const activeMethod = computed(() => chopMethods.find((method) => method.value ==
 
 const totalStacks = computed(() => players.reduce((sum, player) => sum + Number(player.stack || 0), 0))
 const totalPrizes = computed(() => prizes.reduce((sum, prize) => sum + Number(prize || 0), 0))
+const canCalculate = computed(() =>
+  players.every((player) => Number(player.stack) > 0) &&
+  prizes.some((prize) => Number(prize) > 0) &&
+  prizes.every((prize) => prize !== null && prize !== '' && Number(prize) >= 0),
+)
+
+watch([players, prizes], () => {
+  results.value = []
+}, { deep: true })
 
 const calculateFinishProbabilities = (remainingPlayers, remainingPlaces, probability, probabilities) => {
   if (!remainingPlaces.length || !remainingPlayers.length) return
@@ -179,6 +188,7 @@ const allocateRoundedTotal = (values, total) => {
 }
 
 const calculate = () => {
+  if (!canCalculate.value) return
   const probabilities = Object.fromEntries(players.map((player) => [player.id, Array(players.length).fill(0)]))
   calculateFinishProbabilities([...players], players.map((_, index) => index), 1, probabilities)
 
@@ -223,8 +233,8 @@ const calculate = () => {
 
 const adjustCount = (amount) => {
   if (amount > 0 && players.length < 15) {
-    players.push({ id: nextId, name: '', stack: 250000 })
-    prizes.push(Math.max(0, Number(prizes[prizes.length - 1] || 0) - 50000))
+    players.push({ id: nextId, name: '', stack: null })
+    prizes.push(null)
     nextId += 1
   }
 

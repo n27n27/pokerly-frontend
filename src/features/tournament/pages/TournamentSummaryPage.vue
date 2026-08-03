@@ -32,13 +32,13 @@
     </section>
 
     <section v-if="eventId" class="content-section">
-      <div class="section-head"><h2>복기 핸드</h2><button v-if="hands.length" type="button" @click="goReviewHands">전체 보기 <q-icon name="chevron_right" size="17px" /></button></div>
+      <div class="section-head"><h2>기록 핸드</h2><button v-if="hands.length" type="button" @click="goReviewHands">전체 보기 <q-icon name="chevron_right" size="17px" /></button></div>
       <div v-if="hands.length" class="hand-grid">
         <button v-for="hand in hands" :key="hand.id" type="button" @click="openHand(hand)">
           <strong>{{ hand.name }}</strong><span>{{ hand.level }} · <b :class="hand.tone">{{ hand.result }}</b></span>
         </button>
       </div>
-      <div v-else class="section-empty">복기할 핸드가 없습니다.</div>
+      <div v-else class="section-empty">기록된 핸드가 없습니다.</div>
     </section>
 
     <section v-if="eventId" class="content-section">
@@ -184,7 +184,12 @@ const cachedResult = (() => {
   }
 })()
 const result = computed(() => {
-  if (session.value) return session.value
+  if (session.value) {
+    return {
+      ...session.value,
+      tournamentName: session.value.tournamentName || event.value?.name,
+    }
+  }
   if (legacyEventId.value && event.value) {
     return {
       tournamentName: event.value.name,
@@ -275,15 +280,16 @@ const hands = computed(() =>
   (event.value?.blindLevels || [])
     .flatMap((level) =>
       (level.hands || [])
-        .filter((hand) => hand.reviewRequired)
         .map((hand) => ({
           id: hand.id,
           levelId: level.id,
           level: `L${level.levelNo}`,
           name: handName(hand),
+          reviewRequired: Boolean(hand.reviewRequired),
           ...handResult(hand),
         })),
     )
+    .sort((a, b) => Number(b.reviewRequired) - Number(a.reviewRequired))
     .slice(0, 4),
 )
 

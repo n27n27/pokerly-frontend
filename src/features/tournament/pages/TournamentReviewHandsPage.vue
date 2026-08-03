@@ -4,11 +4,11 @@
       <button type="button" aria-label="뒤로 가기" @click="router.back()">
         <q-icon name="chevron_left" size="28px" />
       </button>
-      <h1>복기 핸드</h1>
+      <h1>기록 핸드</h1>
       <span aria-hidden="true"></span>
     </header>
 
-    <section class="hand-list" aria-label="복기 핸드 목록">
+    <section class="hand-list" aria-label="기록 핸드 목록">
       <article
         v-for="hand in hands"
         :key="hand.id"
@@ -34,7 +34,7 @@
           {{ hand.result }}
         </span>
       </article>
-      <div v-if="!hands.length" class="hand-list__empty">복기할 핸드가 없습니다.</div>
+      <div v-if="!hands.length" class="hand-list__empty">기록된 핸드가 없습니다.</div>
     </section>
   </q-page>
 </template>
@@ -91,7 +91,6 @@ const resultOf = (hand) => {
 const hands = computed(() =>
   (handLogStore.selectedEvent?.blindLevels || []).flatMap((level) =>
     (level.hands || [])
-      .filter((hand) => hand.reviewRequired)
       .map((hand) => ({
         id: hand.id,
         levelId: level.id,
