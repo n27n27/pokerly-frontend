@@ -5,7 +5,15 @@
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>{{ levelName }}</h1>
-      <span aria-hidden="true"></span>
+      <button
+        class="level-topbar__copy"
+        type="button"
+        aria-label="레벨 복기 텍스트 복사"
+        :disabled="!blindLevel"
+        @click="copyLevelText"
+      >
+        <q-icon name="content_copy" size="19px" />
+      </button>
     </header>
 
     <section v-if="levelLoading && !blindLevel" class="level-state-card">
@@ -230,11 +238,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { copyToClipboard } from 'quasar'
 
 import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { fetchGameSession, updateGameSession } from 'src/api/gameSession'
+import { buildLevelReviewText } from 'src/utils/handLogExportText'
 import {
   createStartingHandRunSummary,
   isPfrAction,
@@ -549,6 +559,23 @@ const recordHand = () => {
   })
 }
 
+const copyLevelText = async () => {
+  if (!handLogStore.selectedEvent || !blindLevel.value) return
+
+  try {
+    await copyToClipboard(
+      buildLevelReviewText({
+        event: handLogStore.selectedEvent,
+        blindLevel: blindLevel.value,
+        hands: blindLevel.value.hands || [],
+      }),
+    )
+    alert.show('레벨 복기 텍스트를 복사했습니다.', 'success')
+  } catch {
+    alert.show('텍스트를 복사하지 못했습니다.', 'error')
+  }
+}
+
 const endLevel = async () => {
   const currentLevelNo = Number(blindLevel.value?.levelNo || 0)
   const expectedNextLevelNo = currentLevelNo + 1
@@ -698,6 +725,20 @@ const moveSelectedHands = async (targetLevel) => {
   display: grid;
   gap: 16px;
 }
+
+.level-topbar__copy {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-sub);
+}
+
+.level-topbar__copy:disabled { opacity: 0.35; }
 
 .level-state-card,
 .hand-list__empty {

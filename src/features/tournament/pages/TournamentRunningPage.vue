@@ -5,7 +5,15 @@
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>진행 중 토너먼트</h1>
-      <span aria-hidden="true"></span>
+      <button
+        class="running-topbar__copy"
+        type="button"
+        aria-label="대회 전체 복기 텍스트 복사"
+        :disabled="!event"
+        @click="copyTournamentText"
+      >
+        <q-icon name="content_copy" size="19px" />
+      </button>
     </header>
 
     <section class="running-summary">
@@ -200,6 +208,7 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { copyToClipboard } from 'quasar'
 
 import { useAlert } from 'src/composables/useAlert'
 import TournamentHandOverview from 'src/features/tournament/components/TournamentHandOverview.vue'
@@ -207,6 +216,8 @@ import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
 import { formatLocalDate } from 'src/utils/localDate'
+import { buildEventReviewText } from 'src/utils/handLogExportText'
+import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
 
 const router = useRouter()
 const route = useRoute()
@@ -225,6 +236,19 @@ const totalBuyIns = computed(() => runningTournament.totalBuyIns ?? runningTourn
 const event = computed(() => handLogStore.selectedEvent)
 const loading = computed(() => handLogStore.detailLoading)
 const tournamentName = computed(() => event.value?.name || runningTournament.name || '-')
+
+const copyTournamentText = async () => {
+  if (!event.value) return
+  try {
+    const seats = runningTournament.sessionId
+      ? await fetchTournamentSeats(runningTournament.sessionId).catch(() => [])
+      : []
+    await copyToClipboard(buildEventReviewText(event.value, { seats }))
+    alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'success')
+  } catch {
+    alert.show('텍스트를 복사하지 못했습니다.', 'error')
+  }
+}
 
 const formatValue = (value) =>
   value === null || value === undefined ? '-' : Number(value).toLocaleString('ko-KR')
@@ -636,6 +660,20 @@ const openFinish = () => {
   background: transparent;
   color: var(--v2-text-main);
 }
+
+.running-topbar__copy {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  justify-self: end;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-sub);
+}
+
+.running-topbar__copy:disabled { opacity: 0.35; }
 
 .running-topbar h1 {
   margin: 0;

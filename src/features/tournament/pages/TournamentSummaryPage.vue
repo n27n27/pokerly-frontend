@@ -6,6 +6,7 @@
       <button type="button" aria-label="대회 메뉴" @click.stop="menuOpen = !menuOpen"><q-icon name="more_vert" size="22px" /></button>
       <div v-if="menuOpen" class="page-menu" @click.stop>
         <template v-if="eventId">
+          <button type="button" @click="copyTournamentText">텍스트 복사</button>
           <button type="button" @click="editTournament">토너먼트 결과 수정</button>
           <button type="button" @click="resumeTournament">토너먼트 재개</button>
         </template>
@@ -142,11 +143,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { copyToClipboard } from 'quasar'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
 import { createStartingHandRunSummary } from 'src/utils/handLogHandAnalysis'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
+import { buildEventReviewText } from 'src/utils/handLogExportText'
+import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
 import {
   fetchGameSession,
   fetchRunningGameSession,
@@ -159,6 +163,7 @@ const alert = useAlert()
 const handLogStore = useHandLogStore()
 const menuOpen = ref(false)
 const selectedMajorHand = ref('')
+const tournamentSeats = ref([])
 const tournamentId = route.params.tournamentId || '1'
 const runningTournament = (() => {
   try {
@@ -466,6 +471,21 @@ const openLevel = (name) => {
 const goReviewHands = () => router.push(`/app/tournament/${tournamentId}/review-hands`)
 const goStats = () => router.push(`/app/tournament/${tournamentId}/stats/preflop`)
 
+const copyTournamentText = async () => {
+  menuOpen.value = false
+  if (!event.value) {
+    alert.show('복사할 핸드 기록이 없습니다.', 'warning')
+    return
+  }
+
+  try {
+    await copyToClipboard(buildEventReviewText(event.value, { seats: tournamentSeats.value }))
+    alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'success')
+  } catch {
+    alert.show('텍스트를 복사하지 못했습니다.', 'error')
+  }
+}
+
 onMounted(async () => {
   try {
     session.value = await fetchGameSession(tournamentId)
@@ -481,7 +501,11 @@ onMounted(async () => {
   }
 
   try {
-    await handLogStore.fetchEventDetail(eventId.value)
+    const [, seats] = await Promise.all([
+      handLogStore.fetchEventDetail(eventId.value),
+      fetchTournamentSeats(tournamentId).catch(() => []),
+    ])
+    tournamentSeats.value = seats || []
   } catch (error) {
     handLogStore.selectedEvent = null
     if (error?.response?.status !== 404) {
