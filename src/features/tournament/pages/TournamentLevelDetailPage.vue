@@ -602,7 +602,7 @@ const syncRunningTournament = (runningSession) => {
   return runningSession.handLogEventId || null
 }
 
-const loadLevelData = async ({ notify = true, retries = 2 } = {}) => {
+const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
   if (restoring.value || !levelId.value) return
   restoring.value = true
   let lastError = null
@@ -624,17 +624,23 @@ const loadLevelData = async ({ notify = true, retries = 2 } = {}) => {
 
       const candidates = [...new Set(eventIds.filter(Boolean).map(String))]
       for (const requestedEventId of candidates) {
-        try {
-          await handLogStore.fetchEventDetail(requestedEventId)
-          await handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value)
+        const [eventResult, levelResult] = await Promise.allSettled([
+          handLogStore.fetchEventDetail(requestedEventId),
+          handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value),
+        ])
+
+        // 이 화면의 필수 데이터는 레벨 상세이다. iOS 재실행 직후 대회 전체
+        // 조회만 일시적으로 실패해도 레벨 화면까지 막지 않는다.
+        if (levelResult.status === 'fulfilled' && levelResult.value) {
           loadedEventId.value = requestedEventId
           return true
-        } catch (error) {
-          lastError = error
         }
+
+        lastError = levelResult.reason ||
+          (eventResult.status === 'rejected' ? eventResult.reason : lastError)
       }
 
-      if (attempt < retries) await wait(500 * (attempt + 1))
+      if (attempt < retries) await wait(Math.min(500 * 2 ** attempt, 3000))
     }
 
     if (notify) alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
