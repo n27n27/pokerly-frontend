@@ -625,7 +625,7 @@ const openLevel = (level) => {
   router.push({
     name: 'tournament-level-detail',
     params: { levelName: level.id },
-    query: { levelName: level.name },
+    query: { levelName: level.name, eventId: event.value?.id || runningTournament.eventId },
   })
 }
 

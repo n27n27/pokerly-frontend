@@ -240,13 +240,13 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
-import { updateGameSessionProgress } from 'src/api/gameSession'
+import { fetchRunningGameSession, updateGameSessionProgress } from 'src/api/gameSession'
 import { buildLevelReviewText } from 'src/utils/handLogExportText'
 import { copyToClipboard } from 'src/utils/copyToClipboard'
 import {
@@ -281,6 +281,7 @@ const stackInput = ref('')
 const savingStack = ref(false)
 const endingLevel = ref(false)
 const selectedGroupHand = ref('')
+const restoring = ref(false)
 
 const storedTournament = (() => {
   try {
@@ -292,6 +293,7 @@ const storedTournament = (() => {
 const eventId = computed(
   () =>
     loadedEventId.value ||
+    route.query.eventId ||
     route.query.legacyEventId ||
     storedTournament.eventId ||
     handLogStore.selectedEvent?.id ||
@@ -584,16 +586,52 @@ const movableLevels = computed(() =>
     })),
 )
 
-onMounted(async () => {
-  if (!eventId.value || !levelId.value) return
+const loadLevelData = async ({ notify = true } = {}) => {
+  if (restoring.value || !levelId.value) return
+  restoring.value = true
   try {
-    const requestedEventId = eventId.value
+    let requestedEventId = eventId.value
+    if (!requestedEventId && !route.query.legacyEventId) {
+      const runningSession = await fetchRunningGameSession().catch(() => null)
+      requestedEventId = runningSession?.handLogEventId || null
+      if (runningSession) {
+        Object.assign(storedTournament, {
+          sessionId: runningSession.id,
+          eventId: runningSession.handLogEventId,
+          currentBlindLevelId: runningSession.currentBlindLevelId,
+          currentStack: runningSession.currentStack,
+        })
+        localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+      }
+    }
+    if (!requestedEventId) return
     await handLogStore.fetchEventDetail(requestedEventId)
     await handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value)
     loadedEventId.value = requestedEventId
   } catch {
-    alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
+    if (notify) alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
+  } finally {
+    restoring.value = false
   }
+}
+
+const restoreOnVisible = () => {
+  if (document.visibilityState !== 'visible') return
+  if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
+}
+const restoreOnPageShow = () => {
+  if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
+}
+
+onMounted(async () => {
+  await loadLevelData()
+  document.addEventListener('visibilitychange', restoreOnVisible)
+  window.addEventListener('pageshow', restoreOnPageShow)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', restoreOnVisible)
+  window.removeEventListener('pageshow', restoreOnPageShow)
 })
 
 const recordHand = () => {
