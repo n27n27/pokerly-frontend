@@ -11,10 +11,40 @@ export default route(function () {
   const createHistory =
     process.env.VUE_ROUTER_MODE === 'history' ? createWebHistory : createWebHashHistory
 
+  // 과거 리다이렉트가 남긴 /login#/... 형태를 /#/... 형태로 정규화한다.
+  if (
+    process.env.VUE_ROUTER_MODE !== 'history' &&
+    typeof window !== 'undefined' &&
+    window.location.pathname !== '/'
+  ) {
+    window.history.replaceState(
+      null,
+      '',
+      `/${window.location.hash || '#/login'}`,
+    )
+  }
+
   const Router = createRouter({
     scrollBehavior: () => ({ left: 0, top: 0 }),
     routes,
     history: createHistory(process.env.VUE_ROUTER_BASE),
+  })
+
+  Router.onError((error) => {
+    const message = String(error?.message || error || '')
+    const isStaleChunk =
+      /Failed to fetch dynamically imported module/i.test(message) ||
+      /Importing a module script failed/i.test(message) ||
+      /ChunkLoadError/i.test(message)
+
+    if (!isStaleChunk || typeof window === 'undefined') return
+
+    const reloadKey = 'pokerly-stale-chunk-reload-at'
+    const lastReloadAt = Number(sessionStorage.getItem(reloadKey) || 0)
+    if (Date.now() - lastReloadAt < 30_000) return
+
+    sessionStorage.setItem(reloadKey, String(Date.now()))
+    window.location.reload()
   })
 
   Router.beforeEach(async (to, _from, next) => {

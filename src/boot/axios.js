@@ -142,10 +142,11 @@ api.interceptors.response.use(
       clearTokens()
       console.error('axios refresh 실패', refreshError)
 
-      // hash 라우터를 통해 로그인 화면으로 이동한다. 서버의 SPA fallback에 의존하지 않는다.
+      // pathname과 이전 hash를 모두 제거해 항상 canonical 로그인 URL로 이동한다.
       if (typeof window !== 'undefined') {
-        if (window.location.hash !== '#/login') {
-          window.location.hash = '#/login'
+        const loginUrl = `${window.location.origin}/#/login`
+        if (window.location.href !== loginUrl) {
+          window.location.replace(loginUrl)
         }
       }
 

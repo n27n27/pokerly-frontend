@@ -37,6 +37,35 @@ const routes = [
     meta: { requiresAuth: true },
     redirect: '/app/home',
     children: [
+      // V2 이전 핸드 로그 URL을 새 토너먼트 화면으로 연결한다.
+      {
+        path: 'mypoker/hand-log',
+        redirect: { name: 'tournament-list' },
+      },
+      {
+        path: 'mypoker/hand-log/:eventId/levels/:levelId/hands/:handId',
+        redirect: (to) => ({
+          name: 'tournament-hand-detail',
+          params: { levelName: to.params.levelId, handId: to.params.handId },
+          query: { legacyEventId: to.params.eventId },
+        }),
+      },
+      {
+        path: 'mypoker/hand-log/:eventId/levels/:levelId',
+        redirect: (to) => ({
+          name: 'tournament-level-detail',
+          params: { levelName: to.params.levelId },
+          query: { legacyEventId: to.params.eventId, view: 'summary' },
+        }),
+      },
+      {
+        path: 'mypoker/hand-log/:eventId',
+        redirect: (to) => ({
+          name: 'tournament-summary',
+          params: { tournamentId: `event-${to.params.eventId}` },
+          query: { legacyEventId: to.params.eventId },
+        }),
+      },
       {
         path: 'home',
         name: 'home',
