@@ -41,7 +41,7 @@ const logout = async () => {
 .account-page { display: grid; align-content: start; gap: 12px; min-height: 100%; padding: 0 var(--v2-page-padding-x) 100px; }
 .detail-topbar { display: grid; min-height: 36px; grid-template-columns: 40px minmax(0,1fr) 40px; align-items: center; }
 .detail-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.detail-topbar h1 { margin: 0; font-size: 17px; font-weight: 560; text-align: center; }
+.detail-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
 .profile-card { display: grid; justify-items: center; gap: 7px; padding: 24px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
 .avatar { display: grid; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: var(--v2-primary-soft); color: var(--v2-primary); }
 .profile-card strong { font-size: 17px; }.profile-card small { color: var(--v2-text-sub); font-size: 12px; }

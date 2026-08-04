@@ -174,7 +174,7 @@ const openDocument = (type) => router.push(`/app/my/document/${type}`)
 .my-page { display: flex; min-height: 100%; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px; }
 .my-page * { box-sizing: border-box; }
 .my-header, .settings-section { flex: 0 0 auto; }
-.my-header h1 { margin: 0; font-size: 22px; font-weight: 560; line-height: 1; }
+.my-header h1 { margin: 0; font-size: 22px; font-weight: 650; line-height: 1; }
 .settings-section { display: grid; gap: 8px; margin-top: 18px; }
 .my-header + .settings-section { margin-top: 20px; }
 .settings-section h2 { margin: 0; font-size: 15px; font-weight: 600; }

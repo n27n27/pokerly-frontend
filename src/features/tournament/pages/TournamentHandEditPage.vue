@@ -24,22 +24,25 @@
       <section v-if="step === 1" class="edit-card">
         <div class="step-heading"><h2>보드</h2></div>
         <div class="board-editor">
-          <div v-for="street in boardStreets" :key="street.name" class="street-group">
-            <span>{{ street.name }}</span>
-            <div>
-              <button
-                v-for="(card, index) in street.cards"
-                :key="`${street.key}-${index}`"
-                class="mini-card"
-                :class="{ red: card?.red, empty: !card }"
-                type="button"
-                @click="openCardPicker(street.key, index)"
-              >
-                <template v-if="card"><b>{{ card.rank }}</b><em>{{ card.suit }}</em></template>
-                <q-icon v-else name="add" size="28px" />
-              </button>
+          <template v-for="(street, streetIndex) in boardStreets" :key="street.name">
+            <div class="street-group" :class="`street-group--${street.key}`">
+              <span>{{ street.name }}</span>
+              <div>
+                <button
+                  v-for="(card, index) in street.cards"
+                  :key="`${street.key}-${index}`"
+                  class="mini-card"
+                  :class="{ red: card?.red, empty: !card }"
+                  type="button"
+                  @click="openCardPicker(street.key, index)"
+                >
+                  <template v-if="card"><b>{{ card.rank }}</b><em>{{ card.suit }}</em></template>
+                  <q-icon v-else name="add" size="25px" />
+                </button>
+              </div>
             </div>
-          </div>
+            <i v-if="streetIndex < boardStreets.length - 1" class="street-divider" aria-hidden="true"></i>
+          </template>
         </div>
       </section>
 
@@ -238,7 +241,9 @@ const isEditMode = ref(false)
 const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(() => String(route.query.levelName || '') || '-')
 const handId = computed(() => String(route.params.handId || ''))
-const eventId = computed(() => route.query.legacyEventId || storedTournament.eventId || null)
+const eventId = computed(
+  () => route.query.eventId || route.query.legacyEventId || storedTournament.eventId || null,
+)
 
 const boardStreets = ref([
   { key: 'flop', name: '플랍', cards: [null, null, null] },
@@ -500,14 +505,20 @@ const selectCard = (card) => {
   if (!activeStreet.value) return
   activeStreet.value.cards[activeCardIndex.value] = card
 
-  if (activeStreetKey.value === 'flop') {
-    const nextEmptyIndex = activeStreet.value.cards.findIndex(
-      (item, index) => !item && index !== activeCardIndex.value,
+  const currentStreetIndex = boardStreets.value.findIndex(
+    (street) => street.key === activeStreetKey.value,
+  )
+  for (let streetIndex = currentStreetIndex; streetIndex < boardStreets.value.length; streetIndex += 1) {
+    const street = boardStreets.value[streetIndex]
+    const cardStartIndex = streetIndex === currentStreetIndex ? activeCardIndex.value + 1 : 0
+    const nextEmptyIndex = street.cards.findIndex(
+      (item, index) => index >= cardStartIndex && !item,
     )
     if (nextEmptyIndex >= 0) {
+      activeStreetKey.value = street.key
       activeCardIndex.value = nextEmptyIndex
+      return
     }
-    return
   }
 
   closeCardPicker()
@@ -548,7 +559,11 @@ const saveReview = async () => {
     )
     router.replace({
       path: detailPath.value,
-      query: { levelName: levelName.value },
+      query: {
+        levelName: levelName.value,
+        ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
+        ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+      },
     })
   } catch {
     alert.show('복기를 저장하지 못했습니다.', 'error')
@@ -568,7 +583,7 @@ const nextStep = () => {
 <style scoped>
 .review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 14px; padding: 0 var(--v2-page-padding-x) 130px; }
 .edit-topbar { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; min-height: 36px; }
-.edit-topbar h1 { margin: 0; font-size: 16px; font-weight: 600; text-align: center; }
+.edit-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
 .topbar-text { min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 13px; text-align: left; }
 .topbar-text.next { color: #806bd2; font-weight: 480; text-align: right; }
 .step-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: -28px; padding: 0 2px; }
@@ -578,14 +593,16 @@ const nextStep = () => {
 .step-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0edf6; color: var(--v2-primary); }
 .step-heading h2 { margin: 0; font-size: 16px; font-weight: 600; }
 .step-heading > button { min-height: 30px; margin-left: auto; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 11px; font-weight: 600; }
-.street-group { display: grid; gap: 10px; }
-.street-group + .street-group { margin-top: 22px; }
+.board-editor { display: grid; grid-template-columns: minmax(0, 3fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr); align-items: end; gap: 7px; }
+.street-group { display: grid; min-width: 0; gap: 8px; }
 .street-group > span, .action-editor label > span { color: #4f495a; font-size: 13px; font-weight: 600; }
-.street-group > div { display: flex; gap: 9px; }
-.mini-card { display: inline-flex; width: 58px; height: 72px; align-items: center; justify-content: center; gap: 3px; padding: 0; border: 1px solid var(--v2-border); border-radius: 10px; background: #fff; color: var(--v2-text-main); font: inherit; }
+.street-group > div { display: grid; min-width: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.street-group--turn > div, .street-group--river > div { grid-template-columns: minmax(0, 1fr); }
+.street-divider { width: 1px; height: 54px; margin-bottom: 1px; background: var(--v2-border); }
+.mini-card { display: inline-flex; width: 100%; min-width: 0; height: 56px; align-items: center; justify-content: center; gap: 2px; padding: 0; border: 1px solid var(--v2-border); border-radius: 9px; background: #fff; color: var(--v2-text-main); font: inherit; }
 .mini-card.red { color: #e11d48; }
-.mini-card b { font-size: 20px; font-weight: 600; line-height: 1; }
-.mini-card em { font-size: 18px; font-style: normal; line-height: 1; }
+.mini-card b { font-size: 18px; font-weight: 600; line-height: 1; }
+.mini-card em { font-size: 16px; font-style: normal; line-height: 1; }
 .mini-card.empty { border-style: dashed; color: #aaa1c4; font-size: 25px; }
 .action-editor { display: grid; gap: 13px; }
 .action-editor label { display: grid; gap: 7px; }
@@ -632,9 +649,10 @@ const nextStep = () => {
 .next-street { margin-top: 14px; }
 .showdown-editor { display: grid; gap: 14px; }
 .showdown-editor > p { margin: 0; color: var(--v2-text-sub); font-size: 12px; line-height: 1.5; }
-.showdown-player { display: flex; min-height: 92px; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); }
-.showdown-player > strong { color: var(--v2-text-main); font-size: 15px; font-weight: 620; }
-.showdown-player > div { display: flex; gap: 8px; }
+.showdown-player { display: grid; min-height: 92px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 10px 12px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); }
+.showdown-player > strong { min-width: 0; color: var(--v2-text-main); font-size: 15px; font-weight: 620; }
+.showdown-player > div { display: grid; grid-template-columns: repeat(2, 56px); gap: 8px; }
+.showdown-player .mini-card { width: 56px; }
 .memo-field { position: relative; }
 .memo-field textarea { width: 100%; min-height: 245px; padding: 13px 13px 31px; border: 1.5px solid var(--v2-primary); border-radius: 10px; outline: 0; resize: none; color: var(--v2-text-main); font: inherit; font-size: 13px; line-height: 1.6; }
 .memo-field span { position: absolute; right: 12px; bottom: 10px; color: var(--v2-text-sub); font-size: 11px; }

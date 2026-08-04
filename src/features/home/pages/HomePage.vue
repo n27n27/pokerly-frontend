@@ -378,57 +378,67 @@ const quickEditTitle = computed(() => ({
   info: '기본 정보',
 })[manageSheetMode.value])
 
+const loadRunningTournament = async () => {
+  try {
+    const session = await fetchRunningGameSession()
+    if (!session) return
+
+    const cached = JSON.parse(localStorage.getItem('pokerly-running-tournament') || '{}')
+    const parsed = {
+      ...cached,
+      sessionId: session.id,
+      eventId: session.handLogEventId,
+      name: session.tournamentName,
+      venueId: session.venueId,
+      startLevel: session.startLevel,
+      currentLevel: session.currentLevel,
+      startingStack: formatQuickNumber(session.startingStack),
+      currentStack: formatQuickNumber(session.currentStack),
+      averageStack: formatQuickNumber(session.averageStack),
+      buyIn: formatQuickNumber(session.buyInPerEntry),
+      totalBuyIns: session.entries,
+      memo: session.notes || '',
+      currentBlinds: {
+        smallBlind: formatQuickNumber(session.currentSmallBlind),
+        bigBlind: formatQuickNumber(session.currentBigBlind),
+        ante: formatQuickNumber(session.currentAnte),
+      },
+    }
+    const startLevel = parsed.startLevel || parsed.level || 'L1'
+    const currentLevel = Object.prototype.hasOwnProperty.call(parsed, 'currentLevel')
+      ? parsed.currentLevel
+      : parsed.level || startLevel
+    runningTournament.value = {
+      ...parsed,
+      startLevel,
+      currentLevel,
+      averageStack: parsed.averageStack || null,
+    }
+    localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament.value))
+    await loadRunningTournamentDetail()
+  } catch {
+    localStorage.removeItem('pokerly-running-tournament')
+  }
+}
+
 onMounted(async () => {
   recordMode.value = localStorage.getItem('pokerly-record-mode') || 'simple'
+
+  if (recordMode.value === 'simple') {
+    await Promise.all([
+      loadRecentTournaments(),
+      loadSimpleMonthlySummary(),
+      loadSimpleTrendSessions(),
+      loadSimpleVenues(),
+    ])
+    return
+  }
+
   await Promise.all([
     loadRecentTournaments(),
-    loadSimpleMonthlySummary(),
-    loadSimpleTrendSessions(),
-    loadSimpleVenues(),
+    loadRunningTournament(),
+    loadMonthlySummary(),
   ])
-  if (recordMode.value !== 'simple') {
-    try {
-      const session = await fetchRunningGameSession()
-      if (session) {
-        const cached = JSON.parse(localStorage.getItem('pokerly-running-tournament') || '{}')
-        const parsed = {
-          ...cached,
-          sessionId: session.id,
-          eventId: session.handLogEventId,
-          name: session.tournamentName,
-          venueId: session.venueId,
-          startLevel: session.startLevel,
-          currentLevel: session.currentLevel,
-          startingStack: formatQuickNumber(session.startingStack),
-          currentStack: formatQuickNumber(session.currentStack),
-          averageStack: formatQuickNumber(session.averageStack),
-          buyIn: formatQuickNumber(session.buyInPerEntry),
-          totalBuyIns: session.entries,
-          memo: session.notes || '',
-          currentBlinds: {
-            smallBlind: formatQuickNumber(session.currentSmallBlind),
-            bigBlind: formatQuickNumber(session.currentBigBlind),
-            ante: formatQuickNumber(session.currentAnte),
-          },
-        }
-        const startLevel = parsed.startLevel || parsed.level || 'L1'
-        const currentLevel = Object.prototype.hasOwnProperty.call(parsed, 'currentLevel')
-          ? parsed.currentLevel
-          : parsed.level || startLevel
-        runningTournament.value = {
-          ...parsed,
-          startLevel,
-          currentLevel,
-          averageStack: parsed.averageStack || null,
-        }
-        localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament.value))
-      }
-    } catch {
-      localStorage.removeItem('pokerly-running-tournament')
-    }
-    await loadRunningTournamentDetail()
-    await loadMonthlySummary()
-  }
 })
 
 const isSimpleMode = computed(() => recordMode.value === 'simple')
@@ -1385,10 +1395,12 @@ const goSimpleRecord = (recordId) => {
   background: var(--v2-primary);
   color: #fff;
   box-shadow: 0 10px 24px rgba(109, 69, 232, .3);
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .simple-record-fab:active {
-  transform: translateY(1px);
+  transform: translate3d(0, 1px, 0);
 }
 
 .add-record-card {

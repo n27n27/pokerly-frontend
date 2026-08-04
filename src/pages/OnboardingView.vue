@@ -361,7 +361,7 @@ const checkNickname = async () => {
 .onboarding-shell { display: flex; width: 100%; max-width: 420px; min-height: calc(100dvh - 62px); margin: 0 auto; flex-direction: column; }
 .onboarding-topbar { display: grid; min-height: 36px; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; }
 .onboarding-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.onboarding-topbar > strong { font-size: 17px; font-weight: 560; text-align: center; }
+.onboarding-topbar > strong { font-size: 21px; font-weight: 650; text-align: center; }
 .page-intro { margin-top: -18px; }
 .page-intro h1 { margin: 0; font-size: 27px; font-weight: 650; letter-spacing: -.04em; }
 .page-intro h1 strong { color: var(--v2-primary); font-weight: 680; }

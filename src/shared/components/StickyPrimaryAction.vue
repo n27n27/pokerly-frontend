@@ -33,8 +33,9 @@ const emit = defineEmits(['click'])
   left: 0;
   z-index: 1900;
   padding: var(--v2-sticky-cta-area-padding-y) var(--v2-sticky-cta-margin-x);
-  background: rgba(247, 247, 251, 0.9);
-  backdrop-filter: blur(6px);
+  background: var(--v2-page-bg);
+  backface-visibility: hidden;
+  transform: translateZ(0);
   pointer-events: none;
 }
 

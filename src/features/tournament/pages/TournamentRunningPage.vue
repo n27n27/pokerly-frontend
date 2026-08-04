@@ -186,7 +186,7 @@
             :disabled="handLogStore.saving"
             @click="saveLevel"
           >
-            저장
+            {{ handLogStore.saving ? '저장 중...' : '저장' }}
           </button>
         </div>
       </q-card>
@@ -260,25 +260,35 @@ const currentLevelNumber = computed(() => {
   return Number.isFinite(number) && number > 0 ? number : null
 })
 
-const levels = computed(() =>
-  (event.value?.blindLevels || []).map((level) => {
-    const stack = level.endStack ?? level.displayStartStack ?? level.startStack
+const levels = computed(() => {
+  let previousStack =
+    parseStoredNumber(event.value?.startingStack) ?? parseStoredNumber(runningTournament.startingStack)
+
+  return [...(event.value?.blindLevels || [])]
+    .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
+    .map((level) => {
     const isCurrent = runningTournament.currentBlindLevelId
       ? String(level.id) === String(runningTournament.currentBlindLevelId)
       : level.levelNo === currentLevelNumber.value
+    const storedStack = level.endStack ?? level.displayStartStack ?? level.startStack
+    const sessionStack = isCurrent ? parseStoredNumber(runningTournament.currentStack) : null
+    const stack = sessionStack ?? storedStack ?? previousStack
     const bbCount = stack != null && level.bigBlind > 0 ? stack / level.bigBlind : null
-
-    return {
+    const row = {
       id: level.id,
       name: `L${level.levelNo}`,
       blinds: [level.smallBlind, level.bigBlind, level.ante].map(formatBlind).join(' / '),
       hands: String(level.handCount ?? level.hands?.length ?? 0),
+      rawStack: stack,
       endStack: formatValue(stack),
       bb: bbCount == null ? '-' : `${Number.isInteger(bbCount) ? bbCount : bbCount.toFixed(1)} BB`,
       current: isCurrent,
     }
-  }),
-)
+
+    if (stack != null) previousStack = Number(stack)
+    return row
+  })
+})
 
 const currentLevel = computed(() => levels.value.find((level) => level.current) || null)
 const otherLevels = computed(() =>
@@ -386,6 +396,7 @@ const updateLevelAnte = (inputEvent) => {
 
 const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave = false) => {
   const source = level ? getBackendLevel(level.id) : null
+  const displayedLevel = level ? levels.value.find((item) => String(item.id) === String(level.id)) : null
   const nextLevelNo = requestedLevelNo
     ? Number(requestedLevelNo)
     : Math.max(0, ...(event.value?.blindLevels || []).map((item) => Number(item.levelNo) || 0)) + 1
@@ -398,7 +409,7 @@ const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave
     bigBlind: formatInputNumber(source?.bigBlind),
     ante: formatInputNumber(source?.ante),
     endStack: source
-      ? formatInputNumber(source.endStack ?? source.displayStartStack ?? source.startStack)
+      ? formatInputNumber(source.endStack ?? source.displayStartStack ?? source.startStack ?? displayedLevel?.rawStack)
       : '',
     makeCurrent: Boolean(
       source &&
@@ -678,8 +689,8 @@ const openFinish = () => {
 .running-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }

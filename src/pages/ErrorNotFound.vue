@@ -45,7 +45,7 @@ const goHome = () => router.replace(localStorage.getItem('accessToken') ? '/app/
 .page-header h1 {
   margin: 0;
   color: var(--v2-text-main, #1e1a29);
-  font-size: 20px;
+  font-size: 21px;
   font-weight: 650;
   text-align: center;
 }

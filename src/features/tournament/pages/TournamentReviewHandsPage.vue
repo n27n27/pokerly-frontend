@@ -4,11 +4,11 @@
       <button type="button" aria-label="뒤로 가기" @click="router.back()">
         <q-icon name="chevron_left" size="28px" />
       </button>
-      <h1>기록 핸드</h1>
+      <h1>복기 핸드</h1>
       <span aria-hidden="true"></span>
     </header>
 
-    <section class="hand-list" aria-label="기록 핸드 목록">
+    <section class="hand-list" aria-label="복기 핸드 목록">
       <article
         v-for="hand in hands"
         :key="hand.id"
@@ -34,13 +34,13 @@
           {{ hand.result }}
         </span>
       </article>
-      <div v-if="!hands.length" class="hand-list__empty">기록된 핸드가 없습니다.</div>
+      <div v-if="!hands.length" class="hand-list__empty">복기할 핸드가 없습니다.</div>
     </section>
   </q-page>
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchGameSession } from 'src/api/gameSession'
@@ -59,6 +59,7 @@ const runningTournament = (() => {
   }
 })()
 const tournamentId = computed(() => route.params.tournamentId)
+const loadedEventId = ref(route.query.eventId || route.query.legacyEventId || null)
 
 const cardsOf = (hand) => {
   const ranks =
@@ -91,6 +92,7 @@ const resultOf = (hand) => {
 const hands = computed(() =>
   (handLogStore.selectedEvent?.blindLevels || []).flatMap((level) =>
     (level.hands || [])
+      .filter((hand) => hand.reviewRequired)
       .map((hand) => ({
         id: hand.id,
         levelId: level.id,
@@ -106,16 +108,20 @@ const openHand = (hand) => {
   router.push({
     name: 'tournament-hand-detail',
     params: { levelName: hand.levelId, handId: hand.id },
-    query: { levelName: hand.level, ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}) },
+    query: {
+      levelName: hand.level,
+      eventId: loadedEventId.value,
+      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+    },
   })
 }
 
 onMounted(async () => {
   if (!tournamentId.value) return
   try {
-    const legacyEventId = route.query.legacyEventId
-    const session = legacyEventId ? null : await fetchGameSession(tournamentId.value)
-    const eventId = legacyEventId || session?.handLogEventId ||
+    const explicitEventId = route.query.eventId || route.query.legacyEventId
+    const session = explicitEventId ? null : await fetchGameSession(tournamentId.value)
+    const eventId = explicitEventId || session?.handLogEventId ||
       (String(runningTournament.sessionId) === String(tournamentId.value)
         ? runningTournament.eventId
         : null)
@@ -125,6 +131,7 @@ onMounted(async () => {
       return
     }
 
+    loadedEventId.value = eventId
     await handLogStore.fetchEventDetail(eventId)
   } catch (error) {
     if (error?.response?.status === 404) {
@@ -173,8 +180,8 @@ onMounted(async () => {
 .review-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }

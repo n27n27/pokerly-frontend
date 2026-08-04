@@ -12,23 +12,34 @@
       </div>
     </section>
 
-    <section class="position-list">
-      <div class="position-list__header">
-        <span>포지션</span>
-        <span>참여율</span>
-        <span>승률</span>
+    <section class="position-section">
+      <div class="position-section__heading">
+        <h2>포지션별 플레이</h2>
+        <span>VPIP · 승률</span>
       </div>
+      <div class="position-list">
       <div v-if="loading" class="position-state">포지션 통계를 불러오는 중입니다.</div>
       <div v-else-if="loadError" class="position-state position-state--error">{{ loadError }}</div>
       <article v-for="row in loading || loadError ? [] : rows" :key="row.position">
-        <strong>{{ row.position }}</strong>
-        <div>
-          <span>{{ formatRate(row.play) }}</span>
+        <div class="position-card__heading">
+          <strong>{{ row.position }}</strong>
+          <span>{{ row.count }}핸드</span>
         </div>
-        <div>
-          <span>{{ formatRate(row.win) }}</span>
+        <div class="position-card__metrics">
+          <div>
+            <span>VPIP</span>
+            <strong>{{ formatRate(row.play) }}</strong>
+            <i><b :style="{ width: `${row.play}%` }"></b></i>
+          </div>
+          <div>
+            <span>승률</span>
+            <strong :class="{ muted: row.participated === 0 }">
+              {{ row.participated ? formatRate(row.win) : '-' }}
+            </strong>
+          </div>
         </div>
       </article>
+      </div>
     </section>
   </q-page>
 </template>
@@ -145,50 +156,117 @@ onMounted(load)
 <style scoped>
 @import './statistics-detail.css';
 
-.position-list {
-  overflow: hidden;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-lg);
-  background: #ffffff;
-}
-
-.position-list__header {
-  min-height: 34px;
-  padding: 0 16px;
-  background: #faf9fc;
-  color: #5f596b;
+.position-section {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
-  gap: 0;
-  font-size: 12px;
-  font-weight: 520;
-  text-align: center;
+  gap: 8px;
 }
 
-.position-list article {
-  min-height: 58px;
-  padding: 9px 16px;
-  border-bottom: 1px solid var(--v2-border);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
-  gap: 0;
-  text-align: center;
+.position-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px;
 }
 
-.position-list article:last-child {
-  border-bottom: 0;
-}
-
-.position-list strong {
-  font-size: 15px;
+.position-section__heading h2 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 16px;
   font-weight: 560;
 }
 
-.position-list span {
-  font-size: 12px;
-  color: #312d3d;
+.position-section__heading span {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+}
+
+.position-list {
+  display: grid;
+  gap: 8px;
+}
+
+.position-list article {
+  min-width: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(28, 18, 60, 0.025);
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+}
+
+.position-card__heading {
+  min-width: 0;
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+
+.position-card__heading strong {
+  min-width: 42px;
+  min-height: 28px;
+  padding: 0 8px;
+  border-radius: 9px;
+  background: rgba(109, 69, 232, 0.1);
+  color: var(--v2-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 620;
+}
+
+.position-card__heading span {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.position-card__metrics {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.position-card__metrics > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.position-card__metrics span {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+}
+
+.position-card__metrics strong {
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 560;
+}
+
+.position-card__metrics strong.muted {
+  color: var(--v2-text-sub);
+}
+
+.position-card__metrics i {
+  width: 100%;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #eeebf4;
+}
+
+.position-card__metrics i b {
+  display: block;
+  max-width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--v2-primary), #9d7cff);
 }
 
 .position-state {
@@ -205,9 +283,15 @@ onMounted(load)
   color: var(--v2-danger);
 }
 
-@media (min-height: 760px) {
+@media (max-width: 380px) {
   .position-list article {
-    min-height: 70px;
+    grid-template-columns: 54px minmax(0, 1fr);
+    gap: 8px;
+    padding: 11px 10px;
+  }
+
+  .position-card__metrics {
+    gap: 6px;
   }
 }
 </style>

@@ -5,9 +5,10 @@
         <q-icon name="chevron_left" size="30px" />
       </button>
       <h1>핸드 상세</h1>
-      <button class="icon-button" type="button" aria-label="핸드 메뉴" @click="menuOpen = !menuOpen">
+      <button v-if="hand" class="icon-button" type="button" aria-label="핸드 메뉴" @click="menuOpen = !menuOpen">
         <q-icon name="more_vert" size="22px" />
       </button>
+      <span v-else></span>
 
       <div v-if="menuOpen" class="overflow-menu">
         <button type="button" @click="goHandEdit">
@@ -47,13 +48,13 @@
       </div>
     </section>
 
-    <section v-if="!hasReview" class="review-empty">
+    <section v-if="hand && !hasReview" class="review-empty">
       <div class="review-empty__icon"><q-icon name="edit_note" size="34px" /></div>
       <strong>복기 기록이 없습니다.</strong>
       <button class="review-action" type="button" @click="goReviewEdit">복기 작성</button>
     </section>
 
-    <section v-else class="review-summary">
+    <section v-else-if="hand" class="review-summary">
       <div class="review-summary__heading">
         <h2>복기 기록</h2>
         <span v-if="reviewTimeline.potSize">
@@ -164,7 +165,9 @@ const deleteDialogOpen = ref(false)
 const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(() => String(route.query.levelName || '') || '-')
 const handId = computed(() => String(route.params.handId || ''))
-const eventId = computed(() => route.query.legacyEventId || storedTournament.eventId || null)
+const eventId = computed(
+  () => route.query.eventId || route.query.legacyEventId || storedTournament.eventId || null,
+)
 const hand = computed(() => {
   const selected = handLogStore.selectedHand
   return selected && String(selected.id) === handId.value ? selected : null
@@ -316,7 +319,11 @@ const goReviewEdit = () => {
   router.push({
     name: 'tournament-hand-review-edit',
     params: { levelName: levelId.value, handId: handId.value },
-    query: { levelName: levelName.value, ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}) },
+    query: {
+      levelName: levelName.value,
+      ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
+      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+    },
   })
 }
 const goHandEdit = () => {
@@ -324,7 +331,11 @@ const goHandEdit = () => {
   router.push({
     name: 'tournament-hand-edit',
     params: { levelName: levelId.value, handId: handId.value },
-    query: { levelName: levelName.value, ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}) },
+    query: {
+      levelName: levelName.value,
+      ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
+      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+    },
   })
 }
 const openDeleteDialog = () => {
@@ -367,7 +378,7 @@ const confirmDelete = async () => {
   gap: 10px;
   min-height: 36px;
 }
-.hand-detail-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 17px; font-weight: 560; line-height: 1.2; text-align: center; }
+.hand-detail-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
 .icon-button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--v2-text-main); }
 .hand-detail-topbar .icon-button:last-of-type { justify-self: end; }
 .icon-button:active { background: #efedf6; }

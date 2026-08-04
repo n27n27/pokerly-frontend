@@ -161,7 +161,7 @@ const openRecord = (recordId) => {
 .bank-record-page * { box-sizing: border-box; }
 .bank-record-topbar { display: grid; min-height: 38px; grid-template-columns: 40px minmax(0, 1fr) 156px; align-items: center; gap: 6px; }
 .bank-record-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.bank-record-topbar h1 { margin: 0; font-size: 17px; font-weight: 560; line-height: 1.2; text-align: left; white-space: nowrap; }
+.bank-record-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; line-height: 1.2; text-align: left; white-space: nowrap; }
 .record-month-navigation { display: grid; width: 156px; min-height: 38px; grid-template-columns: 32px minmax(0, 1fr) 32px; align-items: center; overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); background: #fff; }
 .record-month-navigation button { display: grid; width: 32px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .record-month-navigation button:disabled { color: #d6d1df; }
@@ -190,6 +190,6 @@ const openRecord = (recordId) => {
 .record-result { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .record-pending { padding: 5px 7px; border-radius: 7px; background: #f2f0f7; color: var(--v2-text-sub); font-size: 9px; white-space: nowrap; }
 .record-list .q-icon { color: var(--v2-text-sub); }
-.record-fab { position: fixed; z-index: 5; right: max(20px, calc((100vw - 480px) / 2 + 20px)); bottom: 92px; display: grid; width: 56px; height: 56px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--v2-primary); color: #fff; box-shadow: 0 10px 24px rgba(109, 69, 232, .3); }
-.record-fab:active { transform: translateY(1px); }
+.record-fab { position: fixed; z-index: 5; right: max(20px, calc((100vw - 480px) / 2 + 20px)); bottom: 92px; display: grid; width: 56px; height: 56px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: var(--v2-primary); color: #fff; box-shadow: 0 10px 24px rgba(109, 69, 232, .3); backface-visibility: hidden; transform: translateZ(0); }
+.record-fab:active { transform: translate3d(0, 1px, 0); }
 </style>

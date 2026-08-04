@@ -40,6 +40,8 @@ const go = (to) => {
 .bottom-nav {
   background: transparent;
   box-shadow: none;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .bottom-nav-inner {
@@ -53,6 +55,7 @@ const go = (to) => {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
+  contain: paint;
 }
 
 .nav-item {

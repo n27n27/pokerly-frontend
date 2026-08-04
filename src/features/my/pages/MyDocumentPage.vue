@@ -117,7 +117,7 @@ const document = computed(() => documents[route.params.documentType] || document
 .document-page > * { flex: 0 0 auto; }
 .detail-topbar { position: sticky; top: 0; z-index: 2; display: grid; min-height: 36px; grid-template-columns: 40px minmax(0,1fr) 40px; align-items: center; background: var(--v2-page-bg); }
 .detail-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.detail-topbar h1 { margin: 0; font-size: 17px; font-weight: 560; text-align: center; }
+.detail-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
 .document { padding: 18px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
 .document-dates { display: grid; gap: 3px; margin-bottom: 22px; color: var(--v2-text-sub); font-size: 10px; font-weight: 430; line-height: 1.45; }
 .document section + section { margin-top: 24px; }.document h2 { margin: 0 0 9px; font-size: 15px; font-weight: 620; }.document p { margin: 0; color: #4f4a5e; font-size: 13px; line-height: 1.7; }.document section p + p { margin-top: 8px; }

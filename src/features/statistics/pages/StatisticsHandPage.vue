@@ -2,11 +2,6 @@
   <q-page class="detail-page">
     <StatisticsDetailHeader title="핸드 통계" @change="applyFilters" />
 
-    <div class="segmented">
-      <button type="button" :class="{ active: mode === 'hand' }" @click="mode = 'hand'">핸드 기준</button>
-      <button type="button" :class="{ active: mode === 'position' }" @click="mode = 'position'">포지션 기준</button>
-    </div>
-
     <section class="summary-panel">
       <div v-if="summaryCards.length" class="summary-strip">
         <div v-for="card in summaryCards" :key="card.label">
@@ -20,18 +15,7 @@
 
     <section class="ranking-panel">
       <div class="ranking-panel__header">
-        <h2>{{ mode === 'hand' ? '핸드 랭킹' : '포지션별 핸드 랭킹' }}</h2>
-      </div>
-      <div v-if="mode === 'position'" class="position-tabs">
-        <button
-          v-for="position in positionOrder"
-          :key="position"
-          type="button"
-          :class="{ active: position === selectedPosition }"
-          @click="selectedPosition = position"
-        >
-          {{ position }}
-        </button>
+        <h2>핸드별 기록</h2>
       </div>
       <div v-if="loading" class="ranking-empty">핸드 통계를 불러오는 중입니다.</div>
       <div v-else-if="loadError" class="ranking-empty ranking-empty--error">{{ loadError }}</div>
@@ -40,7 +24,7 @@
           <span>순위</span>
           <span>핸드</span>
           <button type="button" :class="{ active: sortKey === 'play' }" @click="changeSort('play')">
-            참여율
+            출현율
             <q-icon
               :class="{ 'sort-icon--hidden': sortKey !== 'play' }"
               :name="sortKey === 'play' && sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'"
@@ -56,32 +40,39 @@
             />
           </button>
         </div>
-        <div v-for="row in rows" :key="row.hand">
+        <div v-for="row in displayedRows" :key="row.hand">
           <span>{{ row.rank }}</span>
           <strong>{{ row.hand }}</strong>
           <span>{{ formatRate(row.play) }}</span>
-          <span :class="row.tone">{{ formatRate(row.win) }}</span>
+          <span :class="row.tone">{{ formatWinRate(row.win) }}</span>
         </div>
+        <button v-if="rows.length > initialRowCount" class="hand-table__more" type="button" @click="showAllRows = !showAllRows">
+          {{ showAllRows ? '접기' : `전체 ${rows.length}개 보기` }}
+          <q-icon :name="showAllRows ? 'expand_less' : 'expand_more'" size="17px" />
+        </button>
       </div>
-      <div v-else class="ranking-empty">
-        {{ mode === 'position' ? `${selectedPosition}에서 기록된 핸드가 없습니다.` : '표시할 핸드 기록이 없습니다.' }}
-      </div>
+      <div v-else class="ranking-empty">표시할 핸드 기록이 없습니다.</div>
     </section>
   </q-page>
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
 import { fetchHandLogEvent } from 'src/api/handLogApi'
 import { getHandInputValue, normalizeHand } from 'src/utils/handLogHandAnalysis'
 import StatisticsDetailHeader from '../components/StatisticsDetailHeader.vue'
 
-const mode = ref('hand')
-const positionOrder = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
-const selectedPosition = ref(positionOrder[0])
+const cardRanks = ['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2']
+const startingHands = cardRanks.flatMap((highRank, highIndex) => cardRanks.flatMap((lowRank, lowIndex) => {
+  if (highIndex === lowIndex) return [highRank + lowRank]
+  if (highIndex < lowIndex) return [`${highRank}${lowRank}s`, `${highRank}${lowRank}o`]
+  return []
+}))
 const sortKey = ref('play')
 const sortDirection = ref('desc')
+const initialRowCount = 20
+const showAllRows = ref(false)
 const filter = ref({
   year: new Date().getFullYear(),
   month: new Date().getMonth() + 1,
@@ -97,12 +88,6 @@ let loadSequence = 0
 const winningResults = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
 const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
 const resultOf = (hand) => String(hand.resultType || hand.result || '').toUpperCase()
-const normalizePosition = (position) => {
-  const value = String(position || '').trim().toUpperCase()
-  if (value === 'UTG+1') return 'UTG'
-  if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
-  return positionOrder.includes(value) ? value : ''
-}
 const filterByVenue = (list) => {
   const venueId = filter.value.venueId
   if (venueId === null) return list
@@ -114,15 +99,12 @@ const normalizedHands = computed(() => hands.value
   .map((hand) => ({
     ...hand,
     notation: normalizeHand(getHandInputValue(hand)),
-    position: normalizePosition(hand.position),
     action: actionOf(hand),
     won: winningResults.has(resultOf(hand)),
   }))
   .filter((hand) => hand.notation))
 
-const scopedHands = computed(() => mode.value === 'position'
-  ? normalizedHands.value.filter((hand) => hand.position === selectedPosition.value)
-  : normalizedHands.value)
+const scopedHands = computed(() => normalizedHands.value)
 
 const handGroups = computed(() => {
   const counts = new Map()
@@ -133,16 +115,17 @@ const handGroups = computed(() => {
     counts.set(hand.notation, item)
   })
   const total = scopedHands.value.length
-  return [...counts.values()].map((item) => ({
+  return startingHands.map((hand) => counts.get(hand) || { hand, count: 0, wins: 0 }).map((item) => ({
     ...item,
     play: total ? item.count * 100 / total : 0,
-    win: item.count ? item.wins * 100 / item.count : 0,
+    win: item.count ? item.wins * 100 / item.count : null,
   }))
 })
 
 const summaryCards = computed(() => {
-  if (!scopedHands.value.length || !handGroups.value.length) return []
-  const byWin = [...handGroups.value].sort((a, b) => b.win - a.win || b.count - a.count || a.hand.localeCompare(b.hand))
+  const recordedGroups = handGroups.value.filter((item) => item.count > 0)
+  if (!scopedHands.value.length || !recordedGroups.length) return []
+  const byWin = [...recordedGroups].sort((a, b) => b.win - a.win || b.count - a.count || a.hand.localeCompare(b.hand))
   const highest = byWin[0]
   const lowest = byWin.at(-1)
   return [
@@ -154,20 +137,26 @@ const summaryCards = computed(() => {
 
 const rows = computed(() => [...handGroups.value]
   .sort((a, b) => {
+    if (sortKey.value === 'win' && (a.win === null || b.win === null)) {
+      if (a.win === null && b.win !== null) return 1
+      if (a.win !== null && b.win === null) return -1
+    }
     const delta = a[sortKey.value] - b[sortKey.value]
     if (delta) return sortDirection.value === 'asc' ? delta : -delta
     return b.count - a.count || a.hand.localeCompare(b.hand)
   })
-  .slice(0, 10)
   .map((row, index) => ({
     ...row,
     rank: index + 1,
-    tone: row.win >= 60 ? 'good' : row.win >= 50 ? 'warn' : 'bad',
+    tone: row.win === null ? 'neutral' : row.win >= 60 ? 'good' : row.win >= 50 ? 'warn' : 'bad',
   })))
+const displayedRows = computed(() => showAllRows.value ? rows.value : rows.value.slice(0, initialRowCount))
 
 const formatRate = (value) => `${Number(value || 0).toFixed(1)}%`
+const formatWinRate = (value) => value === null ? '-' : formatRate(value)
 
 const changeSort = (key) => {
+  showAllRows.value = false
   if (sortKey.value === key) sortDirection.value = sortDirection.value === 'desc' ? 'asc' : 'desc'
   else {
     sortKey.value = key
@@ -209,14 +198,10 @@ const load = async () => {
 }
 
 const applyFilters = (nextFilter) => {
+  showAllRows.value = false
   filter.value = { ...nextFilter }
   void load()
 }
-
-watch(mode, () => {
-  sortKey.value = 'play'
-  sortDirection.value = 'desc'
-})
 
 onMounted(load)
 </script>
@@ -247,31 +232,6 @@ onMounted(load)
   flex: 0 0 auto;
   font-size: 16px;
   font-weight: 520;
-}
-
-.position-tabs {
-  max-width: 100%;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  margin-bottom: 10px;
-}
-
-.position-tabs button {
-  min-width: 0;
-  min-height: 30px;
-  padding: 0 6px;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-sm);
-  background: #ffffff;
-  color: #4f4a5e;
-  font: inherit;
-  font-size: 12px;
-}
-
-.position-tabs button.active {
-  background: var(--v2-primary);
-  color: #ffffff;
 }
 
 .hand-table {
@@ -342,6 +302,22 @@ onMounted(load)
 .good { color: var(--v2-success); }
 .warn { color: #f59e0b; }
 .bad { color: var(--v2-danger); }
+.neutral { color: var(--v2-text-sub); }
+
+.hand-table > .hand-table__more {
+  min-height: 42px;
+  border: 0;
+  background: transparent;
+  color: var(--v2-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 560;
+  cursor: pointer;
+}
 
 .summary-empty,
 .ranking-empty {

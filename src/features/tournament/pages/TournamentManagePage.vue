@@ -55,10 +55,16 @@
     <section class="seat-section">
       <div class="section-header">
         <h2>좌석별 플레이어</h2>
-        <button type="button" @click="resetSeats">
-          <q-icon name="refresh" size="15px" />
-          전체 초기화
-        </button>
+        <div class="section-header__actions">
+          <button type="button" @click="tableSizeSheetOpen = true">
+            {{ tournament.tableMaxPlayers }}명
+            <q-icon name="expand_more" size="16px" />
+          </button>
+          <button type="button" @click="resetSeats">
+            <q-icon name="refresh" size="15px" />
+            전체 초기화
+          </button>
+        </div>
       </div>
 
       <button class="my-seat-button" type="button" @click="mySeatSheetOpen = true">
@@ -371,6 +377,25 @@
       </q-card>
     </q-dialog>
 
+    <q-dialog v-model="tableSizeSheetOpen" position="bottom">
+      <q-card class="table-size-sheet">
+        <div class="participant-sheet__handle" aria-hidden="true"></div>
+        <h2>테이블 인원</h2>
+        <p>현재 테이블의 최대 좌석 수를 선택하세요.</p>
+        <div class="table-size-grid">
+          <button
+            v-for="count in tableSizeOptions"
+            :key="count"
+            type="button"
+            :class="{ selected: tournament.tableMaxPlayers === count }"
+            @click="changeTableMaxPlayers(count)"
+          >
+            {{ count }}명
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
+
     <q-dialog v-model="playerPickerOpen" position="bottom">
       <q-card class="player-picker-sheet">
         <div class="participant-sheet__handle" aria-hidden="true"></div>
@@ -450,6 +475,7 @@ const tournamentMenuOpen = ref(false)
 const editSheetOpen = ref(false)
 const participantSheetOpen = ref(false)
 const mySeatSheetOpen = ref(false)
+const tableSizeSheetOpen = ref(false)
 const playerPickerOpen = ref(false)
 const savedPlayerQuery = ref('')
 const seatMenuNumber = ref(null)
@@ -477,6 +503,7 @@ const tournament = reactive({
   totalBuyIns: storedTournament.totalBuyIns ?? storedTournament.entries ?? 3,
   discountAmount: storedTournament.discountAmount || '',
   memo: storedTournament.memo || '',
+  tableMaxPlayers: Number(storedTournament.tableMaxPlayers) || 10,
 })
 
 const editForm = reactive({
@@ -506,6 +533,7 @@ const preflopFeatureOptions = ['림프 자주', '3베팅 자주', '트래피']
 const postflopFeatureOptions = ['블러프 자주', '체크레이즈 자주', '슬로우플레이 자주']
 const otherFeatureOptions = ['틸트 잘 함', '콜다운 심함', '쉽게 폴드']
 const playerTypeOptions = ['콜링 스테이션', '니트', '매니악']
+const tableSizeOptions = Array.from({ length: 10 }, (_, index) => index + 2)
 const exploitPointPriority = [
   '3베팅 자주',
   '콜다운 심함',
@@ -552,6 +580,32 @@ const openTournamentEdit = () => {
   editSheetOpen.value = true
 }
 
+const tournamentUpdatePayload = () => ({
+  venueId: tournament.venueId || null,
+  playDate: tournament.date?.replaceAll('.', '-') || formatLocalDate(),
+  sessionType: tournament.venueId ? 'VENUE' : 'OTHER',
+  gameType: 'TOURNAMENT',
+  tournamentName: tournament.name,
+  tournamentResult: null,
+  startLevel: tournament.startLevel,
+  currentLevel: tournament.currentLevel,
+  buyInPerEntry: Number(String(tournament.buyIn || '').replaceAll(',', '')) || null,
+  entries: tournament.totalBuyIns,
+  discount: Number(String(tournament.discountAmount || '').replaceAll(',', '')) || 0,
+  prize: 0,
+  satelliteAwarded: false,
+  notes: tournament.memo,
+  handLogEventId: tournament.eventId,
+  tournamentStatus: 'RUNNING',
+  startingStack: Number(String(tournament.startingStack || '').replaceAll(',', '')) || null,
+  currentStack: Number(String(tournament.currentStack || '').replaceAll(',', '')) || null,
+  averageStack: Number(String(tournament.averageStack || '').replaceAll(',', '')) || null,
+  currentSmallBlind: Number(String(tournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) || null,
+  currentBigBlind: Number(String(tournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) || null,
+  currentAnte: Number(String(tournament.currentBlinds?.ante || '').replaceAll(',', '')) || null,
+  tableMaxPlayers: tournament.tableMaxPlayers,
+})
+
 const saveTournamentEdit = async () => {
   Object.assign(tournament, {
     name: editForm.name.trim() || tournament.name,
@@ -562,30 +616,7 @@ const saveTournamentEdit = async () => {
   })
   localStorage.setItem('pokerly-running-tournament', JSON.stringify(tournament))
   if (tournament.sessionId) {
-    await updateGameSession(tournament.sessionId, {
-      venueId: tournament.venueId || null,
-      playDate: tournament.date?.replaceAll('.', '-') || formatLocalDate(),
-      sessionType: tournament.venueId ? 'VENUE' : 'OTHER',
-      gameType: 'TOURNAMENT',
-      tournamentName: tournament.name,
-      tournamentResult: null,
-      startLevel: tournament.startLevel,
-      currentLevel: tournament.currentLevel,
-      buyInPerEntry: Number(String(tournament.buyIn || '').replaceAll(',', '')) || null,
-      entries: tournament.totalBuyIns,
-      discount: Number(String(tournament.discountAmount || '').replaceAll(',', '')) || 0,
-      prize: 0,
-      satelliteAwarded: false,
-      notes: tournament.memo,
-      handLogEventId: tournament.eventId,
-      tournamentStatus: 'RUNNING',
-      startingStack: Number(String(tournament.startingStack || '').replaceAll(',', '')) || null,
-      currentStack: Number(String(tournament.currentStack || '').replaceAll(',', '')) || null,
-      averageStack: Number(String(tournament.averageStack || '').replaceAll(',', '')) || null,
-      currentSmallBlind: Number(String(tournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) || null,
-      currentBigBlind: Number(String(tournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) || null,
-      currentAnte: Number(String(tournament.currentBlinds?.ante || '').replaceAll(',', '')) || null,
-    })
+    await updateGameSession(tournament.sessionId, tournamentUpdatePayload())
   }
   editSheetOpen.value = false
 }
@@ -606,7 +637,9 @@ const createEmptySeat = (number) => ({
   playerId: null,
 })
 
-const seats = reactive(Array.from({ length: 10 }, (_, index) => createEmptySeat(index + 1)))
+const seats = reactive(
+  Array.from({ length: tournament.tableMaxPlayers }, (_, index) => createEmptySeat(index + 1)),
+)
 const mySeatNumber = ref('')
 const registeredOpponents = reactive([])
 
@@ -633,7 +666,13 @@ onMounted(async () => {
         bigBlind: formatNumber(session.currentBigBlind),
         ante: formatNumber(session.currentAnte),
       },
+      tableMaxPlayers: Number(session.tableMaxPlayers) || 10,
     })
+    seats.splice(
+      0,
+      seats.length,
+      ...Array.from({ length: tournament.tableMaxPlayers }, (_, index) => createEmptySeat(index + 1)),
+    )
     localStorage.setItem('pokerly-running-tournament', JSON.stringify(tournament))
   }
   const [players, assignedSeats] = await Promise.all([
@@ -838,13 +877,49 @@ const resetSeats = () => {
       seats.splice(
         0,
         seats.length,
-        ...Array.from({ length: 10 }, (_, index) => createEmptySeat(index + 1)),
+        ...Array.from(
+          { length: tournament.tableMaxPlayers },
+          (_, index) => createEmptySeat(index + 1),
+        ),
       )
       mySeatNumber.value = ''
       expandedSeatNumber.value = null
       if (tournament.sessionId) await resetTournamentSeats(tournament.sessionId)
     },
   })
+}
+
+const applyTableMaxPlayers = async (count) => {
+  tournament.tableMaxPlayers = count
+  seats.splice(
+    0,
+    seats.length,
+    ...Array.from({ length: count }, (_, index) => seats[index] || createEmptySeat(index + 1)),
+  )
+  localStorage.setItem('pokerly-running-tournament', JSON.stringify(tournament))
+  if (tournament.sessionId) {
+    await updateGameSession(tournament.sessionId, tournamentUpdatePayload())
+  }
+  tableSizeSheetOpen.value = false
+}
+
+const changeTableMaxPlayers = (count) => {
+  if (count === tournament.tableMaxPlayers) {
+    tableSizeSheetOpen.value = false
+    return
+  }
+  const assignedOutsideRange = seats.filter((seat) => seat.number > count && !seat.empty)
+  if (assignedOutsideRange.length) {
+    requestConfirmation({
+      title: '테이블 인원을 줄일 수 없습니다',
+      message: `${assignedOutsideRange.map((seat) => `${seat.number}번`).join(', ')} 좌석을 먼저 비워주세요.`,
+      confirmLabel: '확인',
+      action: () => { tableSizeSheetOpen.value = true },
+    })
+    tableSizeSheetOpen.value = false
+    return
+  }
+  applyTableMaxPlayers(count)
 }
 
 const requestVacateSeat = (seat) => {
@@ -1005,8 +1080,8 @@ const saveParticipant = async () => {
 .manage-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }
@@ -1173,6 +1248,12 @@ const saveParticipant = async () => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.section-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .my-seat-button {
@@ -1636,6 +1717,55 @@ const saveParticipant = async () => {
   background: #ffffff;
   display: grid;
   gap: 18px;
+}
+
+.table-size-sheet {
+  width: min(100%, 520px);
+  margin: 0 auto;
+  padding: 12px 24px calc(28px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  display: grid;
+  gap: 16px;
+}
+
+.table-size-sheet h2 {
+  margin: 2px 0 0;
+  color: var(--v2-text-main);
+  font-size: 19px;
+  font-weight: 620;
+  text-align: center;
+}
+
+.table-size-sheet > p {
+  margin: 0;
+  color: var(--v2-text-sub);
+  font-size: 13px;
+  text-align: center;
+}
+
+.table-size-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.table-size-grid button {
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  background: #ffffff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.table-size-grid button.selected {
+  border-color: rgba(109, 69, 232, 0.62);
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
 }
 
 .player-picker-sheet {
@@ -2104,9 +2234,9 @@ const saveParticipant = async () => {
   width: min(100%, 520px);
   margin: 0;
   padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(6px);
-  transform: translateX(-50%);
+  background: #ffffff;
+  backface-visibility: hidden;
+  transform: translate3d(-50%, 0, 0);
 }
 
 .participant-sheet__save {

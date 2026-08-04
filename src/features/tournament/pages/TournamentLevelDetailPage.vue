@@ -192,11 +192,13 @@
     <StickyPrimaryAction
       v-if="!isSummaryView && isCurrentLevel"
       label="레벨 종료"
+      :loading="endingLevel"
+      loading-label="종료 중..."
       @click="endLevel"
     />
 
-    <q-dialog v-model="moveSheetOpen" position="bottom">
-      <section class="move-level-sheet">
+    <q-dialog v-model="moveSheetOpen" position="bottom" persistent>
+      <q-card class="move-level-sheet">
         <div class="move-level-sheet__handle"></div>
         <h2>레벨 선택</h2>
         <p>선택한 핸드 {{ selectedHandIds.length }}개</p>
@@ -204,13 +206,15 @@
           v-for="level in movableLevels"
           :key="level.id"
           type="button"
-          @click="moveSelectedHands(level)"
+          :disabled="movingHands"
+          @click="moveSelectedHands(level.id, level.name)"
         >
           <strong>{{ level.name }}</strong>
-          <span>{{ level.blinds }}</span>
-          <q-icon name="chevron_right" size="20px" />
+          <span>{{ movingTargetLevelId === level.id ? '이동 중…' : level.blinds }}</span>
+          <q-spinner v-if="movingTargetLevelId === level.id" size="18px" />
+          <q-icon v-else name="chevron_right" size="20px" />
         </button>
-      </section>
+      </q-card>
     </q-dialog>
 
     <q-dialog v-model="stackSheetOpen" position="bottom">
@@ -227,8 +231,8 @@
             @input="updateStackInput"
           />
         </label>
-        <button type="button" :disabled="handLogStore.saving" @click.stop="saveStack">
-          저장
+        <button type="button" :disabled="handLogStore.saving || savingStack" @click.stop="saveStack">
+          {{ savingStack ? '저장 중...' : '저장' }}
         </button>
       </q-card>
     </q-dialog>
@@ -243,7 +247,7 @@ import { copyToClipboard } from 'quasar'
 import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
-import { fetchGameSession, updateGameSession } from 'src/api/gameSession'
+import { updateGameSessionProgress } from 'src/api/gameSession'
 import { buildLevelReviewText } from 'src/utils/handLogExportText'
 import {
   createStartingHandRunSummary,
@@ -269,8 +273,13 @@ const showHandListMenu = ref(false)
 const selectionMode = ref(false)
 const selectedHandIds = ref([])
 const moveSheetOpen = ref(false)
+const movingHands = ref(false)
+const movingTargetLevelId = ref(null)
+const loadedEventId = ref(null)
 const stackSheetOpen = ref(false)
 const stackInput = ref('')
+const savingStack = ref(false)
+const endingLevel = ref(false)
 const selectedGroupHand = ref('')
 
 const storedTournament = (() => {
@@ -281,7 +290,12 @@ const storedTournament = (() => {
   }
 })()
 const eventId = computed(
-  () => route.query.legacyEventId || storedTournament.eventId || handLogStore.selectedEvent?.id || null,
+  () =>
+    loadedEventId.value ||
+    route.query.legacyEventId ||
+    storedTournament.eventId ||
+    handLogStore.selectedEvent?.id ||
+    null,
 )
 const levelLoading = computed(() => handLogStore.levelLoading)
 const blindLevel = computed(() => {
@@ -293,6 +307,7 @@ const blindLevel = computed(() => {
     ) || null
   )
 })
+const sourceLevelId = computed(() => blindLevel.value?.id || levelId.value)
 const isCurrentLevel = computed(
   () =>
     storedTournament.currentBlindLevelId &&
@@ -303,13 +318,38 @@ const formatNumber = (value) =>
   value === null || value === undefined || value === ''
     ? '-'
     : Number(value).toLocaleString('ko-KR')
-const currentStack = computed(
-  () =>
+const parseStoredNumber = (value) => {
+  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  if (!normalized) return null
+  const number = Number(normalized)
+  return Number.isFinite(number) ? number : null
+}
+const currentStack = computed(() => {
+  if (isCurrentLevel.value) {
+    const sessionStack = parseStoredNumber(storedTournament.currentStack)
+    if (sessionStack != null) return sessionStack
+  }
+
+  const ownStack =
     blindLevel.value?.endStack ??
     blindLevel.value?.displayStartStack ??
-    blindLevel.value?.startStack ??
-    null,
-)
+    blindLevel.value?.startStack
+  if (ownStack != null) return Number(ownStack)
+
+  const levels = [...(handLogStore.selectedEvent?.blindLevels || [])]
+    .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
+  const currentIndex = levels.findIndex((level) => String(level.id) === levelId.value)
+  for (let index = currentIndex - 1; index >= 0; index -= 1) {
+    const previousStack =
+      levels[index].endStack ?? levels[index].displayStartStack ?? levels[index].startStack
+    if (previousStack != null) return Number(previousStack)
+  }
+
+  return (
+    parseStoredNumber(handLogStore.selectedEvent?.startingStack) ??
+    parseStoredNumber(storedTournament.startingStack)
+  )
+})
 const stackWithBb = computed(() => {
   if (currentStack.value == null) return '-'
   const stack = formatNumber(currentStack.value)
@@ -334,12 +374,14 @@ const updateStackInput = (event) => {
 }
 
 const saveStack = async () => {
+  if (savingStack.value) return
   if (!eventId.value || !blindLevel.value?.id || !stackInput.value) {
     alert.show('현재 스택을 입력해 주세요.', 'warning')
     return
   }
 
   const endStack = Number(stackInput.value.replaceAll(',', ''))
+  savingStack.value = true
   try {
     const saved = await handLogStore.updateBlindLevelInfo(eventId.value, blindLevel.value.id, {
       startStack: blindLevel.value.startStack ?? blindLevel.value.displayStartStack,
@@ -357,13 +399,14 @@ const saveStack = async () => {
           : null
       localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
       if (storedTournament.sessionId) {
-        const session = await fetchGameSession(storedTournament.sessionId)
-        await updateGameSession(storedTournament.sessionId, { ...session, currentStack: endStack })
+        await updateGameSessionProgress(storedTournament.sessionId, { currentStack: endStack })
       }
     }
     stackSheetOpen.value = false
   } catch {
     alert.show('현재 스택을 저장하지 못했습니다.', 'error')
+  } finally {
+    savingStack.value = false
   }
 }
 
@@ -544,8 +587,10 @@ const movableLevels = computed(() =>
 onMounted(async () => {
   if (!eventId.value || !levelId.value) return
   try {
-    await handLogStore.fetchEventDetail(eventId.value)
-    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
+    const requestedEventId = eventId.value
+    await handLogStore.fetchEventDetail(requestedEventId)
+    await handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value)
+    loadedEventId.value = requestedEventId
   } catch {
     alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
   }
@@ -577,6 +622,7 @@ const copyLevelText = async () => {
 }
 
 const endLevel = async () => {
+  if (endingLevel.value) return
   const currentLevelNo = Number(blindLevel.value?.levelNo || 0)
   const expectedNextLevelNo = currentLevelNo + 1
   const nextLevel = [...(handLogStore.selectedEvent?.blindLevels || [])]
@@ -594,6 +640,7 @@ const endLevel = async () => {
     return
   }
 
+  endingLevel.value = true
   const nextStack =
     nextLevel.endStack ?? nextLevel.displayStartStack ?? nextLevel.startStack ?? currentStack.value
   storedTournament.currentBlindLevelId = nextLevel.id
@@ -613,18 +660,22 @@ const endLevel = async () => {
       ? Number((Number(nextStack) / Number(nextLevel.bigBlind)).toFixed(1))
       : null
   localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
-  if (storedTournament.sessionId) {
-    const session = await fetchGameSession(storedTournament.sessionId)
-    await updateGameSession(storedTournament.sessionId, {
-      ...session,
-      currentLevel: storedTournament.currentLevel,
-      currentStack: nextStack,
-      currentSmallBlind: nextLevel.smallBlind,
-      currentBigBlind: nextLevel.bigBlind,
-      currentAnte: nextLevel.ante,
-    })
+  try {
+    if (storedTournament.sessionId) {
+      await updateGameSessionProgress(storedTournament.sessionId, {
+        currentLevel: storedTournament.currentLevel,
+        currentStack: nextStack,
+        currentSmallBlind: nextLevel.smallBlind,
+        currentBigBlind: nextLevel.bigBlind,
+        currentAnte: nextLevel.ante,
+      })
+    }
+    await router.push({ name: 'tournament-running' })
+  } catch {
+    alert.show('레벨을 종료하지 못했습니다.', 'error')
+  } finally {
+    endingLevel.value = false
   }
-  router.push({ name: 'tournament-running' })
 }
 
 const openHand = (handId) => {
@@ -657,20 +708,35 @@ const handleHandClick = (handId) => {
     : [...selectedHandIds.value, handId]
 }
 
-const moveSelectedHands = async (targetLevel) => {
-  if (!eventId.value || !targetLevel?.id || !selectedHandIds.value.length) return
+const moveSelectedHands = async (targetLevelId, targetLevelName) => {
+  if (movingHands.value) return
+  if (!eventId.value || !sourceLevelId.value || !targetLevelId || !selectedHandIds.value.length) {
+    alert.show('이동할 핸드 또는 레벨 정보를 확인하지 못했습니다.', 'error')
+    return
+  }
+
+  const movedCount = selectedHandIds.value.length
+  const currentEventId = eventId.value
+  const currentLevelId = sourceLevelId.value
+  movingHands.value = true
+  movingTargetLevelId.value = targetLevelId
   try {
     await handLogStore.moveHandsToBlindLevel(
-      eventId.value,
-      levelId.value,
+      currentEventId,
+      currentLevelId,
       selectedHandIds.value,
-      targetLevel.id,
+      targetLevelId,
     )
-    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
+    await handLogStore.fetchEventDetail(currentEventId)
+    await handLogStore.fetchBlindLevelDetail(currentEventId, currentLevelId)
     moveSheetOpen.value = false
     cancelHandSelection()
-  } catch {
-    alert.show('선택한 핸드를 이동하지 못했습니다.', 'error')
+    alert.show(`${movedCount}개 핸드를 ${targetLevelName}으로 이동했습니다.`, 'success')
+  } catch (error) {
+    alert.show(error?.response?.data?.error?.message || '선택한 핸드를 이동하지 못했습니다.', 'error')
+  } finally {
+    movingHands.value = false
+    movingTargetLevelId.value = null
   }
 }
 </script>
@@ -699,8 +765,8 @@ const moveSelectedHands = async (targetLevel) => {
 .level-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }
@@ -1490,6 +1556,8 @@ const moveSelectedHands = async (targetLevel) => {
   font: inherit;
   font-size: 11px;
   font-weight: 560;
+  backface-visibility: hidden;
+  transform: translateZ(0);
 }
 
 .hand-fab__icon {

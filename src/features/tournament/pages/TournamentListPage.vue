@@ -232,8 +232,8 @@ const openTournament = (tournament) => {
 .list-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 36px;
   text-align: center;
 }

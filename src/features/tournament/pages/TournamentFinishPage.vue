@@ -134,6 +134,7 @@ const route = useRoute()
 const router = useRouter()
 const alert = useAlert()
 const submitting = ref(false)
+const sourceSession = ref(null)
 const isEdit = computed(() => route.query.mode === 'edit')
 const runningTournament = (() => {
   try {
@@ -142,9 +143,14 @@ const runningTournament = (() => {
     return {}
   }
 })()
-const tournamentName = computed(() => runningTournament.name || '이름 없는 토너먼트')
+const tournamentName = computed(
+  () => sourceSession.value?.tournamentName || runningTournament.name || '이름 없는 토너먼트',
+)
 const tournamentDate = computed(
-  () => runningTournament.date || formatLocalDate(new Date(), '.'),
+  () =>
+    sourceSession.value?.playDate?.replaceAll('-', '.') ||
+    runningTournament.date ||
+    formatLocalDate(new Date(), '.'),
 )
 
 const results = [
@@ -172,6 +178,7 @@ onMounted(async () => {
   if (!sessionId) return
   try {
     const session = await fetchGameSession(sessionId)
+    sourceSession.value = session
     Object.assign(form, {
       result: session.tournamentResult || '',
       rank: session.finalRank || '',
@@ -219,6 +226,8 @@ const confirmResult = async () => {
   if (!form.result || submitting.value) return
   const tournamentId = route.query.tournamentId || runningTournament.sessionId
   if (!tournamentId) return
+  const source = sourceSession.value || runningTournament
+  const hasSourceSession = Boolean(sourceSession.value)
   const result = {
     id: tournamentId,
     tournamentName: tournamentName.value,
@@ -246,33 +255,47 @@ const confirmResult = async () => {
   submitting.value = true
   try {
     await updateGameSession(tournamentId, {
-      venueId: runningTournament.venueId || null,
+      venueId: source.venueId || null,
       playDate: String(tournamentDate.value).replaceAll('.', '-'),
-      sessionType: runningTournament.venueId ? 'VENUE' : 'OTHER',
-      gameType: 'TOURNAMENT',
+      sessionType: source.sessionType || (source.venueId ? 'VENUE' : 'OTHER'),
+      gameType: source.gameType || 'TOURNAMENT',
       tournamentName: tournamentName.value,
       tournamentResult: form.result,
-      startLevel: runningTournament.startLevel,
-      currentLevel: runningTournament.currentLevel,
-      buyInPerEntry: Number(String(runningTournament.buyIn || '').replaceAll(',', '')) || null,
+      startLevel: source.startLevel,
+      currentLevel: source.currentLevel,
+      buyInPerEntry: hasSourceSession
+        ? source.buyInPerEntry
+        : Number(String(runningTournament.buyIn || '').replaceAll(',', '')) || null,
       entries: result.entries,
       discount: result.discount,
       prize: result.prize,
       satelliteAwarded: result.satelliteAwarded,
       satelliteName: result.satelliteName,
       notes: result.notes,
-      gtdAmount: null,
+      gtdAmount: source.gtdAmount ?? null,
       fieldEntries: result.fieldEntries,
-      isCollab: false,
-      collabLabel: null,
-      handLogEventId: runningTournament.eventId,
+      isCollab: Boolean(source.isCollab),
+      collabLabel: source.collabLabel || null,
+      handLogEventId: hasSourceSession ? source.handLogEventId : runningTournament.eventId || null,
       tournamentStatus: 'COMPLETED',
-      startingStack: Number(String(runningTournament.startingStack || '').replaceAll(',', '')) || null,
-      currentStack: Number(String(runningTournament.currentStack || '').replaceAll(',', '')) || null,
-      averageStack: Number(String(runningTournament.averageStack || '').replaceAll(',', '')) || null,
-      currentSmallBlind: Number(String(runningTournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) || null,
-      currentBigBlind: Number(String(runningTournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) || null,
-      currentAnte: Number(String(runningTournament.currentBlinds?.ante || '').replaceAll(',', '')) || null,
+      startingStack: hasSourceSession
+        ? source.startingStack
+        : Number(String(runningTournament.startingStack || '').replaceAll(',', '')) || null,
+      currentStack: hasSourceSession
+        ? source.currentStack
+        : Number(String(runningTournament.currentStack || '').replaceAll(',', '')) || null,
+      averageStack: hasSourceSession
+        ? source.averageStack
+        : Number(String(runningTournament.averageStack || '').replaceAll(',', '')) || null,
+      currentSmallBlind: hasSourceSession
+        ? source.currentSmallBlind
+        : Number(String(runningTournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) || null,
+      currentBigBlind: hasSourceSession
+        ? source.currentBigBlind
+        : Number(String(runningTournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) || null,
+      currentAnte: hasSourceSession
+        ? source.currentAnte
+        : Number(String(runningTournament.currentBlinds?.ante || '').replaceAll(',', '')) || null,
       finalRank: result.finalRank,
     })
     localStorage.setItem('pokerly-tournament-results', JSON.stringify(savedResults))
@@ -317,8 +340,8 @@ const confirmResult = async () => {
 .finish-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }

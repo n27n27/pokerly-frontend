@@ -26,5 +26,6 @@ const route = useRoute()
 
 .app-page-container {
   padding-bottom: 76px;
+  isolation: isolate;
 }
 </style>

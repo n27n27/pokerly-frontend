@@ -10,6 +10,11 @@ export const updateGameSession = async (id, payload) => {
   return res.data.data
 }
 
+export const updateGameSessionProgress = async (id, payload) => {
+  const res = await api.patch(`/game-sessions/${id}/progress`, payload)
+  return res.data.data
+}
+
 export const updateSimpleGameSession = async (id, payload) => {
   const res = await api.put(`/game-sessions/${id}/simple-record`, payload)
   return res.data.data

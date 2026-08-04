@@ -276,7 +276,7 @@ const saveRecord = async () => {
 .simple-record-page * { box-sizing: border-box; }
 .simple-record-topbar { display: grid; min-height: 36px; grid-template-columns: 56px minmax(0, 1fr) 56px; align-items: center; }
 .simple-record-topbar button { min-width: 44px; height: 36px; padding: 0; border: 0; background: transparent; color: var(--v2-text-sub); font: inherit; font-size: 13px; font-weight: 520; text-align: left; }
-.simple-record-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 17px; font-weight: 560; line-height: 1.2; text-align: center; }
+.simple-record-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
 .record-form-card { padding: 16px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: var(--v2-shadow-card); }
 .record-form-card > h2 { margin: 0 0 14px; font-size: 15px; font-weight: 620; }
 .record-form-card--result { padding: 13px 16px 14px; }

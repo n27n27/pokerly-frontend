@@ -289,8 +289,8 @@ onMounted(async () => {
 
 .detail-topbar h1 {
   margin: 0;
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }

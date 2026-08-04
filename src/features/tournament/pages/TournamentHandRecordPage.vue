@@ -120,6 +120,8 @@
       v-if="!pickerOpen"
       label="저장"
       :disabled="!canSave || handLogStore.saving"
+      :loading="handLogStore.saving"
+      loading-label="저장 중..."
       @click="saveHand"
     />
 
@@ -420,8 +422,8 @@ const saveHand = async () => {
 .record-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }

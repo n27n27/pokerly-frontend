@@ -16,10 +16,19 @@
 
     <section class="title-row"><h2>{{ tournamentDisplayName(result) }}</h2><time>{{ result.playDate || '-' }}</time></section>
 
-    <section v-if="resultMetrics.length" class="result-card">
+    <section
+      v-if="resultMetrics.length"
+      class="result-card"
+      :class="{
+        'result-card--four': resultMetrics.length === 4,
+        'result-card--three-column': resultMetrics.length > 4,
+        'result-card--compact': resultMetrics.length < 4,
+      }"
+      :style="resultMetrics.length < 4 ? { '--metric-count': resultMetrics.length } : undefined"
+    >
       <div v-for="metric in resultMetrics" :key="metric.label">
         <span>{{ metric.label }}</span>
-        <strong :class="{ primary: metric.primary }">
+        <strong :class="{ primary: metric.primary }" :title="metric.value">
           <i v-if="metric.icon"><q-icon :name="metric.icon" size="16px" /></i>
           {{ metric.value }}
         </strong>
@@ -32,13 +41,13 @@
     </section>
 
     <section v-if="eventId" class="content-section">
-      <div class="section-head"><h2>기록 핸드</h2><button v-if="hands.length" type="button" @click="goReviewHands">전체 보기 <q-icon name="chevron_right" size="17px" /></button></div>
+      <div class="section-head"><h2>복기 핸드</h2><button v-if="hands.length" type="button" @click="goReviewHands">전체 보기 <q-icon name="chevron_right" size="17px" /></button></div>
       <div v-if="hands.length" class="hand-grid">
         <button v-for="hand in hands" :key="hand.id" type="button" @click="openHand(hand)">
           <strong>{{ hand.name }}</strong><span>{{ hand.level }} · <b :class="hand.tone">{{ hand.result }}</b></span>
         </button>
       </div>
-      <div v-else class="section-empty">기록된 핸드가 없습니다.</div>
+      <div v-else class="section-empty">복기할 핸드가 없습니다.</div>
     </section>
 
     <section v-if="eventId" class="content-section">
@@ -46,7 +55,11 @@
       <div v-if="levels.length" class="level-table">
         <div class="table-head"><span>레벨</span><span>스택</span><span>스택 변화</span><span></span></div>
         <button v-for="level in levels" :key="level.name" type="button" @click="openLevel(level.name)">
-          <strong>{{ level.name }}</strong><span>{{ level.stack }}</span><span :class="level.tone">{{ level.change }}</span><q-icon name="chevron_right" size="18px" />
+          <strong>{{ level.name }}</strong><span>{{ level.stack }}</span>
+          <span class="stack-change" :class="level.tone">
+            <i aria-hidden="true">{{ level.changeSymbol }}</i><b>{{ level.changeAmount }}</b>
+          </span>
+          <q-icon name="chevron_right" size="18px" />
         </button>
       </div>
       <div v-else class="section-empty">기록된 레벨이 없습니다.</div>
@@ -164,6 +177,7 @@ const handLogStore = useHandLogStore()
 const menuOpen = ref(false)
 const selectedMajorHand = ref('')
 const tournamentSeats = ref([])
+const tournamentSeatsLoaded = ref(false)
 const tournamentId = route.params.tournamentId || '1'
 const legacyEventId = computed(() => route.query.legacyEventId || null)
 const runningTournament = (() => {
@@ -280,6 +294,7 @@ const hands = computed(() =>
   (event.value?.blindLevels || [])
     .flatMap((level) =>
       (level.hands || [])
+        .filter((hand) => hand.reviewRequired)
         .map((hand) => ({
           id: hand.id,
           levelId: level.id,
@@ -289,7 +304,6 @@ const hands = computed(() =>
           ...handResult(hand),
         })),
     )
-    .sort((a, b) => Number(b.reviewRequired) - Number(a.reviewRequired))
     .slice(0, 4),
 )
 
@@ -412,10 +426,11 @@ const levels = computed(() => {
         id: level.id,
         name: `L${level.levelNo}`,
         stack: stack == null ? '-' : stack.toLocaleString('ko-KR'),
-        change:
+        changeSymbol: difference > 0 ? '▲' : difference < 0 ? '▼' : '',
+        changeAmount:
           difference == null || difference === 0
             ? '-'
-            : `${difference > 0 ? '▲' : '▼'} ${Math.abs(difference).toLocaleString('ko-KR')}`,
+            : Math.abs(difference).toLocaleString('ko-KR'),
         tone: difference > 0 ? 'up' : difference < 0 ? 'down' : '',
       }
       if (stack != null) previousStack = stack
@@ -473,7 +488,7 @@ const resumeTournament = async () => {
 const openHand = (hand) => router.push({
   name: 'tournament-hand-detail',
   params: { levelName: hand.levelId, handId: hand.id },
-  query: { levelName: hand.level, ...legacyQuery.value },
+  query: { levelName: hand.level, eventId: eventId.value, ...legacyQuery.value },
 })
 const openLevel = (name) => {
   const level = levels.value.find((item) => item.name === name)
@@ -488,7 +503,7 @@ const legacyQuery = computed(() => legacyEventId.value ? { legacyEventId: legacy
 const goReviewHands = () => router.push({
   name: 'tournament-review-hands',
   params: { tournamentId },
-  query: legacyQuery.value,
+  query: { eventId: eventId.value, ...legacyQuery.value },
 })
 const goStats = () => router.push({
   name: 'tournament-stats',
@@ -504,6 +519,10 @@ const copyTournamentText = async () => {
   }
 
   try {
+    if (!legacyEventId.value && !tournamentSeatsLoaded.value) {
+      tournamentSeats.value = (await fetchTournamentSeats(tournamentId).catch(() => [])) || []
+      tournamentSeatsLoaded.value = true
+    }
     await copyToClipboard(buildEventReviewText(event.value, { seats: tournamentSeats.value }))
     alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'success')
   } catch {
@@ -528,11 +547,7 @@ onMounted(async () => {
   }
 
   try {
-    const [, seats] = await Promise.all([
-      handLogStore.fetchEventDetail(eventId.value),
-      legacyEventId.value ? Promise.resolve([]) : fetchTournamentSeats(tournamentId).catch(() => []),
-    ])
-    tournamentSeats.value = seats || []
+    await handLogStore.fetchEventDetail(eventId.value)
   } catch (error) {
     handLogStore.selectedEvent = null
     if (error?.response?.status !== 404) {
@@ -548,19 +563,21 @@ onMounted(async () => {
 .topbar { position: relative; display: grid; width: 100%; height: 36px; min-height: 36px; max-height: 36px; flex: 0 0 36px; grid-template-columns: 40px 1fr 40px; align-items: center; }
 .topbar > button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .topbar > button:last-of-type { justify-self: end; }
-.topbar h1 { margin: 0; font-size: 17px; font-weight: 560; text-align: center; }
+.topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
 .page-menu { position: absolute; z-index: 5; top: 42px; right: 0; width: 156px; overflow: hidden; border: 1px solid var(--v2-border); border-radius: 12px; background: #fff; box-shadow: 0 12px 28px rgba(28,18,60,.16); }
 .page-menu button { display: flex; width: 100%; min-height: 42px; align-items: center; padding: 0 14px; border: 0; border-bottom: 1px solid var(--v2-border); background: #fff; color: var(--v2-text-main); font: inherit; font-size: 13px; font-weight: 520; }
 .page-menu button:last-child { border-bottom: 0; }
 .title-row { display: flex; min-height: 28px; flex: 0 0 auto; align-items: center; justify-content: space-between; margin-top: 24px; }
 .title-row h2 { margin: 0; font-size: 20px; font-weight: 620; }
 .title-row time { color: var(--v2-text-sub); font-size: 13px; }
-.result-card, .level-table, .stat-card, .memo-box, .hand-grid button { border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28,18,60,.025); }
-.result-card { display: grid; grid-template-columns: repeat(auto-fit,minmax(88px,1fr)); margin-top: 5px; padding: 12px 14px; }
-.result-card > div { display: grid; min-width: 0; min-height: 58px; place-items: center; align-content: center; gap: 6px; padding: 0 8px; text-align: center; }
-.result-card > div + div { border-left: 1px solid var(--v2-border); }
+.level-table, .stat-card, .memo-box, .hand-grid button { border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28,18,60,.025); }
+.result-card { display: grid; gap: 8px; margin-top: 5px; }
+.result-card--compact { grid-template-columns: repeat(var(--metric-count),minmax(0,1fr)); }
+.result-card--four { grid-template-columns: repeat(2,minmax(0,1fr)); }
+.result-card--three-column { grid-template-columns: repeat(3,minmax(0,1fr)); }
+.result-card > div { display: grid; min-width: 0; min-height: 76px; place-items: center; align-content: center; gap: 6px; padding: 10px 8px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28,18,60,.025); text-align: center; }
 .result-card > div > span { color: #706a7f; font-size: 11px; font-weight: 580; }
-.result-card strong { font-size: clamp(13px,3.8vw,17px); font-weight: 620; white-space: nowrap; }
+.result-card strong { max-width: 100%; overflow: hidden; font-size: clamp(13px,3.8vw,17px); font-weight: 620; text-overflow: ellipsis; white-space: nowrap; }
 .result-card strong > i { display: inline-grid; width: 20px; height: 20px; margin-right: 3px; place-items: center; border-radius: 50%; background: var(--v2-primary-soft); color: var(--v2-primary); vertical-align: middle; }
 .result-card .primary, .result-card p b { color: var(--v2-primary); }
 .legacy-summary-note { display: flex; align-items: center; gap: 11px; margin-top: 13px; padding: 14px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
@@ -584,7 +601,10 @@ onMounted(async () => {
 .level-table > button { width: 100%; min-height: 42px; padding: 0 10px; border: 0; background: transparent; color: var(--v2-text-main); font: inherit; font-size: 12px; text-align: left; }
 .table-head > span:nth-child(2), .table-head > span:nth-child(3), .level-table > button > span { justify-self: end; text-align: right; }
 .level-table > button strong { font-weight: 600; }
-.level-table .up { color: var(--v2-success); font-weight: 540; }
+.level-table .stack-change { display: grid; width: 100%; grid-template-columns: 13px minmax(0, 1fr); align-items: center; column-gap: 4px; }
+.level-table .stack-change i { font-style: normal; text-align: center; }
+.level-table .stack-change b { font-weight: inherit; text-align: right; }
+.level-table .up { color: #2563eb; font-weight: 540; }
 .level-table .down { color: var(--v2-danger); font-weight: 540; }
 .level-table .q-icon { justify-self: end; color: var(--v2-text-sub); }
 .stats-list { overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28,18,60,.025); }
