@@ -239,6 +239,12 @@ const routes = [
         component: () => import('src/features/my/pages/MyAccountPage.vue'),
       },
       {
+        path: 'my/saved-data',
+        name: 'my-saved-data',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/SavedDataManagementPage.vue'),
+      },
+      {
         path: 'my/document/:documentType',
         name: 'my-document',
         meta: { hideHeader: true },

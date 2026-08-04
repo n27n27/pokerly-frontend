@@ -42,6 +42,20 @@
     </section>
 
     <section class="settings-section">
+      <h2>기록 정보</h2>
+      <div class="settings-card menu-card">
+        <button class="saved-data-button" type="button" @click="router.push('/app/my/saved-data')">
+          <q-icon name="folder_open" size="20px" />
+          <span class="menu-copy">
+            <strong>매장·플레이어 관리</strong>
+            <small>자주 가는 매장과 함께 플레이한 사람을 관리합니다.</small>
+          </span>
+          <q-icon name="chevron_right" size="20px" />
+        </button>
+      </div>
+    </section>
+
+    <section class="settings-section">
       <h2>수신 설정</h2>
       <div class="settings-card consent-card">
         <div>
@@ -200,6 +214,7 @@ const openDocument = (type) => router.push(`/app/my/document/${type}`)
 .consent-card > button:disabled { opacity: .65; }
 .menu-card > button, .info-row { display: grid; width: 100%; min-height: 48px; grid-template-columns: 24px minmax(0,1fr) auto; align-items: center; gap: 9px; padding: 0 14px; border: 0; border-bottom: 1px solid var(--v2-border); background: #fff; color: var(--v2-text-main); font: inherit; font-size: 13px; text-align: left; }
 .menu-card > :last-child { border-bottom: 0; }.menu-card > button > .q-icon:first-child, .info-row > .q-icon { color: var(--v2-primary); }.menu-card > button > .q-icon:last-child { color: var(--v2-text-sub); }
+.menu-card > button.saved-data-button { min-height: 58px; padding: 0 14px; }
 .menu-copy { display: grid; gap: 4px; }
 .menu-copy strong { font-size: 13px; font-weight: 580; }
 .menu-copy small { color: var(--v2-text-sub); font-size: 11px; }
