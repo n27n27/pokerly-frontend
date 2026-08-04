@@ -299,7 +299,7 @@ const eventId = computed(
     handLogStore.selectedEvent?.id ||
     null,
 )
-const levelLoading = computed(() => handLogStore.levelLoading)
+const levelLoading = computed(() => handLogStore.levelLoading || restoring.value)
 const blindLevel = computed(() => {
   const selected = handLogStore.selectedBlindLevel
   if (selected && String(selected.id) === levelId.value) return selected
@@ -586,30 +586,60 @@ const movableLevels = computed(() =>
     })),
 )
 
-const loadLevelData = async ({ notify = true } = {}) => {
+const wait = (milliseconds) =>
+  new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+
+const syncRunningTournament = (runningSession) => {
+  if (!runningSession) return null
+
+  Object.assign(storedTournament, {
+    sessionId: runningSession.id,
+    eventId: runningSession.handLogEventId,
+    currentBlindLevelId: runningSession.currentBlindLevelId,
+    currentStack: runningSession.currentStack,
+  })
+  localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+  return runningSession.handLogEventId || null
+}
+
+const loadLevelData = async ({ notify = true, retries = 2 } = {}) => {
   if (restoring.value || !levelId.value) return
   restoring.value = true
+  let lastError = null
+
   try {
-    let requestedEventId = eventId.value
-    if (!requestedEventId && !route.query.legacyEventId) {
-      const runningSession = await fetchRunningGameSession().catch(() => null)
-      requestedEventId = runningSession?.handLogEventId || null
-      if (runningSession) {
-        Object.assign(storedTournament, {
-          sessionId: runningSession.id,
-          eventId: runningSession.handLogEventId,
-          currentBlindLevelId: runningSession.currentBlindLevelId,
-          currentStack: runningSession.currentStack,
-        })
-        localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+    for (let attempt = 0; attempt <= retries; attempt += 1) {
+      const eventIds = [eventId.value]
+
+      // iOS 홈 화면 앱은 종료 후 재실행될 때 네트워크가 화면보다 늦게
+      // 깨어날 수 있다. 첫 조회 실패 시 서버의 진행 중 대회를 다시 기준으로 잡는다.
+      if ((!eventIds[0] || attempt > 0) && !route.query.legacyEventId) {
+        try {
+          const runningSession = await fetchRunningGameSession()
+          eventIds.unshift(syncRunningTournament(runningSession))
+        } catch (error) {
+          lastError = error
+        }
       }
+
+      const candidates = [...new Set(eventIds.filter(Boolean).map(String))]
+      for (const requestedEventId of candidates) {
+        try {
+          await handLogStore.fetchEventDetail(requestedEventId)
+          await handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value)
+          loadedEventId.value = requestedEventId
+          return true
+        } catch (error) {
+          lastError = error
+        }
+      }
+
+      if (attempt < retries) await wait(500 * (attempt + 1))
     }
-    if (!requestedEventId) return
-    await handLogStore.fetchEventDetail(requestedEventId)
-    await handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value)
-    loadedEventId.value = requestedEventId
-  } catch {
+
     if (notify) alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
+    if (lastError) console.error('레벨 정보 복구 실패', lastError)
+    return false
   } finally {
     restoring.value = false
   }
@@ -622,16 +652,23 @@ const restoreOnVisible = () => {
 const restoreOnPageShow = () => {
   if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
 }
+const restoreOnOnline = () => {
+  if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
+}
 
 onMounted(async () => {
-  await loadLevelData()
+  // iOS standalone PWA의 pageshow는 초기 API 요청보다 먼저 발생할 수 있으므로
+  // 복구 리스너를 먼저 등록한다.
   document.addEventListener('visibilitychange', restoreOnVisible)
   window.addEventListener('pageshow', restoreOnPageShow)
+  window.addEventListener('online', restoreOnOnline)
+  await loadLevelData()
 })
 
 onBeforeUnmount(() => {
   document.removeEventListener('visibilitychange', restoreOnVisible)
   window.removeEventListener('pageshow', restoreOnPageShow)
+  window.removeEventListener('online', restoreOnOnline)
 })
 
 const recordHand = () => {
