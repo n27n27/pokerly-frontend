@@ -242,13 +242,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { copyToClipboard } from 'quasar'
 
 import { useAlert } from 'src/composables/useAlert'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { updateGameSessionProgress } from 'src/api/gameSession'
 import { buildLevelReviewText } from 'src/utils/handLogExportText'
+import { copyToClipboard } from 'src/utils/copyToClipboard'
 import {
   createStartingHandRunSummary,
   isPfrAction,

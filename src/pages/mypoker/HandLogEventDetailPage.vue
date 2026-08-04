@@ -365,7 +365,7 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { copyToClipboard, useQuasar } from 'quasar'
+import { useQuasar } from 'quasar'
 import { useRoute, useRouter } from 'vue-router'
 import { useAlert } from 'src/composables/useAlert'
 
@@ -373,6 +373,7 @@ import BaseDialog from 'components/common/BaseDialog.vue'
 import StartingHandSummary from 'src/components/hand-log/StartingHandSummary.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
+import { copyToClipboard } from 'src/utils/copyToClipboard'
 import {
   isPfrAction,
   isShowdownResult,

@@ -465,7 +465,6 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
-import { copyToClipboard } from 'quasar'
 import { useAlert } from 'src/composables/useAlert'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -474,6 +473,7 @@ import QuickHandLogDialog from 'src/components/hand-log/QuickHandLogDialog.vue'
 import StartingHandSummary from 'src/components/hand-log/StartingHandSummary.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { buildLevelReviewText } from 'src/utils/handLogExportText'
+import { copyToClipboard } from 'src/utils/copyToClipboard'
 import {
   getActionLabel,
   getHandInputValue,

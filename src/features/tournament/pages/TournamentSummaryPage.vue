@@ -156,13 +156,13 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { copyToClipboard } from 'quasar'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
 import { createStartingHandRunSummary } from 'src/utils/handLogHandAnalysis'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
+import { copyToClipboard } from 'src/utils/copyToClipboard'
 import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
 import {
   fetchGameSession,

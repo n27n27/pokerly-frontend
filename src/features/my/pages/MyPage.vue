@@ -118,11 +118,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { copyToClipboard } from 'quasar'
 import { useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useAuthStore } from 'src/stores/auth'
+import { copyToClipboard } from 'src/utils/copyToClipboard'
 
 const router = useRouter()
 const alert = useAlert()

@@ -35,11 +35,13 @@
 
         <section class="login-actions">
           <div class="google-slot">
-            <div
-              ref="googleButtonRef"
-              class="google-button-wrap"
-              :class="{ ready: googleReady }"
-            ></div>
+            <div class="google-button-frame" :class="{ ready: googleReady }">
+              <div class="google-button-placeholder" aria-hidden="true">
+                <strong>G</strong>
+                <span>Google로 계속하기</span>
+              </div>
+              <div ref="googleButtonRef" class="google-button-wrap"></div>
+            </div>
           </div>
 
           <div class="login-divider"><span></span><em>또는</em><span></span></div>
@@ -324,7 +326,45 @@ onMounted(() => {
   justify-content: center;
 }
 
+.google-button-frame {
+  position: relative;
+  width: 320px;
+  max-width: 100%;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.google-button-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 24px auto 24px;
+  align-items: center;
+  padding: 0 11px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  background: #fff;
+  color: #3c4043;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.google-button-placeholder strong {
+  color: #4285f4;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.google-button-placeholder span {
+  text-align: center;
+}
+
 .google-button-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   width: 320px;
   max-width: 100%;
   height: 44px;
@@ -332,12 +372,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 140ms ease;
+  visibility: hidden;
 }
 
-.google-button-wrap.ready {
-  opacity: 1;
+.google-button-frame.ready .google-button-wrap {
+  visibility: visible;
 }
 
 .legacy-btn {

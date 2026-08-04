@@ -208,7 +208,6 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { copyToClipboard } from 'quasar'
 
 import { useAlert } from 'src/composables/useAlert'
 import TournamentHandOverview from 'src/features/tournament/components/TournamentHandOverview.vue'
@@ -218,6 +217,7 @@ import { fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
 import { formatLocalDate } from 'src/utils/localDate'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
 import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
+import { copyToClipboard } from 'src/utils/copyToClipboard'
 
 const router = useRouter()
 const route = useRoute()
@@ -236,14 +236,12 @@ const totalBuyIns = computed(() => runningTournament.totalBuyIns ?? runningTourn
 const event = computed(() => handLogStore.selectedEvent)
 const loading = computed(() => handLogStore.detailLoading)
 const tournamentName = computed(() => event.value?.name || runningTournament.name || '-')
+const tournamentSeats = ref([])
 
 const copyTournamentText = async () => {
   if (!event.value) return
   try {
-    const seats = runningTournament.sessionId
-      ? await fetchTournamentSeats(runningTournament.sessionId).catch(() => [])
-      : []
-    await copyToClipboard(buildEventReviewText(event.value, { seats }))
+    await copyToClipboard(buildEventReviewText(event.value, { seats: tournamentSeats.value }))
     alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'success')
   } catch {
     alert.show('텍스트를 복사하지 못했습니다.', 'error')
@@ -603,6 +601,9 @@ onMounted(async () => {
         },
       })
       localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+    }
+    if (runningTournament.sessionId) {
+      tournamentSeats.value = await fetchTournamentSeats(runningTournament.sessionId).catch(() => [])
     }
     const eventId = await ensureEventId()
     if (eventId) {
