@@ -1,4 +1,3 @@
-import { LoadingBar } from 'quasar'
 import { route } from 'quasar/wrappers'
 import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
 import routes from './routes'
@@ -18,11 +17,7 @@ export default route(function () {
     typeof window !== 'undefined' &&
     window.location.pathname !== '/'
   ) {
-    window.history.replaceState(
-      null,
-      '',
-      `/${window.location.hash || '#/login'}`,
-    )
+    window.history.replaceState(null, '', `/${window.location.hash || '#/login'}`)
   }
 
   const Router = createRouter({
@@ -31,14 +26,7 @@ export default route(function () {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
 
-  LoadingBar.setDefaults({
-    color: 'deep-purple-5',
-    size: '3px',
-    position: 'top',
-  })
-
   Router.onError((error) => {
-    LoadingBar.stop()
     const message = String(error?.message || error || '')
     const isStaleChunk =
       /Failed to fetch dynamically imported module/i.test(message) ||
@@ -56,7 +44,6 @@ export default route(function () {
   })
 
   Router.beforeEach(async (to, _from, next) => {
-    LoadingBar.start()
     const auth = useAuthStore()
 
     const needsAuth = to.matched.some((r) => r.meta?.requiresAuth)
@@ -179,9 +166,7 @@ export default route(function () {
     return next()
   })
 
-  Router.afterEach(() => {
-    LoadingBar.stop()
-  })
+  Router.afterEach(() => {})
 
   return Router
 })

@@ -73,7 +73,7 @@ export default defineConfig((/* ctx */) => {
         },
       },
 
-      plugins: ['Dialog', 'Notify', 'LoadingBar'],
+      plugins: ['Dialog', 'Notify'],
     },
 
     animations: [],

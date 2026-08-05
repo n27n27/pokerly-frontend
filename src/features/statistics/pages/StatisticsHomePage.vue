@@ -4,7 +4,12 @@
       <h1>통계</h1>
       <div class="filter-pair">
         <div class="month-filter" :class="{ 'month-filter--all': showAllPeriod }">
-          <button type="button" aria-label="이전 달" :disabled="showAllPeriod" @click="moveMonth(-1)">
+          <button
+            type="button"
+            aria-label="이전 달"
+            :disabled="showAllPeriod"
+            @click="moveMonth(-1)"
+          >
             <q-icon name="chevron_left" size="19px" />
           </button>
           <button class="month-filter__label" type="button">
@@ -20,7 +25,12 @@
               </q-list>
             </q-menu>
           </button>
-          <button type="button" aria-label="다음 달" :disabled="showAllPeriod || isCurrentMonth" @click="moveMonth(1)">
+          <button
+            type="button"
+            aria-label="다음 달"
+            :disabled="showAllPeriod || isCurrentMonth"
+            @click="moveMonth(1)"
+          >
             <q-icon name="chevron_right" size="19px" />
           </button>
         </div>
@@ -33,7 +43,13 @@
               <q-item clickable v-close-popup @click="venueId = null">
                 <q-item-section>전체 매장</q-item-section>
               </q-item>
-              <q-item v-for="venue in venues" :key="venue.id" clickable v-close-popup @click="venueId = venue.id">
+              <q-item
+                v-for="venue in venues"
+                :key="venue.id"
+                clickable
+                v-close-popup
+                @click="venueId = venue.id"
+              >
                 <q-item-section>{{ venue.name }}</q-item-section>
               </q-item>
               <q-item clickable v-close-popup @click="venueId = 'other'">
@@ -57,195 +73,247 @@
     </section>
 
     <template v-else>
-    <section class="stats-section">
-      <h2>뱅크 요약</h2>
-      <div class="bank-grid">
-        <article
-          v-for="card in bankCards"
-          :key="card.label"
-          :class="[`bank-card--${card.tone}`, { 'bank-card--primary': card.primary }]"
-        >
-          <span>{{ card.label }}</span>
-          <strong :class="card.valueTone">{{ card.value }}</strong>
-        </article>
-      </div>
-    </section>
-
-    <section class="stats-section">
-      <h2>손익 추세</h2>
-      <div ref="trendPanelRef" class="summary-panel trend-panel">
-      <div class="panel-header">
-        <strong>{{ periodLabel }}</strong>
-        <div class="trend-segment" role="radiogroup" aria-label="손익 그래프 표시 방식">
-          <button type="button" :class="{ active: trendMode === 'cumulative' }" @click="trendMode = 'cumulative'">누적</button>
-          <button type="button" :class="{ active: trendMode === 'period' }" @click="trendMode = 'period'">{{ periodProfitLabel }}</button>
-        </div>
-      </div>
-      <div
-        v-if="trendPoints.length"
-        class="trend-visual"
-        @mouseleave="trendTooltip = null"
-      >
-        <svg
-          v-if="trendMode === 'cumulative'"
-          class="trend-chart"
-          :viewBox="`0 0 ${trendChartWidth} 170`"
-          preserveAspectRatio="none"
-          role="img"
-          aria-label="누적 순수익 추이"
-        >
-          <path class="trend-fill" :d="trendFillPath" />
-          <path class="trend-line" :d="trendLinePath" />
-          <g
-            v-for="point in trendPoints"
-            :key="point.key"
-            class="trend-point"
-            tabindex="0"
-            @mouseenter="showTrendTooltip(point, 'cumulative')"
-            @focus="showTrendTooltip(point, 'cumulative')"
-            @click.stop="showTrendTooltip(point, 'cumulative')"
+      <section class="stats-section">
+        <h2>뱅크 요약</h2>
+        <div class="bank-grid">
+          <article
+            v-for="card in bankCards"
+            :key="card.label"
+            :class="[`bank-card--${card.tone}`, { 'bank-card--primary': card.primary }]"
           >
-            <circle class="trend-point__hit" :cx="point.x" :cy="point.y" r="10" />
-            <circle :cx="point.x" :cy="point.y" r="2.6" />
-          </g>
-        </svg>
-        <svg
-          v-else-if="trendBars.length"
-          class="trend-chart trend-chart--bars"
-          :viewBox="`0 0 ${trendChartWidth} 170`"
-          preserveAspectRatio="none"
-          role="img"
-          aria-label="기간별 손익 추이"
-        >
-          <line class="trend-zero" x1="4" :y1="trendZeroY" :x2="trendChartWidth - 4" :y2="trendZeroY" />
-          <rect
-            v-for="bar in trendBars"
-            :key="bar.key"
-            :class="bar.profit < 0 ? 'trend-bar--loss' : 'trend-bar--profit'"
-            :x="bar.x"
-            :y="bar.y"
-            :width="bar.width"
-            :height="bar.height"
-            rx="2"
-            tabindex="0"
-            @mouseenter="showTrendTooltip(bar, 'period')"
-            @focus="showTrendTooltip(bar, 'period')"
-            @click.stop="showTrendTooltip(bar, 'period')"
-          />
-        </svg>
-        <div
-          v-if="trendTooltip"
-          class="trend-tooltip"
-          :style="{ left: `${trendTooltip.left}%`, top: `${trendTooltip.top}px` }"
-        >
-          <span>{{ trendTooltip.label }}</span>
-          <strong :class="{ loss: trendTooltip.value < 0, profit: trendTooltip.value > 0 }">
-            {{ formatSignedMan(trendTooltip.value) }}
-          </strong>
+            <span>{{ card.label }}</span>
+            <strong :class="card.valueTone">{{ card.value }}</strong>
+          </article>
         </div>
-      </div>
-      <div v-else class="chart-empty">표시할 손익 기록이 없습니다.</div>
-      <div v-if="trendAxisLabels.length && (trendMode === 'cumulative' || showAllPeriod)" class="trend-axis">
-        <span v-for="label in trendAxisLabels" :key="label">{{ label }}</span>
-      </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="stats-section">
-      <h2>최고 기록</h2>
-      <div class="best-records">
-        <article
-          v-for="record in bestRecordCards"
-          :key="record.key"
-          :class="`best-records__${record.tone}`"
-        >
-          <span>{{ record.label }}</span>
-          <strong :class="{ 'has-value': record.hasValue }">{{ record.value }}</strong>
-          <small>{{ record.sub }}</small>
-        </article>
-      </div>
-    </section>
-
-    <section v-if="isDetailedMode" class="stats-section">
-      <h2>플레이 분석</h2>
-      <div class="analysis-grid">
-        <button class="analysis-card--hand" type="button" @click="router.push('/app/statistics/hands')">
-          <div class="analysis-card-title">
-            <span>핸드 통계</span>
-            <q-icon name="chevron_right" size="18px" />
-          </div>
-          <div v-if="handSummary" class="analysis-summary">
-            <strong>기록 핸드 {{ formatNumber(handSummary.total) }}개</strong>
-            <strong>VPIP {{ handSummary.vpip }} · PFR {{ handSummary.pfr }}</strong>
-          </div>
-        </button>
-        <button class="analysis-card--position" type="button" @click="router.push('/app/statistics/position')">
-          <div class="analysis-card-title">
-            <span>포지션 통계</span>
-            <q-icon name="chevron_right" size="18px" />
-          </div>
-          <div v-if="positionSummary" class="analysis-summary position-summary">
-            <div>
-              <span>참여율 최고</span>
-              <strong>{{ positionSummary.mostPlayed.position }} <small>({{ positionSummary.mostPlayed.rate }})</small></strong>
-            </div>
-            <div>
-              <span>승률 최고</span>
-              <strong>{{ positionSummary.bestWinning.position }} <small>({{ positionSummary.bestWinning.rate }})</small></strong>
+      <section class="stats-section">
+        <h2>손익 추세</h2>
+        <div ref="trendPanelRef" class="summary-panel trend-panel">
+          <div class="panel-header">
+            <strong>{{ periodLabel }}</strong>
+            <div class="trend-segment" role="radiogroup" aria-label="손익 그래프 표시 방식">
+              <button
+                type="button"
+                :class="{ active: trendMode === 'cumulative' }"
+                @click="trendMode = 'cumulative'"
+              >
+                누적
+              </button>
+              <button
+                type="button"
+                :class="{ active: trendMode === 'period' }"
+                @click="trendMode = 'period'"
+              >
+                {{ periodProfitLabel }}
+              </button>
             </div>
           </div>
-        </button>
-      </div>
-    </section>
+          <div v-if="trendPoints.length" class="trend-visual" @mouseleave="trendTooltip = null">
+            <svg
+              v-if="trendMode === 'cumulative'"
+              class="trend-chart"
+              :viewBox="`0 0 ${trendChartWidth} 170`"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="누적 순수익 추이"
+            >
+              <path class="trend-fill" :d="trendFillPath" />
+              <path class="trend-line" :d="trendLinePath" />
+              <g
+                v-for="point in trendPoints"
+                :key="point.key"
+                class="trend-point"
+                tabindex="0"
+                @mouseenter="showTrendTooltip(point, 'cumulative')"
+                @focus="showTrendTooltip(point, 'cumulative')"
+                @click.stop="showTrendTooltip(point, 'cumulative')"
+              >
+                <circle class="trend-point__hit" :cx="point.x" :cy="point.y" r="10" />
+                <circle :cx="point.x" :cy="point.y" r="2.6" />
+              </g>
+            </svg>
+            <svg
+              v-else-if="trendBars.length"
+              class="trend-chart trend-chart--bars"
+              :viewBox="`0 0 ${trendChartWidth} 170`"
+              preserveAspectRatio="none"
+              role="img"
+              aria-label="기간별 손익 추이"
+            >
+              <line
+                class="trend-zero"
+                x1="4"
+                :y1="trendZeroY"
+                :x2="trendChartWidth - 4"
+                :y2="trendZeroY"
+              />
+              <rect
+                v-for="bar in trendBars"
+                :key="bar.key"
+                :class="bar.profit < 0 ? 'trend-bar--loss' : 'trend-bar--profit'"
+                :x="bar.x"
+                :y="bar.y"
+                :width="bar.width"
+                :height="bar.height"
+                rx="2"
+                tabindex="0"
+                @mouseenter="showTrendTooltip(bar, 'period')"
+                @focus="showTrendTooltip(bar, 'period')"
+                @click.stop="showTrendTooltip(bar, 'period')"
+              />
+            </svg>
+            <div
+              v-if="trendTooltip"
+              class="trend-tooltip"
+              :style="{ left: `${trendTooltip.left}%`, top: `${trendTooltip.top}px` }"
+            >
+              <span>{{ trendTooltip.label }}</span>
+              <strong :class="{ loss: trendTooltip.value < 0, profit: trendTooltip.value > 0 }">
+                {{ formatSignedMan(trendTooltip.value) }}
+              </strong>
+            </div>
+          </div>
+          <div v-else class="chart-empty">표시할 손익 기록이 없습니다.</div>
+          <div
+            v-if="trendAxisLabels.length"
+            class="trend-axis"
+            :class="{
+              'trend-axis--hidden': trendMode === 'period' && !showAllPeriod,
+            }"
+          >
+            <span v-for="label in trendAxisLabels" :key="label">
+              {{ label }}
+            </span>
+          </div>
+        </div>
+      </section>
 
-    <section class="stats-section">
-      <h2>매장별 통계</h2>
-      <div v-if="sortedVenueRows.length" class="venue-table">
-        <div class="venue-table__head">
-          <span>매장</span>
-          <button :class="{ active: venueSortKey === 'games' }" type="button" @click="toggleVenueSort('games')">
-            참가 수
-            <q-icon
-              :class="{ 'sort-icon--hidden': venueSortKey !== 'games' }"
-              :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
-              size="12px"
-            />
+      <section class="stats-section">
+        <h2>최고 기록</h2>
+        <div class="best-records">
+          <article
+            v-for="record in bestRecordCards"
+            :key="record.key"
+            :class="`best-records__${record.tone}`"
+          >
+            <span>{{ record.label }}</span>
+            <strong :class="{ 'has-value': record.hasValue }">{{ record.value }}</strong>
+            <small>{{ record.sub }}</small>
+          </article>
+        </div>
+      </section>
+
+      <section v-if="isDetailedMode" class="stats-section">
+        <h2>플레이 분석</h2>
+        <div class="analysis-grid">
+          <button
+            class="analysis-card--hand"
+            type="button"
+            @click="router.push('/app/statistics/hands')"
+          >
+            <div class="analysis-card-title">
+              <span>핸드 통계</span>
+              <q-icon name="chevron_right" size="18px" />
+            </div>
+            <div v-if="handSummary" class="analysis-summary">
+              <strong>기록 핸드 {{ formatNumber(handSummary.total) }}개</strong>
+              <strong>VPIP {{ handSummary.vpip }} · PFR {{ handSummary.pfr }}</strong>
+            </div>
           </button>
-          <button :class="{ active: venueSortKey === 'itm' }" type="button" @click="toggleVenueSort('itm')">
-            ITM
-            <q-icon
-              :class="{ 'sort-icon--hidden': venueSortKey !== 'itm' }"
-              :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
-              size="12px"
-            />
-          </button>
-          <button :class="{ active: venueSortKey === 'roi' }" type="button" @click="toggleVenueSort('roi')">
-            ROI
-            <q-icon
-              :class="{ 'sort-icon--hidden': venueSortKey !== 'roi' }"
-              :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
-              size="12px"
-            />
-          </button>
-          <button :class="{ active: venueSortKey === 'profit' }" type="button" @click="toggleVenueSort('profit')">
-            순수익
-            <q-icon
-              :class="{ 'sort-icon--hidden': venueSortKey !== 'profit' }"
-              :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
-              size="12px"
-            />
+          <button
+            class="analysis-card--position"
+            type="button"
+            @click="router.push('/app/statistics/position')"
+          >
+            <div class="analysis-card-title">
+              <span>포지션 통계</span>
+              <q-icon name="chevron_right" size="18px" />
+            </div>
+            <div v-if="positionSummary" class="analysis-summary position-summary">
+              <div>
+                <span>참여율 최고</span>
+                <strong
+                  >{{ positionSummary.mostPlayed.position }}
+                  <small>({{ positionSummary.mostPlayed.rate }})</small></strong
+                >
+              </div>
+              <div>
+                <span>승률 최고</span>
+                <strong
+                  >{{ positionSummary.bestWinning.position }}
+                  <small>({{ positionSummary.bestWinning.rate }})</small></strong
+                >
+              </div>
+            </div>
           </button>
         </div>
-        <div v-for="row in sortedVenueRows" :key="row.name">
-          <strong>{{ row.name }}</strong>
-          <span>{{ row.games }}</span>
-          <span>{{ row.itm }}</span>
-          <span>{{ row.roi }}</span>
-          <span :class="row.tone">{{ row.profit }}</span>
+      </section>
+
+      <section class="stats-section">
+        <h2>매장별 통계</h2>
+        <div v-if="sortedVenueRows.length" class="venue-table">
+          <div class="venue-table__head">
+            <span>매장</span>
+            <button
+              :class="{ active: venueSortKey === 'games' }"
+              type="button"
+              @click="toggleVenueSort('games')"
+            >
+              참가 수
+              <q-icon
+                :class="{ 'sort-icon--hidden': venueSortKey !== 'games' }"
+                :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
+                size="12px"
+              />
+            </button>
+            <button
+              :class="{ active: venueSortKey === 'itm' }"
+              type="button"
+              @click="toggleVenueSort('itm')"
+            >
+              ITM
+              <q-icon
+                :class="{ 'sort-icon--hidden': venueSortKey !== 'itm' }"
+                :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
+                size="12px"
+              />
+            </button>
+            <button
+              :class="{ active: venueSortKey === 'roi' }"
+              type="button"
+              @click="toggleVenueSort('roi')"
+            >
+              ROI
+              <q-icon
+                :class="{ 'sort-icon--hidden': venueSortKey !== 'roi' }"
+                :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
+                size="12px"
+              />
+            </button>
+            <button
+              :class="{ active: venueSortKey === 'profit' }"
+              type="button"
+              @click="toggleVenueSort('profit')"
+            >
+              순수익
+              <q-icon
+                :class="{ 'sort-icon--hidden': venueSortKey !== 'profit' }"
+                :name="venueSortDirection === 'desc' ? 'arrow_downward' : 'arrow_upward'"
+                size="12px"
+              />
+            </button>
+          </div>
+          <div v-for="row in sortedVenueRows" :key="row.name">
+            <strong>{{ row.name }}</strong>
+            <span>{{ row.games }}</span>
+            <span>{{ row.itm }}</span>
+            <span>{{ row.roi }}</span>
+            <span :class="row.tone">{{ row.profit }}</span>
+          </div>
         </div>
-      </div>
-      <div v-else class="stats-state">해당 기간의 매장 기록이 없습니다.</div>
-    </section>
+        <div v-else class="stats-state">해당 기간의 매장 기록이 없습니다.</div>
+      </section>
     </template>
   </q-page>
 </template>
@@ -282,15 +350,21 @@ let loadSequence = 0
 let trendResizeObserver = null
 
 const monthLabel = computed(() => `${selectedYear.value}년 ${selectedMonth.value}월`)
-const periodLabel = computed(() => showAllPeriod.value ? '전체 기간' : monthLabel.value)
-const periodProfitLabel = computed(() => showAllPeriod.value ? '월별' : '일별')
-const isCurrentMonth = computed(() => selectedYear.value === now.getFullYear() && selectedMonth.value === now.getMonth() + 1)
-const selectedVenueLabel = computed(() => venueId.value === null
-  ? '전체 매장'
-  : venueId.value === 'other'
-    ? '기타'
-  : venues.value.find((item) => Number(item.id) === Number(venueId.value))?.name || '전체 매장')
-const recordMode = computed(() => auth.user?.recordMode || localStorage.getItem('pokerly-record-mode') || 'simple')
+const periodLabel = computed(() => (showAllPeriod.value ? '전체 기간' : monthLabel.value))
+const periodProfitLabel = computed(() => (showAllPeriod.value ? '월별' : '일별'))
+const isCurrentMonth = computed(
+  () => selectedYear.value === now.getFullYear() && selectedMonth.value === now.getMonth() + 1,
+)
+const selectedVenueLabel = computed(() =>
+  venueId.value === null
+    ? '전체 매장'
+    : venueId.value === 'other'
+      ? '기타'
+      : venues.value.find((item) => Number(item.id) === Number(venueId.value))?.name || '전체 매장',
+)
+const recordMode = computed(
+  () => auth.user?.recordMode || localStorage.getItem('pokerly-record-mode') || 'simple',
+)
 const isDetailedMode = computed(() => recordMode.value === 'detailed')
 const emptyStatsTitle = computed(() => {
   if (venueId.value !== null) return '선택한 매장에 기록이 없어요'
@@ -299,7 +373,8 @@ const emptyStatsTitle = computed(() => {
 })
 const emptyStatsDescription = computed(() => {
   if (venueId.value !== null) return '전체 매장을 선택하면 다른 기록을 확인할 수 있어요.'
-  if (!showAllPeriod.value && allSessionCount.value > 0) return '전체 기간으로 전환하면 이전 기록을 확인할 수 있어요.'
+  if (!showAllPeriod.value && allSessionCount.value > 0)
+    return '전체 기간으로 전환하면 이전 기록을 확인할 수 있어요.'
   return '토너먼트 결과를 기록하면 손익과 플레이 통계가 만들어져요.'
 })
 const emptyStatsActionLabel = computed(() => {
@@ -318,11 +393,12 @@ const handleEmptyStatsAction = () => {
   }
   router.push(isDetailedMode.value ? '/app/tournament/start' : '/app/simple-record')
 }
-const filterByVenue = (list) => venueId.value === null
-  ? list
-  : venueId.value === 'other'
-    ? list.filter((item) => item.venueId == null)
-    : list.filter((item) => Number(item.venueId) === Number(venueId.value))
+const filterByVenue = (list) =>
+  venueId.value === null
+    ? list
+    : venueId.value === 'other'
+      ? list.filter((item) => item.venueId == null)
+      : list.filter((item) => Number(item.venueId) === Number(venueId.value))
 const filteredSessions = computed(() => filterByVenue(sessions.value))
 const filteredHands = computed(() => {
   const eventIds = new Set(
@@ -333,9 +409,7 @@ const filteredHands = computed(() => {
   )
   return [...handEventCache.value.entries()]
     .filter(([eventId, event]) => event && eventIds.has(String(eventId)))
-    .flatMap(([, event]) =>
-      (event.blindLevels || []).flatMap((level) => level.hands || []),
-    )
+    .flatMap(([, event]) => (event.blindLevels || []).flatMap((level) => level.hands || []))
 })
 
 const numberValue = (value) => Number(value) || 0
@@ -354,8 +428,9 @@ const formatSignedMan = (value) => {
   return `${amount > 0 ? '+' : amount < 0 ? '-' : ''}${man.toLocaleString('ko-KR')}만`
 }
 const formatPercent = (value) => `${numberValue(value).toFixed(1)}%`
-const isItm = (session) => ['ITM', 'CHOP', 'WIN'].includes(String(session.tournamentResult || '').toUpperCase())
-const formatHandRate = (count, total) => total ? `${Math.round(count * 100 / total)}%` : '-'
+const isItm = (session) =>
+  ['ITM', 'CHOP', 'WIN'].includes(String(session.tournamentResult || '').toUpperCase())
+const formatHandRate = (count, total) => (total ? `${Math.round((count * 100) / total)}%` : '-')
 const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
 const winningResults = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
 
@@ -391,7 +466,9 @@ const positionSummary = computed(() => {
     }
   })
   const mostPlayed = [...rows].sort((a, b) => b.participationRate - a.participationRate)[0]
-  const bestWinning = [...rows].filter((row) => row.winRate >= 0).sort((a, b) => b.winRate - a.winRate)[0]
+  const bestWinning = [...rows]
+    .filter((row) => row.winRate >= 0)
+    .sort((a, b) => b.winRate - a.winRate)[0]
   if (!mostPlayed || !bestWinning) return null
   return {
     mostPlayed: {
@@ -410,7 +487,9 @@ const aggregateSessions = (list) => {
   const totalPrize = list.reduce((sum, item) => sum + numberValue(item.prize), 0)
   const totalDiscount = list.reduce((sum, item) => sum + numberValue(item.discount), 0)
   const totalEntries = list.reduce((sum, item) => sum + Math.max(1, numberValue(item.entries)), 0)
-  const buyInSamples = list.map((item) => numberValue(item.buyInPerEntry)).filter((value) => value > 0)
+  const buyInSamples = list
+    .map((item) => numberValue(item.buyInPerEntry))
+    .filter((value) => value > 0)
   const itmCount = list.filter(isItm).length
   const totalProfit = totalPrize - totalBuyIn
   return {
@@ -421,8 +500,8 @@ const aggregateSessions = (list) => {
     totalEntries,
     reentries: Math.max(0, totalEntries - list.length),
     totalProfit,
-    roi: totalBuyIn > 0 ? totalProfit * 100 / totalBuyIn : 0,
-    itmRate: list.length ? itmCount * 100 / list.length : 0,
+    roi: totalBuyIn > 0 ? (totalProfit * 100) / totalBuyIn : 0,
+    itmRate: list.length ? (itmCount * 100) / list.length : 0,
     avgEntries: list.length ? totalEntries / list.length : 0,
     avgBuyIn: buyInSamples.length
       ? buyInSamples.reduce((sum, value) => sum + value, 0) / buyInSamples.length
@@ -430,29 +509,36 @@ const aggregateSessions = (list) => {
   }
 }
 const totals = computed(() => aggregateSessions(filteredSessions.value))
-const bestPrizeSession = computed(() => filteredSessions.value.reduce((best, item) => {
-  if (numberValue(item.prize) <= 0) return best
-  if (!best || numberValue(item.prize) > numberValue(best.prize)) return item
-  return best
-}, null))
-const bestRankSession = computed(() => filteredSessions.value.reduce((best, item) => {
-  const resolvedRank = numberValue(item.finalRank) > 0
-    ? numberValue(item.finalRank)
-    : String(item.tournamentResult || '').toUpperCase() === 'WIN'
-      ? 1
-      : null
-  if (!resolvedRank) return best
-  const candidate = { ...item, resolvedRank }
-  if (!best || resolvedRank < best.resolvedRank) return candidate
-  return best
-}, null))
-const bestRoiSession = computed(() => filteredSessions.value.reduce((best, item) => {
-  const totalBuyIn = totalBuyInOf(item)
-  if (totalBuyIn <= 0) return best
-  const roi = (numberValue(item.prize) - totalBuyIn) * 100 / totalBuyIn
-  if (!best || roi > best.roi) return { ...item, roi }
-  return best
-}, null))
+const bestPrizeSession = computed(() =>
+  filteredSessions.value.reduce((best, item) => {
+    if (numberValue(item.prize) <= 0) return best
+    if (!best || numberValue(item.prize) > numberValue(best.prize)) return item
+    return best
+  }, null),
+)
+const bestRankSession = computed(() =>
+  filteredSessions.value.reduce((best, item) => {
+    const resolvedRank =
+      numberValue(item.finalRank) > 0
+        ? numberValue(item.finalRank)
+        : String(item.tournamentResult || '').toUpperCase() === 'WIN'
+          ? 1
+          : null
+    if (!resolvedRank) return best
+    const candidate = { ...item, resolvedRank }
+    if (!best || resolvedRank < best.resolvedRank) return candidate
+    return best
+  }, null),
+)
+const bestRoiSession = computed(() =>
+  filteredSessions.value.reduce((best, item) => {
+    const totalBuyIn = totalBuyInOf(item)
+    if (totalBuyIn <= 0) return best
+    const roi = ((numberValue(item.prize) - totalBuyIn) * 100) / totalBuyIn
+    if (!best || roi > best.roi) return { ...item, roi }
+    return best
+  }, null),
+)
 const maxItmStreak = computed(() => {
   const ordered = [...filteredSessions.value].sort((a, b) => {
     const dateDelta = String(a.playDate || '').localeCompare(String(b.playDate || ''))
@@ -507,7 +593,8 @@ const bankCards = computed(() => [
     value: filteredSessions.value.length ? formatSignedMan(totals.value.totalProfit) : '-',
     tone: 'profit',
     primary: true,
-    valueTone: totals.value.totalProfit > 0 ? 'positive' : totals.value.totalProfit < 0 ? 'negative' : '',
+    valueTone:
+      totals.value.totalProfit > 0 ? 'positive' : totals.value.totalProfit < 0 ? 'negative' : '',
   },
   {
     label: 'ROI',
@@ -516,12 +603,36 @@ const bankCards = computed(() => [
     primary: true,
     valueTone: totals.value.roi > 0 ? 'positive' : totals.value.roi < 0 ? 'negative' : '',
   },
-  { label: 'ITM', value: filteredSessions.value.length ? formatPercent(totals.value.itmRate) : '-', tone: 'itm' },
-  { label: '총 바인금액', value: filteredSessions.value.length ? formatNumber(totals.value.totalBuyIn) : '-', tone: 'totalBuyIn' },
-  { label: '총 상금', value: filteredSessions.value.length ? formatNumber(totals.value.totalPrize) : '-', tone: 'totalPrize' },
-  { label: '참가 대회', value: filteredSessions.value.length ? formatNumber(totals.value.games) : '-', tone: 'count' },
-  { label: '평균 엔트리', value: filteredSessions.value.length ? `${totals.value.avgEntries.toFixed(2)}회` : '-', tone: 'average' },
-  { label: '평균 바인', value: filteredSessions.value.length ? formatNumber(totals.value.avgBuyIn) : '-', tone: 'averageBuyIn' },
+  {
+    label: 'ITM',
+    value: filteredSessions.value.length ? formatPercent(totals.value.itmRate) : '-',
+    tone: 'itm',
+  },
+  {
+    label: '총 바인금액',
+    value: filteredSessions.value.length ? formatNumber(totals.value.totalBuyIn) : '-',
+    tone: 'totalBuyIn',
+  },
+  {
+    label: '총 상금',
+    value: filteredSessions.value.length ? formatNumber(totals.value.totalPrize) : '-',
+    tone: 'totalPrize',
+  },
+  {
+    label: '참가 대회',
+    value: filteredSessions.value.length ? formatNumber(totals.value.games) : '-',
+    tone: 'count',
+  },
+  {
+    label: '평균 엔트리',
+    value: filteredSessions.value.length ? `${totals.value.avgEntries.toFixed(2)}회` : '-',
+    tone: 'average',
+  },
+  {
+    label: '평균 바인',
+    value: filteredSessions.value.length ? formatNumber(totals.value.avgBuyIn) : '-',
+    tone: 'averageBuyIn',
+  },
 ])
 
 const venueRows = computed(() => {
@@ -537,16 +648,19 @@ const venueRows = computed(() => {
     const profit = prize - buyIn
     const itmCount = list.filter(isItm).length
     return {
-      name: id === 'other' ? '기타' : venues.value.find((item) => Number(item.id) === id)?.name || '기타',
+      name:
+        id === 'other'
+          ? '기타'
+          : venues.value.find((item) => Number(item.id) === id)?.name || '기타',
       isOther: id === 'other' || !venues.value.some((item) => Number(item.id) === id),
       rawGames: list.length,
       games: formatNumber(list.length),
-      rawRoi: buyIn > 0 ? profit * 100 / buyIn : 0,
-      rawItm: list.length ? itmCount * 100 / list.length : 0,
-      roi: formatPercent(buyIn > 0 ? profit * 100 / buyIn : 0),
+      rawRoi: buyIn > 0 ? (profit * 100) / buyIn : 0,
+      rawItm: list.length ? (itmCount * 100) / list.length : 0,
+      roi: formatPercent(buyIn > 0 ? (profit * 100) / buyIn : 0),
       rawProfit: profit,
       profit: formatSignedMan(profit),
-      itm: formatPercent(list.length ? itmCount * 100 / list.length : 0),
+      itm: formatPercent(list.length ? (itmCount * 100) / list.length : 0),
       tone: profit < 0 ? 'negative' : 'positive',
     }
   })
@@ -602,16 +716,23 @@ const trendPoints = computed(() => {
   const range = Math.max(1, max - min)
   return values.map((value, index) => ({
     ...trendSeries.value[index],
-    x: values.length === 1
-      ? trendChartWidth.value / 2
-      : 4 + index * ((trendChartWidth.value - 8) / (values.length - 1)),
+    x:
+      values.length === 1
+        ? trendChartWidth.value / 2
+        : 4 + index * ((trendChartWidth.value - 8) / (values.length - 1)),
     y: 144 - ((value - min) / range) * 120,
   }))
 })
 const trendAxisLabels = computed(() => {
   const labels = trendSeries.value.map((item) => item.label)
   if (labels.length <= 6) return labels
-  const indices = [0, Math.round((labels.length - 1) / 4), Math.round((labels.length - 1) / 2), Math.round((labels.length - 1) * 3 / 4), labels.length - 1]
+  const indices = [
+    0,
+    Math.round((labels.length - 1) / 4),
+    Math.round((labels.length - 1) / 2),
+    Math.round(((labels.length - 1) * 3) / 4),
+    labels.length - 1,
+  ]
   return [...new Set(indices)].map((index) => labels[index])
 })
 const trendBarScale = computed(() => {
@@ -646,50 +767,57 @@ const trendBars = computed(() => {
 })
 
 const trendLinePath = computed(() =>
-  trendPoints.value.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' '),
+  trendPoints.value
+    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
+    .join(' '),
 )
 
-const trendFillPath = computed(() => `${trendLinePath.value} L ${trendChartWidth.value - 4} 150 L 4 150 Z`)
+const trendFillPath = computed(
+  () => `${trendLinePath.value} L ${trendChartWidth.value - 4} 150 L 4 150 Z`,
+)
 
 const showTrendTooltip = (item, mode) => {
   const centerX = mode === 'period' ? item.x + item.width / 2 : item.x
-  const anchorY = mode === 'period'
-    ? (item.profit >= 0 ? item.y : item.y + item.height)
-    : item.y
+  const anchorY = mode === 'period' ? (item.profit >= 0 ? item.y : item.y + item.height) : item.y
   trendTooltip.value = {
     label: item.label,
     value: mode === 'period' ? item.profit : item.value,
-    left: Math.max(8, Math.min(92, centerX * 100 / trendChartWidth.value)),
-    top: Math.max(4, anchorY * 148 / 170 - 48),
+    left: Math.max(8, Math.min(92, (centerX * 100) / trendChartWidth.value)),
+    top: Math.max(4, (anchorY * 148) / 170 - 48),
   }
 }
 
 const moveMonth = (delta) => {
   if (showAllPeriod.value) return
   const date = new Date(selectedYear.value, selectedMonth.value - 1 + delta, 1)
-  const nextIsFuture = date.getFullYear() > now.getFullYear()
-    || (date.getFullYear() === now.getFullYear() && date.getMonth() + 1 > now.getMonth() + 1)
+  const nextIsFuture =
+    date.getFullYear() > now.getFullYear() ||
+    (date.getFullYear() === now.getFullYear() && date.getMonth() + 1 > now.getMonth() + 1)
   if (nextIsFuture) return
   selectedYear.value = date.getFullYear()
   selectedMonth.value = date.getMonth() + 1
 }
 
 const loadHandEvents = async (sessionList) => {
-  const eventIds = [...new Set(
-    sessionList
-      .map((item) => item.handLogEventId)
-      .filter(Boolean)
-      .map(String),
-  )].filter((eventId) => !handEventCache.value.has(eventId))
+  const eventIds = [
+    ...new Set(
+      sessionList
+        .map((item) => item.handLogEventId)
+        .filter(Boolean)
+        .map(String),
+    ),
+  ].filter((eventId) => !handEventCache.value.has(eventId))
   if (!eventIds.length) return
 
-  const results = await Promise.all(eventIds.map(async (eventId) => {
-    try {
-      return [eventId, await fetchHandLogEvent(eventId)]
-    } catch {
-      return [eventId, null]
-    }
-  }))
+  const results = await Promise.all(
+    eventIds.map(async (eventId) => {
+      try {
+        return [eventId, await fetchHandLogEvent(eventId)]
+      } catch {
+        return [eventId, null]
+      }
+    }),
+  )
   const nextCache = new Map(handEventCache.value)
   results.forEach(([eventId, event]) => nextCache.set(eventId, event))
   handEventCache.value = nextCache
@@ -701,23 +829,27 @@ const load = async () => {
   loadError.value = ''
   try {
     const allSessionsPromise = fetchAllGameSessions()
-    const [allSessionList, venueList] = await Promise.all([
-      allSessionsPromise,
-      fetchVenues(),
-    ])
+    const [allSessionList, venueList] = await Promise.all([allSessionsPromise, fetchVenues()])
     if (sequence !== loadSequence) return
-    const completedSessions = (allSessionList || []).filter((item) => item.tournamentStatus !== 'RUNNING')
+    const completedSessions = (allSessionList || []).filter(
+      (item) => item.tournamentStatus !== 'RUNNING',
+    )
     allSessionCount.value = completedSessions.length
     if (showAllPeriod.value) {
       sessions.value = completedSessions
     } else {
       const monthPrefix = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-`
-      sessions.value = completedSessions.filter((item) => String(item.playDate || '').startsWith(monthPrefix))
+      sessions.value = completedSessions.filter((item) =>
+        String(item.playDate || '').startsWith(monthPrefix),
+      )
     }
     venues.value = venueList || []
-    if (venueId.value !== null
-      && venueId.value !== 'other'
-      && !venues.value.some((item) => Number(item.id) === Number(venueId.value))) venueId.value = null
+    if (
+      venueId.value !== null &&
+      venueId.value !== 'other' &&
+      !venues.value.some((item) => Number(item.id) === Number(venueId.value))
+    )
+      venueId.value = null
     void loadHandEvents(filterByVenue(sessions.value))
   } catch (error) {
     if (sequence !== loadSequence) return
@@ -845,7 +977,7 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   font: inherit;
   font-size: 13px;
   font-weight: 650;
-  box-shadow: 0 7px 18px rgba(109, 69, 232, .22);
+  box-shadow: 0 7px 18px rgba(109, 69, 232, 0.22);
 }
 
 .analysis-grid {
@@ -977,10 +1109,10 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   align-content: center;
   gap: 7px;
   padding: 12px 8px;
-  border: 1px solid rgba(109, 69, 232, .08);
+  border: 1px solid rgba(109, 69, 232, 0.08);
   border-radius: 13px;
   background: linear-gradient(145deg, #fff 55%, #faf8ff 100%);
-  box-shadow: 0 5px 14px rgba(28, 18, 60, .035);
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.035);
   text-align: center;
 }
 
@@ -1710,6 +1842,9 @@ h2 {
   .table-grid {
     grid-template-columns: 1fr;
   }
+}
+.trend-axis--hidden {
+  visibility: hidden;
 }
 
 @media (max-width: 420px) {
