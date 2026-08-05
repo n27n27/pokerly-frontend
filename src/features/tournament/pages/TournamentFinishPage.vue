@@ -1,7 +1,7 @@
 <template>
   <q-page class="finish-page">
     <header class="finish-topbar">
-      <button type="button" aria-label="닫기" @click="router.back()">
+      <button type="button" aria-label="닫기" @click="goBack">
         <q-icon name="close" size="28px" />
       </button>
       <h1>{{ isEdit ? '대회 수정' : '대회 종료' }}</h1>
@@ -88,7 +88,12 @@
         <div class="field-row buy-in-row">
           <span>총 바인</span>
           <div class="stepper">
-            <button type="button" aria-label="총 바인 감소" :disabled="form.buyIns <= 1" @click="form.buyIns -= 1">
+            <button
+              type="button"
+              aria-label="총 바인 감소"
+              :disabled="form.buyIns <= 1"
+              @click="form.buyIns -= 1"
+            >
               <q-icon name="remove" size="19px" />
             </button>
             <strong>{{ form.buyIns }}</strong>
@@ -117,7 +122,13 @@
       </div>
     </section>
 
-    <StickyPrimaryAction :label="isEdit ? '수정 완료' : '결과 확정'" :disabled="!form.result" :loading="submitting" loading-label="저장 중..." @click="confirmResult" />
+    <StickyPrimaryAction
+      :label="isEdit ? '수정 완료' : '결과 확정'"
+      :disabled="!form.result"
+      :loading="submitting"
+      loading-label="저장 중..."
+      @click="confirmResult"
+    />
   </q-page>
 </template>
 
@@ -289,10 +300,12 @@ const confirmResult = async () => {
         : Number(String(runningTournament.averageStack || '').replaceAll(',', '')) || null,
       currentSmallBlind: hasSourceSession
         ? source.currentSmallBlind
-        : Number(String(runningTournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) || null,
+        : Number(String(runningTournament.currentBlinds?.smallBlind || '').replaceAll(',', '')) ||
+          null,
       currentBigBlind: hasSourceSession
         ? source.currentBigBlind
-        : Number(String(runningTournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) || null,
+        : Number(String(runningTournament.currentBlinds?.bigBlind || '').replaceAll(',', '')) ||
+          null,
       currentAnte: hasSourceSession
         ? source.currentAnte
         : Number(String(runningTournament.currentBlinds?.ante || '').replaceAll(',', '')) || null,
@@ -307,6 +320,10 @@ const confirmResult = async () => {
     submitting.value = false
   }
   router.replace(`/app/tournament/${tournamentId}/summary`)
+}
+
+const goBack = () => {
+  router.push({ name: 'home' })
 }
 </script>
 
@@ -460,7 +477,12 @@ const confirmResult = async () => {
   font-size: 13px;
   font-weight: 520;
 }
-.field-row > span small { margin-left: 4px; color: var(--v2-text-sub); font-size: 10px; font-weight: 430; }
+.field-row > span small {
+  margin-left: 4px;
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  font-weight: 430;
+}
 
 .field-row input,
 .field-row textarea {
@@ -487,13 +509,49 @@ const confirmResult = async () => {
   font-style: normal;
   font-weight: 520;
 }
-.satellite-toggle-row { grid-template-columns: 94px minmax(0, 1fr); }
-.satellite-toggle-row > button { display: flex; width: 62px; height: 32px; align-items: center; justify-self: end; gap: 5px; padding: 3px 7px 3px 4px; border: 0; border-radius: 999px; background: #efedf4; color: var(--v2-text-sub); font: inherit; }
-.satellite-toggle-row > button i { width: 26px; height: 26px; flex: 0 0 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(28, 18, 60, .16); transition: transform .18s ease; }
-.satellite-toggle-row > button b { flex: 1; font-size: 9px; font-weight: 650; }
-.satellite-toggle-row > button.active { padding-right: 4px; padding-left: 7px; background: var(--v2-primary); color: #fff; }
-.satellite-toggle-row > button.active i { order: 2; }
-.satellite-toggle-row > button.active b { order: 1; }
+.satellite-toggle-row {
+  grid-template-columns: 94px minmax(0, 1fr);
+}
+.satellite-toggle-row > button {
+  display: flex;
+  width: 62px;
+  height: 32px;
+  align-items: center;
+  justify-self: end;
+  gap: 5px;
+  padding: 3px 7px 3px 4px;
+  border: 0;
+  border-radius: 999px;
+  background: #efedf4;
+  color: var(--v2-text-sub);
+  font: inherit;
+}
+.satellite-toggle-row > button i {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(28, 18, 60, 0.16);
+  transition: transform 0.18s ease;
+}
+.satellite-toggle-row > button b {
+  flex: 1;
+  font-size: 9px;
+  font-weight: 650;
+}
+.satellite-toggle-row > button.active {
+  padding-right: 4px;
+  padding-left: 7px;
+  background: var(--v2-primary);
+  color: #fff;
+}
+.satellite-toggle-row > button.active i {
+  order: 2;
+}
+.satellite-toggle-row > button.active b {
+  order: 1;
+}
 
 .buy-in-row {
   grid-template-columns: 94px minmax(0, 1fr) 26px;

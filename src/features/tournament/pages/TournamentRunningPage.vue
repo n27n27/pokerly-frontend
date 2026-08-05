@@ -1,7 +1,7 @@
 <template>
   <q-page class="running-page" @click="showLevelMenu = false">
     <header class="running-topbar">
-      <button class="running-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
+      <button class="running-topbar__back" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>진행 중 토너먼트</h1>
@@ -20,7 +20,9 @@
       <div class="running-summary__main">
         <div>
           <strong>{{ tournamentName }}</strong>
-          <p>바인 {{ runningTournament.buyIn || '-' }} <span>·</span> 총 바인 {{ totalBuyIns }}회</p>
+          <p>
+            바인 {{ runningTournament.buyIn || '-' }} <span>·</span> 총 바인 {{ totalBuyIns }}회
+          </p>
         </div>
 
         <button class="manage-link" type="button" @click="openManage">
@@ -58,7 +60,9 @@
           </button>
           <div v-if="showLevelMenu" class="level-menu" @click.stop>
             <button type="button" @click.stop="openLevelSheet(currentLevel)">수정</button>
-            <button class="danger" type="button" @click.stop="requestRemoveLevel(currentLevel)">삭제</button>
+            <button class="danger" type="button" @click.stop="requestRemoveLevel(currentLevel)">
+              삭제
+            </button>
           </div>
 
           <div class="current-level-card__head">
@@ -146,19 +150,11 @@
           </label>
           <label>
             <span>BB</span>
-            <input
-              :value="levelForm.bigBlind"
-              inputmode="numeric"
-              @input="updateLevelBigBlind"
-            />
+            <input :value="levelForm.bigBlind" inputmode="numeric" @input="updateLevelBigBlind" />
           </label>
           <label>
             <span>Ante</span>
-            <input
-              :value="levelForm.ante"
-              inputmode="numeric"
-              @input="updateLevelAnte"
-            />
+            <input :value="levelForm.ante" inputmode="numeric" @input="updateLevelAnte" />
           </label>
         </div>
 
@@ -260,32 +256,34 @@ const currentLevelNumber = computed(() => {
 
 const levels = computed(() => {
   let previousStack =
-    parseStoredNumber(event.value?.startingStack) ?? parseStoredNumber(runningTournament.startingStack)
+    parseStoredNumber(event.value?.startingStack) ??
+    parseStoredNumber(runningTournament.startingStack)
 
   return [...(event.value?.blindLevels || [])]
     .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
     .map((level) => {
-    const isCurrent = runningTournament.currentBlindLevelId
-      ? String(level.id) === String(runningTournament.currentBlindLevelId)
-      : level.levelNo === currentLevelNumber.value
-    const storedStack = level.endStack ?? level.displayStartStack ?? level.startStack
-    const sessionStack = isCurrent ? parseStoredNumber(runningTournament.currentStack) : null
-    const stack = sessionStack ?? storedStack ?? previousStack
-    const bbCount = stack != null && level.bigBlind > 0 ? stack / level.bigBlind : null
-    const row = {
-      id: level.id,
-      name: `L${level.levelNo}`,
-      blinds: [level.smallBlind, level.bigBlind, level.ante].map(formatBlind).join(' / '),
-      hands: String(level.handCount ?? level.hands?.length ?? 0),
-      rawStack: stack,
-      endStack: formatValue(stack),
-      bb: bbCount == null ? '-' : `${Number.isInteger(bbCount) ? bbCount : bbCount.toFixed(1)} BB`,
-      current: isCurrent,
-    }
+      const isCurrent = runningTournament.currentBlindLevelId
+        ? String(level.id) === String(runningTournament.currentBlindLevelId)
+        : level.levelNo === currentLevelNumber.value
+      const storedStack = level.endStack ?? level.displayStartStack ?? level.startStack
+      const sessionStack = isCurrent ? parseStoredNumber(runningTournament.currentStack) : null
+      const stack = sessionStack ?? storedStack ?? previousStack
+      const bbCount = stack != null && level.bigBlind > 0 ? stack / level.bigBlind : null
+      const row = {
+        id: level.id,
+        name: `L${level.levelNo}`,
+        blinds: [level.smallBlind, level.bigBlind, level.ante].map(formatBlind).join(' / '),
+        hands: String(level.handCount ?? level.hands?.length ?? 0),
+        rawStack: stack,
+        endStack: formatValue(stack),
+        bb:
+          bbCount == null ? '-' : `${Number.isInteger(bbCount) ? bbCount : bbCount.toFixed(1)} BB`,
+        current: isCurrent,
+      }
 
-    if (stack != null) previousStack = Number(stack)
-    return row
-  })
+      if (stack != null) previousStack = Number(stack)
+      return row
+    })
 })
 
 const currentLevel = computed(() => levels.value.find((level) => level.current) || null)
@@ -335,7 +333,9 @@ const formatCompactStack = (value) => {
 }
 
 const parseStoredNumber = (value) => {
-  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  const normalized = String(value ?? '')
+    .replaceAll(',', '')
+    .trim()
   if (!normalized) return null
   const number = Number(normalized)
   return Number.isFinite(number) ? number : null
@@ -394,7 +394,9 @@ const updateLevelAnte = (inputEvent) => {
 
 const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave = false) => {
   const source = level ? getBackendLevel(level.id) : null
-  const displayedLevel = level ? levels.value.find((item) => String(item.id) === String(level.id)) : null
+  const displayedLevel = level
+    ? levels.value.find((item) => String(item.id) === String(level.id))
+    : null
   const nextLevelNo = requestedLevelNo
     ? Number(requestedLevelNo)
     : Math.max(0, ...(event.value?.blindLevels || []).map((item) => Number(item.levelNo) || 0)) + 1
@@ -407,7 +409,12 @@ const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave
     bigBlind: formatInputNumber(source?.bigBlind),
     ante: formatInputNumber(source?.ante),
     endStack: source
-      ? formatInputNumber(source.endStack ?? source.displayStartStack ?? source.startStack ?? displayedLevel?.rawStack)
+      ? formatInputNumber(
+          source.endStack ??
+            source.displayStartStack ??
+            source.startStack ??
+            displayedLevel?.rawStack,
+        )
       : '',
     makeCurrent: Boolean(
       source &&
@@ -507,7 +514,8 @@ const removeLevel = async () => {
     const wasCurrent =
       runningTournament.currentBlindLevelId &&
       String(runningTournament.currentBlindLevelId) === String(level.id)
-    const deletedLevelNo = getBackendLevel(level.id)?.levelNo ?? Number(level.name?.replace(/\D/g, ''))
+    const deletedLevelNo =
+      getBackendLevel(level.id)?.levelNo ?? Number(level.name?.replace(/\D/g, ''))
     await handLogStore.deleteBlindLevel(runningTournament.eventId, level.id)
     const remaining = event.value?.blindLevels || []
     const nextCurrent = wasCurrent
@@ -603,7 +611,9 @@ onMounted(async () => {
       localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
     }
     if (runningTournament.sessionId) {
-      tournamentSeats.value = await fetchTournamentSeats(runningTournament.sessionId).catch(() => [])
+      tournamentSeats.value = await fetchTournamentSeats(runningTournament.sessionId).catch(
+        () => [],
+      )
     }
     const eventId = await ensureEventId()
     if (eventId) {
@@ -646,6 +656,9 @@ const openFinish = () => {
   router.push('/app/tournament/running/finish')
 }
 
+const goBack = () => {
+  router.push({ name: 'home' })
+}
 </script>
 
 <style scoped>
@@ -685,7 +698,9 @@ const openFinish = () => {
   color: var(--v2-text-sub);
 }
 
-.running-topbar__copy:disabled { opacity: 0.35; }
+.running-topbar__copy:disabled {
+  opacity: 0.35;
+}
 
 .running-topbar h1 {
   margin: 0;
@@ -1239,6 +1254,5 @@ const openFinish = () => {
   .level-row__blinds {
     font-size: 13px;
   }
-
 }
 </style>

@@ -1,26 +1,30 @@
 <template>
   <q-page class="hand-detail-page">
     <header class="hand-detail-topbar">
-      <button class="icon-button" type="button" aria-label="뒤로 가기" @click="router.back()">
+      <button class="icon-button" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="30px" />
       </button>
       <h1>핸드 상세</h1>
-      <button v-if="hand" class="icon-button" type="button" aria-label="핸드 메뉴" @click="menuOpen = !menuOpen">
+      <button
+        v-if="hand"
+        class="icon-button"
+        type="button"
+        aria-label="핸드 메뉴"
+        @click="menuOpen = !menuOpen"
+      >
         <q-icon name="more_vert" size="22px" />
       </button>
       <span v-else></span>
 
       <div v-if="menuOpen" class="overflow-menu">
-        <button type="button" @click="goHandEdit">
-          핸드 수정
-        </button>
-        <button class="danger" type="button" @click="openDeleteDialog">
-          삭제
-        </button>
+        <button type="button" @click="goHandEdit">핸드 수정</button>
+        <button class="danger" type="button" @click="openDeleteDialog">삭제</button>
       </div>
     </header>
 
-    <section v-if="handLogStore.handLoading && !hand" class="hand-state">핸드를 불러오는 중입니다.</section>
+    <section v-if="handLogStore.handLoading && !hand" class="hand-state">
+      핸드를 불러오는 중입니다.
+    </section>
     <section v-else-if="!hand" class="hand-state">핸드 정보가 없습니다.</section>
     <section v-else class="hand-overview">
       <div class="overview-meta">
@@ -39,7 +43,9 @@
       <div class="hand-facts">
         <div>
           <span>프리플랍 액션</span>
-          <p><i>{{ actionText }}</i></p>
+          <p>
+            <i>{{ actionText }}</i>
+          </p>
         </div>
         <div>
           <span>결과</span>
@@ -73,7 +79,8 @@
                 :key="`${street.key}-${card.rank}-${card.suit}`"
                 :class="{ red: card.red }"
               >
-                <b>{{ card.rank }}</b><em>{{ card.suit }}</em>
+                <b>{{ card.rank }}</b
+                ><em>{{ card.suit }}</em>
               </i>
             </div>
           </div>
@@ -91,7 +98,8 @@
                 :key="`${item.position}-${card.rank}-${card.suit}`"
                 :class="{ red: card.red }"
               >
-                <b>{{ card.rank }}</b><em>{{ card.suit }}</em>
+                <b>{{ card.rank }}</b
+                ><em>{{ card.suit }}</em>
               </i>
             </div>
           </div>
@@ -183,18 +191,14 @@ const reviewBoard = computed(() =>
   parseJson(hand.value?.boardCards, [])
     .map((street) => ({
       ...street,
-      cards: (street.cards || [])
-        .filter(Boolean)
-        .map((card) => ({
-          ...card,
-          red: ['♥', '♦'].includes(card.suit),
-        })),
+      cards: (street.cards || []).filter(Boolean).map((card) => ({
+        ...card,
+        red: ['♥', '♦'].includes(card.suit),
+      })),
     }))
     .filter((street) => street.cards.length),
 )
-const reviewTimeline = computed(() =>
-  parseJson(hand.value?.actionTimeline, {}),
-)
+const reviewTimeline = computed(() => parseJson(hand.value?.actionTimeline, {}))
 const reviewActions = computed(() =>
   Array.isArray(reviewTimeline.value.actions) ? reviewTimeline.value.actions : [],
 )
@@ -211,8 +215,10 @@ const reviewActionGroups = computed(() => {
     .sort(([first], [second]) => {
       const firstIndex = streetOrder.indexOf(first)
       const secondIndex = streetOrder.indexOf(second)
-      return (firstIndex < 0 ? streetOrder.length : firstIndex)
-        - (secondIndex < 0 ? streetOrder.length : secondIndex)
+      return (
+        (firstIndex < 0 ? streetOrder.length : firstIndex) -
+        (secondIndex < 0 ? streetOrder.length : secondIndex)
+      )
     })
     .map(([street, actions]) => ({ street, actions }))
 })
@@ -220,12 +226,10 @@ const reviewShowdownHands = computed(() =>
   Object.entries(reviewTimeline.value.showdownCards || {})
     .map(([position, cards]) => ({
       position,
-      cards: (Array.isArray(cards) ? cards : [])
-        .filter(Boolean)
-        .map((card) => ({
-          ...card,
-          red: ['♥', '♦'].includes(card.suit),
-        })),
+      cards: (Array.isArray(cards) ? cards : []).filter(Boolean).map((card) => ({
+        ...card,
+        red: ['♥', '♦'].includes(card.suit),
+      })),
     }))
     .filter((item) => item.cards.length),
 )
@@ -258,9 +262,11 @@ const actionText = computed(
 )
 const resultMeta = computed(() => {
   const value = hand.value?.resultType
-  if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(value)) return { label: '승리', tone: 'win' }
+  if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(value))
+    return { label: '승리', tone: 'win' }
   if (['CHOP', 'DRAW'].includes(value)) return { label: '찹', tone: 'draw' }
-  if (['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS'].includes(value)) return { label: '패배', tone: 'lose' }
+  if (['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS'].includes(value))
+    return { label: '패배', tone: 'lose' }
   return { label: getResultLabel(value) || '미기록', tone: 'neutral' }
 })
 const streetText = (street) =>
@@ -284,9 +290,7 @@ const reviewActionText = (action) => {
       storedTournament.startBlinds?.bigBlind ||
       0,
   )
-  const bb = bigBlind > 0
-    ? ` (${Number((Number(action.amount) / bigBlind).toFixed(1))}BB)`
-    : ''
+  const bb = bigBlind > 0 ? ` (${Number((Number(action.amount) / bigBlind).toFixed(1))}BB)` : ''
   return `${label} ${formatChips(action.amount)}${bb}`
 }
 const reviewActionClass = (action) => ({
@@ -295,8 +299,12 @@ const reviewActionClass = (action) => ({
   'is-hero': isHeroAction(action),
 })
 const isHeroAction = (action) =>
-  String(action.player || '').trim().toUpperCase()
-    === String(hand.value?.position || '').trim().toUpperCase()
+  String(action.player || '')
+    .trim()
+    .toUpperCase() ===
+  String(hand.value?.position || '')
+    .trim()
+    .toUpperCase()
 
 const storedTournament = (() => {
   try {
@@ -345,11 +353,7 @@ const openDeleteDialog = () => {
 const confirmDelete = async () => {
   if (!eventId.value || !levelId.value || !handId.value) return
   try {
-    await handLogStore.deleteHandFromBlindLevel(
-      eventId.value,
-      levelId.value,
-      handId.value,
-    )
+    await handLogStore.deleteHandFromBlindLevel(eventId.value, levelId.value, handId.value)
     deleteDialogOpen.value = false
     router.replace({
       name: 'tournament-level-detail',
@@ -359,6 +363,10 @@ const confirmDelete = async () => {
   } catch {
     alert.show('핸드를 삭제하지 못했습니다.', 'error')
   }
+}
+
+const goBack = () => {
+  router.push({ name: 'tournament-level-detail', params: { levelName: levelId.value } })
 }
 </script>
 
@@ -378,85 +386,483 @@ const confirmDelete = async () => {
   gap: 10px;
   min-height: 36px;
 }
-.hand-detail-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
-.icon-button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--v2-text-main); }
-.hand-detail-topbar .icon-button:last-of-type { justify-self: end; }
-.icon-button:active { background: #efedf6; }
-.overflow-menu { position: absolute; z-index: 5; top: 42px; right: 0; width: 156px; overflow: hidden; border: 1px solid var(--v2-border); border-radius: 12px; background: #fff; box-shadow: 0 12px 28px rgba(28, 18, 60, .16); }
-.overflow-menu button { display: flex; width: 100%; min-height: 42px; align-items: center; padding: 0 14px; border: 0; border-bottom: 1px solid var(--v2-border); background: #fff; color: var(--v2-text-main); font: inherit; font-size: 13px; font-weight: 520; text-align: left; }
-.overflow-menu button:last-child { border-bottom: 0; }
-.overflow-menu button:active { background: #faf9ff; }
-.overflow-menu .danger { color: #e23d48; }
-.hand-overview, .review-empty, .review-summary { border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28, 18, 60, .025); }
-.hand-state { padding: 28px 16px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; color: var(--v2-text-sub); font-size: 13px; text-align: center; }
-.hand-overview { padding: 12px 14px 13px; }
-.overview-meta { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
-.overview-meta > strong { font-size: 17px; font-weight: 600; }
-.overview-meta > b { justify-self: end; font-size: 14px; font-weight: 600; }
-.level-pill { justify-self: start; padding: 5px 8px; border-radius: 7px; background: var(--v2-primary-soft); color: var(--v2-primary); font-size: 12px; font-weight: 600; }
-.hero-cards { display: flex; justify-content: center; gap: 8px; margin: 12px 0 14px; }
-.hero-cards span { display: grid; width: 56px; height: 76px; place-items: center; align-content: center; gap: 5px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-sm); color: var(--v2-text-main); }
-.hero-cards .red, .board-cards .red { color: #e11d48; }
-.hero-cards b { font-size: 26px; line-height: 1; }
-.hero-cards em, .board-cards em { font-style: normal; line-height: 1; }
-.hand-facts { overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); }
-.hand-facts > div { display: grid; grid-template-columns: 92px 1fr; align-items: center; min-height: 44px; padding: 7px 13px; }
-.hand-facts > div + div { border-top: 1px solid var(--v2-border); }
-.hand-facts span, .summary-row > span { color: #504a5b; font-size: 12px; font-weight: 600; }
-.hand-facts p { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; margin: 0; }
-.hand-facts p i { padding: 6px 10px; border-radius: 7px; background: #f3f1fa; color: #554c75; font-size: 11px; font-style: normal; }
-.hand-facts strong { justify-self: end; font-size: 13px; }
-.hand-facts .result--win { color: var(--v2-success); }
-.hand-facts .result--lose { color: var(--v2-danger); }
-.hand-facts .result--draw, .hand-facts .result--neutral { color: var(--v2-text-sub); }
-.review-empty { display: grid; place-items: center; gap: 8px; padding: 22px 14px 14px; text-align: center; }
-.review-empty__icon { color: #a59bcf; }
-.review-empty > strong { margin-bottom: 9px; font-size: 15px; }
-.review-action { width: 100%; min-height: 48px; border: 0; border-radius: var(--v2-radius-md); background: var(--v2-primary); color: #fff; font: inherit; font-size: 14px; font-weight: 600; }
-.review-summary { padding: 14px; }
-.review-summary__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-.review-summary h2 { margin: 0; color: var(--v2-text-main); font-size: 15px; font-weight: 620; }
-.review-summary__heading > span { color: var(--v2-primary); font-size: 11px; font-weight: 600; }
-.summary-section { display: grid; gap: 9px; padding: 12px 0; border-top: 1px solid var(--v2-border); }
-.summary-section > strong { color: #504a5b; font-size: 12px; font-weight: 600; }
-.summary-row { display: grid; grid-template-columns: 45px 1fr; gap: 8px; align-items: start; margin-bottom: 12px; }
-.summary-section + .summary-row { padding-top: 12px; border-top: 1px solid var(--v2-border); }
-.summary-row p { margin: 0; color: #3f3a4e; font-size: 12px; line-height: 1.55; white-space: pre-line; }
-.review-board { display: grid; gap: 9px; }
-.review-board > div { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 8px; }
-.review-board > div > span { color: var(--v2-text-sub); font-size: 11px; }
-.board-cards { display: flex; flex-wrap: wrap; gap: 6px; }
-.board-cards i { display: inline-flex; min-width: 34px; height: 34px; align-items: center; justify-content: center; gap: 2px; border: 1px solid var(--v2-border); border-radius: 7px; font-style: normal; }
-.board-cards b { font-size: 13px; }
-.review-showdown { display: grid; gap: 8px; }
-.review-showdown > div { display: flex; min-height: 42px; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 0; }
-.review-showdown > div + div { border-top: 1px solid var(--v2-border); }
-.review-showdown > div > b { color: var(--v2-text-main); font-size: 12px; font-weight: 600; }
-.review-timeline { display: grid; gap: 14px; }
-.review-timeline__street { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 10px; }
-.review-timeline__street-heading { padding-top: 2px; }
-.review-timeline__street-heading span { display: inline-flex; min-height: 24px; align-items: center; padding: 0 8px; border-radius: 999px; background: #f0ebff; color: var(--v2-primary); font-size: 10px; font-weight: 650; white-space: nowrap; }
-.review-timeline ol { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
-.review-timeline li { position: relative; display: grid; grid-template-columns: 14px 84px minmax(0, 1fr); align-items: center; gap: 7px; min-height: 32px; }
-.review-timeline li::before { position: absolute; top: 0; bottom: 0; left: 6px; width: 1px; background: #e4dff0; content: ''; }
-.review-timeline li:first-child::before { top: 50%; }
-.review-timeline li:last-child::before { bottom: 50%; }
-.review-timeline li:only-child::before { display: none; }
-.review-timeline li > i { position: relative; z-index: 1; width: 7px; height: 7px; margin-left: 3px; border: 2px solid #fff; border-radius: 50%; background: #aaa3b8; box-shadow: 0 0 0 1px #d8d2e3; }
-.review-timeline li > b { display: inline-grid; grid-template-columns: minmax(42px, max-content) 18px; align-items: center; gap: 4px; color: var(--v2-text-main); font-size: 11px; font-weight: 650; white-space: nowrap; }
-.review-timeline li > b small { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; border-radius: 999px; background: #f0ebff; color: var(--v2-primary); font-size: 9px; font-weight: 700; }
-.review-timeline li > p { justify-self: start; margin: 0; padding: 5px 9px; border-radius: 8px; background: #f7f5fa; color: #3f3a4e; font-size: 11px; line-height: 1.25; }
-.review-timeline li.is-hero > i { width: 9px; height: 9px; margin-left: 2px; background: var(--v2-primary); box-shadow: 0 0 0 2px #e5dcff; }
-.review-timeline li.is-aggressive > i { background: var(--v2-primary); box-shadow: 0 0 0 1px #a98cff; }
-.review-timeline li.is-aggressive > p { background: #f0ebff; color: var(--v2-primary); font-weight: 620; }
-.review-timeline li.is-fold { opacity: .58; }
-.street-list { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
-.street-list i { font-style: normal; }
-.street-list i + i::before { margin-right: 7px; color: #aaa3b8; content: '·'; }
-.review-summary .review-action { margin-top: 5px; }
-.delete-dialog { width: min(calc(100vw - 40px), 360px); padding: 24px; border-radius: var(--v2-radius-lg); background: #fff; }
-.delete-dialog h2 { margin: 0 0 22px; color: var(--v2-text-main); font-size: 19px; font-weight: 620; }
-.delete-dialog > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.delete-dialog button { height: 44px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-sm); background: #fff; color: var(--v2-text-main); font: inherit; font-size: 14px; font-weight: 560; }
-.delete-dialog button.danger { border-color: var(--v2-danger); color: var(--v2-danger); }
+.hand-detail-topbar h1 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
+}
+.icon-button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--v2-text-main);
+}
+.hand-detail-topbar .icon-button:last-of-type {
+  justify-self: end;
+}
+.icon-button:active {
+  background: #efedf6;
+}
+.overflow-menu {
+  position: absolute;
+  z-index: 5;
+  top: 42px;
+  right: 0;
+  width: 156px;
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 12px 28px rgba(28, 18, 60, 0.16);
+}
+.overflow-menu button {
+  display: flex;
+  width: 100%;
+  min-height: 42px;
+  align-items: center;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: #fff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 520;
+  text-align: left;
+}
+.overflow-menu button:last-child {
+  border-bottom: 0;
+}
+.overflow-menu button:active {
+  background: #faf9ff;
+}
+.overflow-menu .danger {
+  color: #e23d48;
+}
+.hand-overview,
+.review-empty,
+.review-summary {
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
+}
+.hand-state {
+  padding: 28px 16px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  color: var(--v2-text-sub);
+  font-size: 13px;
+  text-align: center;
+}
+.hand-overview {
+  padding: 12px 14px 13px;
+}
+.overview-meta {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+.overview-meta > strong {
+  font-size: 17px;
+  font-weight: 600;
+}
+.overview-meta > b {
+  justify-self: end;
+  font-size: 14px;
+  font-weight: 600;
+}
+.level-pill {
+  justify-self: start;
+  padding: 5px 8px;
+  border-radius: 7px;
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.hero-cards {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 12px 0 14px;
+}
+.hero-cards span {
+  display: grid;
+  width: 56px;
+  height: 76px;
+  place-items: center;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  color: var(--v2-text-main);
+}
+.hero-cards .red,
+.board-cards .red {
+  color: #e11d48;
+}
+.hero-cards b {
+  font-size: 26px;
+  line-height: 1;
+}
+.hero-cards em,
+.board-cards em {
+  font-style: normal;
+  line-height: 1;
+}
+.hand-facts {
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+}
+.hand-facts > div {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  align-items: center;
+  min-height: 44px;
+  padding: 7px 13px;
+}
+.hand-facts > div + div {
+  border-top: 1px solid var(--v2-border);
+}
+.hand-facts span,
+.summary-row > span {
+  color: #504a5b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.hand-facts p {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+  margin: 0;
+}
+.hand-facts p i {
+  padding: 6px 10px;
+  border-radius: 7px;
+  background: #f3f1fa;
+  color: #554c75;
+  font-size: 11px;
+  font-style: normal;
+}
+.hand-facts strong {
+  justify-self: end;
+  font-size: 13px;
+}
+.hand-facts .result--win {
+  color: var(--v2-success);
+}
+.hand-facts .result--lose {
+  color: var(--v2-danger);
+}
+.hand-facts .result--draw,
+.hand-facts .result--neutral {
+  color: var(--v2-text-sub);
+}
+.review-empty {
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  padding: 22px 14px 14px;
+  text-align: center;
+}
+.review-empty__icon {
+  color: #a59bcf;
+}
+.review-empty > strong {
+  margin-bottom: 9px;
+  font-size: 15px;
+}
+.review-action {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-primary);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+.review-summary {
+  padding: 14px;
+}
+.review-summary__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.review-summary h2 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 15px;
+  font-weight: 620;
+}
+.review-summary__heading > span {
+  color: var(--v2-primary);
+  font-size: 11px;
+  font-weight: 600;
+}
+.summary-section {
+  display: grid;
+  gap: 9px;
+  padding: 12px 0;
+  border-top: 1px solid var(--v2-border);
+}
+.summary-section > strong {
+  color: #504a5b;
+  font-size: 12px;
+  font-weight: 600;
+}
+.summary-row {
+  display: grid;
+  grid-template-columns: 45px 1fr;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 12px;
+}
+.summary-section + .summary-row {
+  padding-top: 12px;
+  border-top: 1px solid var(--v2-border);
+}
+.summary-row p {
+  margin: 0;
+  color: #3f3a4e;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+.review-board {
+  display: grid;
+  gap: 9px;
+}
+.review-board > div {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.review-board > div > span {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+}
+.board-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.board-cards i {
+  display: inline-flex;
+  min-width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border: 1px solid var(--v2-border);
+  border-radius: 7px;
+  font-style: normal;
+}
+.board-cards b {
+  font-size: 13px;
+}
+.review-showdown {
+  display: grid;
+  gap: 8px;
+}
+.review-showdown > div {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.review-showdown > div + div {
+  border-top: 1px solid var(--v2-border);
+}
+.review-showdown > div > b {
+  color: var(--v2-text-main);
+  font-size: 12px;
+  font-weight: 600;
+}
+.review-timeline {
+  display: grid;
+  gap: 14px;
+}
+.review-timeline__street {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 10px;
+}
+.review-timeline__street-heading {
+  padding-top: 2px;
+}
+.review-timeline__street-heading span {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: #f0ebff;
+  color: var(--v2-primary);
+  font-size: 10px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.review-timeline ol {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.review-timeline li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 14px 84px minmax(0, 1fr);
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+}
+.review-timeline li::before {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 6px;
+  width: 1px;
+  background: #e4dff0;
+  content: '';
+}
+.review-timeline li:first-child::before {
+  top: 50%;
+}
+.review-timeline li:last-child::before {
+  bottom: 50%;
+}
+.review-timeline li:only-child::before {
+  display: none;
+}
+.review-timeline li > i {
+  position: relative;
+  z-index: 1;
+  width: 7px;
+  height: 7px;
+  margin-left: 3px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #aaa3b8;
+  box-shadow: 0 0 0 1px #d8d2e3;
+}
+.review-timeline li > b {
+  display: inline-grid;
+  grid-template-columns: minmax(42px, max-content) 18px;
+  align-items: center;
+  gap: 4px;
+  color: var(--v2-text-main);
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.review-timeline li > b small {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #f0ebff;
+  color: var(--v2-primary);
+  font-size: 9px;
+  font-weight: 700;
+}
+.review-timeline li > p {
+  justify-self: start;
+  margin: 0;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #f7f5fa;
+  color: #3f3a4e;
+  font-size: 11px;
+  line-height: 1.25;
+}
+.review-timeline li.is-hero > i {
+  width: 9px;
+  height: 9px;
+  margin-left: 2px;
+  background: var(--v2-primary);
+  box-shadow: 0 0 0 2px #e5dcff;
+}
+.review-timeline li.is-aggressive > i {
+  background: var(--v2-primary);
+  box-shadow: 0 0 0 1px #a98cff;
+}
+.review-timeline li.is-aggressive > p {
+  background: #f0ebff;
+  color: var(--v2-primary);
+  font-weight: 620;
+}
+.review-timeline li.is-fold {
+  opacity: 0.58;
+}
+.street-list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+.street-list i {
+  font-style: normal;
+}
+.street-list i + i::before {
+  margin-right: 7px;
+  color: #aaa3b8;
+  content: '·';
+}
+.review-summary .review-action {
+  margin-top: 5px;
+}
+.delete-dialog {
+  width: min(calc(100vw - 40px), 360px);
+  padding: 24px;
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+}
+.delete-dialog h2 {
+  margin: 0 0 22px;
+  color: var(--v2-text-main);
+  font-size: 19px;
+  font-weight: 620;
+}
+.delete-dialog > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.delete-dialog button {
+  height: 44px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  background: #fff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+}
+.delete-dialog button.danger {
+  border-color: var(--v2-danger);
+  color: var(--v2-danger);
+}
 </style>

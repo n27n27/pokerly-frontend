@@ -578,10 +578,6 @@ const saveLevel = async () => {
     ante: toNumber(levelForm.ante),
   }
 
-  console.log('levelForm', { ...levelForm })
-  console.log('editingLevel', editingLevel.value)
-  console.log('updateBlindLevel payload', payload)
-
   try {
     if (isLevelEditMode.value) {
       await handLogStore.updateBlindLevelStructure(eventId.value, editingLevel.value.id, payload)

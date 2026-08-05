@@ -1,7 +1,7 @@
 <template>
   <q-page class="level-detail-page" :class="{ 'level-detail-page--summary': isSummaryView }">
     <header class="level-topbar">
-      <button class="level-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
+      <button class="level-topbar__back" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>{{ levelName }}</h1>
@@ -20,9 +20,7 @@
       레벨 정보를 불러오는 중입니다.
     </section>
 
-    <section v-else-if="!blindLevel" class="level-state-card">
-      레벨 정보가 없습니다.
-    </section>
+    <section v-else-if="!blindLevel" class="level-state-card">레벨 정보가 없습니다.</section>
 
     <section v-else class="stack-card">
       <div class="stack-card__item">
@@ -38,10 +36,16 @@
 
     <section v-if="blindLevel" class="hand-section">
       <div class="hand-section__header">
-        <h2>{{ selectionMode ? `핸드 선택 (${selectedHandIds.length})` : `핸드 목록 (${hands.length})` }}</h2>
+        <h2>
+          {{
+            selectionMode ? `핸드 선택 (${selectedHandIds.length})` : `핸드 목록 (${hands.length})`
+          }}
+        </h2>
         <div v-if="selectionMode" class="hand-selection-actions">
           <button type="button" @click="cancelHandSelection">취소</button>
-          <button type="button" :disabled="!selectedHandIds.length" @click="moveSheetOpen = true">이동</button>
+          <button type="button" :disabled="!selectedHandIds.length" @click="moveSheetOpen = true">
+            이동
+          </button>
         </div>
         <div v-else-if="hands.length" class="hand-list-action">
           <button
@@ -76,7 +80,11 @@
           @keyup.enter="handleHandClick(hand.id)"
         >
           <div class="cards">
-            <span v-for="card in hand.cards" :key="card.rank + card.suit" :class="{ red: card.red }">
+            <span
+              v-for="card in hand.cards"
+              :key="card.rank + card.suit"
+              :class="{ red: card.red }"
+            >
               <b>{{ card.rank }}</b>
               <em>{{ card.suit }}</em>
             </span>
@@ -87,9 +95,15 @@
           </div>
 
           <span class="hand-row__status">
-            <span class="hand-row__result" :class="`hand-row__result--${hand.tone}`">{{ hand.result }}</span>
+            <span class="hand-row__result" :class="`hand-row__result--${hand.tone}`">{{
+              hand.result
+            }}</span>
             <span class="hand-row__review-slot">
-              <span v-if="hand.needsReview" class="hand-row__review-dot" aria-label="복기 필요"></span>
+              <span
+                v-if="hand.needsReview"
+                class="hand-row__review-dot"
+                aria-label="복기 필요"
+              ></span>
             </span>
           </span>
           <span v-if="selectionMode" class="hand-row__check" aria-hidden="true">
@@ -163,10 +177,7 @@
             </button>
           </div>
           <p v-else>기록 없음</p>
-          <div
-            v-if="selectedGroupHand?.startsWith(`${group.key}:`)"
-            class="hand-group__details"
-          >
+          <div v-if="selectedGroupHand?.startsWith(`${group.key}:`)" class="hand-group__details">
             <button
               v-for="hand in selectedGroupHands(group)"
               :key="hand.id"
@@ -231,7 +242,11 @@
             @input="updateStackInput"
           />
         </label>
-        <button type="button" :disabled="handLogStore.saving || savingStack" @click.stop="saveStack">
+        <button
+          type="button"
+          :disabled="handLogStore.saving || savingStack"
+          @click.stop="saveStack"
+        >
           {{ savingStack ? '저장 중...' : '저장' }}
         </button>
       </q-card>
@@ -240,7 +255,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
@@ -283,30 +298,34 @@ const endingLevel = ref(false)
 const selectedGroupHand = ref('')
 const restoring = ref(false)
 
-const storedTournament = (() => {
-  try {
-    return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
-  } catch {
-    return {}
-  }
-})()
-const eventId = computed(
-  () =>
-    loadedEventId.value ||
-    route.query.eventId ||
-    route.query.legacyEventId ||
-    storedTournament.eventId ||
-    handLogStore.selectedEvent?.id ||
-    null,
+const storedTournament = reactive(
+  (() => {
+    try {
+      return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
+    } catch {
+      return {}
+    }
+  })(),
 )
+const eventId = computed(() => {
+  if (loadedEventId.value) return loadedEventId.value
+  if (route.query.eventId) return route.query.eventId
+
+  // Running 화면에서는 항상 최신 running tournament 우선
+  if (storedTournament.eventId) return storedTournament.eventId
+
+  // legacy는 구버전 URL에서만 fallback
+  if (route.query.legacyEventId) return route.query.legacyEventId
+
+  return handLogStore.selectedEvent?.id ?? null
+})
 const levelLoading = computed(() => handLogStore.levelLoading || restoring.value)
 const blindLevel = computed(() => {
   const selected = handLogStore.selectedBlindLevel
   if (selected && String(selected.id) === levelId.value) return selected
   return (
-    handLogStore.selectedEvent?.blindLevels?.find(
-      (level) => String(level.id) === levelId.value,
-    ) || null
+    handLogStore.selectedEvent?.blindLevels?.find((level) => String(level.id) === levelId.value) ||
+    null
   )
 })
 const sourceLevelId = computed(() => blindLevel.value?.id || levelId.value)
@@ -321,7 +340,9 @@ const formatNumber = (value) =>
     ? '-'
     : Number(value).toLocaleString('ko-KR')
 const parseStoredNumber = (value) => {
-  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  const normalized = String(value ?? '')
+    .replaceAll(',', '')
+    .trim()
   if (!normalized) return null
   const number = Number(normalized)
   return Number.isFinite(number) ? number : null
@@ -338,8 +359,9 @@ const currentStack = computed(() => {
     blindLevel.value?.startStack
   if (ownStack != null) return Number(ownStack)
 
-  const levels = [...(handLogStore.selectedEvent?.blindLevels || [])]
-    .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
+  const levels = [...(handLogStore.selectedEvent?.blindLevels || [])].sort(
+    (a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0),
+  )
   const currentIndex = levels.findIndex((level) => String(level.id) === levelId.value)
   for (let index = currentIndex - 1; index >= 0; index -= 1) {
     const previousStack =
@@ -418,9 +440,7 @@ const resultMeta = (hand) => {
     return { result: '승리', tone: 'win' }
   }
   if (['CHOP', 'DRAW'].includes(result)) return { result: '찹', tone: 'draw' }
-  if (
-    ['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'].includes(result)
-  ) {
+  if (['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'].includes(result)) {
     return { result: '패배', tone: 'lose' }
   }
   return { result: '미기록', tone: 'neutral' }
@@ -430,7 +450,9 @@ const handCards = (hand) => {
   const ranks =
     [hand.firstRank, hand.secondRank].filter(Boolean).length === 2
       ? [hand.firstRank, hand.secondRank]
-      : String(hand.holeCards || hand.hand || '').match(/10|[AKQJT2-9]/g)?.slice(0, 2) || []
+      : String(hand.holeCards || hand.hand || '')
+          .match(/10|[AKQJT2-9]/g)
+          ?.slice(0, 2) || []
   const suits = [hand.firstSuit, hand.secondSuit]
   return ranks.map((rank, index) => {
     const suit = suits[index] || (hand.suited ? '♠' : index === 0 ? '♠' : '♥')
@@ -460,8 +482,7 @@ const hands = computed(() =>
     })),
 )
 
-const formatPercent = (count, total) =>
-  total ? `${Math.round((count / total) * 100)}%` : '-'
+const formatPercent = (count, total) => (total ? `${Math.round((count / total) * 100)}%` : '-')
 const stats = computed(() => {
   const total = hands.value.length
   const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
@@ -481,10 +502,14 @@ const normalizedHand = (hand) => {
   const ranks =
     [hand.firstRank, hand.secondRank].filter(Boolean).length === 2
       ? [hand.firstRank, hand.secondRank]
-      : String(hand.holeCards || hand.hand || '').match(/10|[AKQJT2-9]/gi)?.slice(0, 2) || []
+      : String(hand.holeCards || hand.hand || '')
+          .match(/10|[AKQJT2-9]/gi)
+          ?.slice(0, 2) || []
   if (ranks.length !== 2) return ''
 
-  const normalizedRanks = ranks.map((rank) => (String(rank).toUpperCase() === '10' ? 'T' : String(rank).toUpperCase()))
+  const normalizedRanks = ranks.map((rank) =>
+    String(rank).toUpperCase() === '10' ? 'T' : String(rank).toUpperCase(),
+  )
   if (normalizedRanks[0] === normalizedRanks[1]) return normalizedRanks.join('')
 
   const rankOrder = 'AKQJT98765432'
@@ -586,8 +611,7 @@ const movableLevels = computed(() =>
     })),
 )
 
-const wait = (milliseconds) =>
-  new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
 
 const syncRunningTournament = (runningSession) => {
   if (!runningSession) return null
@@ -616,7 +640,8 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
       if ((!eventIds[0] || attempt > 0) && !route.query.legacyEventId) {
         try {
           const runningSession = await fetchRunningGameSession()
-          eventIds.unshift(syncRunningTournament(runningSession))
+          const syncedEventId = syncRunningTournament(runningSession)
+          eventIds.unshift(syncedEventId)
         } catch (error) {
           lastError = error
         }
@@ -636,8 +661,8 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
           return true
         }
 
-        lastError = levelResult.reason ||
-          (eventResult.status === 'rejected' ? eventResult.reason : lastError)
+        lastError =
+          levelResult.reason || (eventResult.status === 'rejected' ? eventResult.reason : lastError)
       }
 
       if (attempt < retries) await wait(Math.min(500 * 2 ** attempt, 3000))
@@ -706,8 +731,9 @@ const endLevel = async () => {
   if (endingLevel.value) return
   const currentLevelNo = Number(blindLevel.value?.levelNo || 0)
   const expectedNextLevelNo = currentLevelNo + 1
-  const nextLevel = [...(handLogStore.selectedEvent?.blindLevels || [])]
-    .find((level) => Number(level.levelNo) === expectedNextLevelNo)
+  const nextLevel = [...(handLogStore.selectedEvent?.blindLevels || [])].find(
+    (level) => Number(level.levelNo) === expectedNextLevelNo,
+  )
 
   if (!nextLevel) {
     router.push({
@@ -814,11 +840,18 @@ const moveSelectedHands = async (targetLevelId, targetLevelName) => {
     cancelHandSelection()
     alert.show(`${movedCount}개 핸드를 ${targetLevelName}으로 이동했습니다.`, 'success')
   } catch (error) {
-    alert.show(error?.response?.data?.error?.message || '선택한 핸드를 이동하지 못했습니다.', 'error')
+    alert.show(
+      error?.response?.data?.error?.message || '선택한 핸드를 이동하지 못했습니다.',
+      'error',
+    )
   } finally {
     movingHands.value = false
     movingTargetLevelId.value = null
   }
+}
+
+const goBack = () => {
+  router.push({ name: 'tournament-running' })
 }
 </script>
 
@@ -885,7 +918,9 @@ const moveSelectedHands = async (targetLevelId, targetLevelName) => {
   color: var(--v2-text-sub);
 }
 
-.level-topbar__copy:disabled { opacity: 0.35; }
+.level-topbar__copy:disabled {
+  opacity: 0.35;
+}
 
 .level-state-card,
 .hand-list__empty {

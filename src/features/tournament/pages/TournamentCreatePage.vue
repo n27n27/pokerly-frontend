@@ -1,7 +1,12 @@
 <template>
   <q-page class="tournament-create-page">
     <header class="create-topbar">
-      <button class="create-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
+      <button
+        class="create-topbar__back"
+        type="button"
+        aria-label="뒤로 가기"
+        @click="router.back()"
+      >
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>대회 생성</h1>
@@ -52,7 +57,7 @@
           </button>
           <button class="venue-list__add" type="button" @click="showVenueSheet = true">
             <q-icon name="add" size="20px" />
-            <span>새 장소 추가</span>
+            <span>매장 추가</span>
           </button>
         </div>
 
@@ -84,7 +89,12 @@
       <div class="form-field">
         <label class="form-label" for="startLevel">시작 레벨 <span>필수</span></label>
         <div class="text-field text-field--currency">
-          <input id="startLevel" v-model="form.startLevel" inputmode="numeric" placeholder="예) 1" />
+          <input
+            id="startLevel"
+            v-model="form.startLevel"
+            inputmode="numeric"
+            placeholder="예) 1"
+          />
           <span>Level</span>
         </div>
       </div>
@@ -112,12 +122,7 @@
           </label>
           <label class="blind-field">
             <span>Ante</span>
-            <input
-              :value="form.ante"
-              inputmode="numeric"
-              placeholder="200"
-              @input="updateAnte"
-            />
+            <input :value="form.ante" inputmode="numeric" placeholder="200" @input="updateAnte" />
           </label>
         </div>
         <div v-if="anteManuallyEdited" class="ante-help">
@@ -137,27 +142,39 @@
           />
         </div>
       </div>
-
     </form>
 
     <div class="create-info">
       <q-icon name="info" size="24px" />
-      <p><strong>입력은 언제든 수정할 수 있어요</strong><br />생성 후에도 대회 설정은 수정할 수 있습니다.</p>
+      <p>
+        <strong>입력은 언제든 수정할 수 있어요</strong><br />생성 후에도 대회 설정은 수정할 수
+        있습니다.
+      </p>
     </div>
 
     <q-dialog v-model="showVenueSheet" position="bottom">
       <div class="venue-sheet">
-        <h2>새 장소 추가</h2>
+        <h2>매장 추가</h2>
 
         <label class="form-label" for="venueName">매장명 <span>필수</span></label>
         <div class="text-field">
-          <input id="venueName" v-model="venueForm.name" maxlength="50" placeholder="예) Prime 강남" />
+          <input
+            id="venueName"
+            v-model="venueForm.name"
+            maxlength="50"
+            placeholder="예) Prime 강남"
+          />
           <span>{{ venueForm.name.length }}/50</span>
         </div>
 
         <label class="form-label" for="venueArea">지역 <em>(선택)</em></label>
         <div class="text-field">
-          <input id="venueArea" v-model="venueForm.area" maxlength="50" placeholder="예) 서울 강남구" />
+          <input
+            id="venueArea"
+            v-model="venueForm.area"
+            maxlength="50"
+            placeholder="예) 서울 강남구"
+          />
           <span>{{ venueForm.area.length }}/50</span>
         </div>
 
@@ -167,7 +184,12 @@
         </div>
       </div>
     </q-dialog>
-    <StickyPrimaryAction label="대회 생성" :loading="submitting" loading-label="생성 중..." @click="submitTournament" />
+    <StickyPrimaryAction
+      label="대회 생성"
+      :loading="submitting"
+      loading-label="생성 중..."
+      @click="submitTournament"
+    />
   </q-page>
 </template>
 
@@ -260,7 +282,11 @@ const addVenue = async () => {
     venueForm.area = ''
     showVenueSheet.value = false
     venueOpen.value = false
-  } catch {
+  } catch (error) {
+    if (error?.response?.data?.error?.code === 'CONFLICT') {
+      alert.show('이미 등록된 장소명입니다. 다른 이름을 입력해주세요.', 'warning')
+      return
+    }
     alert.show('장소 등록 중 오류가 발생했습니다.', 'error')
   } finally {
     venueSaving.value = false
@@ -277,7 +303,9 @@ onMounted(async () => {
 })
 
 const parseNumber = (value) => {
-  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  const normalized = String(value ?? '')
+    .replaceAll(',', '')
+    .trim()
   if (!normalized) return null
   const number = Number(normalized)
   return Number.isFinite(number) ? number : null

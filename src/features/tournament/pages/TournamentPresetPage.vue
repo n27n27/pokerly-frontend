@@ -11,7 +11,12 @@
     <div class="preset-control-row">
       <label class="search-field" :class="{ 'search-field--active': search }">
         <q-icon name="search" size="19px" />
-        <input v-model="search" :placeholder="searchPlaceholder" type="search" @focus="handleSearchFocus" />
+        <input
+          v-model="search"
+          :placeholder="searchPlaceholder"
+          type="search"
+          @focus="handleSearchFocus"
+        />
         <button v-if="search" type="button" aria-label="검색어 지우기" @click="clearSearch">
           <q-icon name="close" size="16px" />
         </button>
@@ -51,7 +56,12 @@
         </button>
       </div>
 
-      <button v-if="viewMode === 'recent'" class="secondary-action" type="button" @click="openAllTournaments">
+      <button
+        v-if="viewMode === 'recent'"
+        class="secondary-action"
+        type="button"
+        @click="openAllTournaments"
+      >
         <span>
           <q-icon name="grid_view" size="17px" />
           전체 대회 찾기
@@ -90,13 +100,8 @@ const page = ref(1)
 
 const tournaments = ref([])
 onMounted(async () => {
-  const [sessions, venues] = await Promise.all([
-    fetchAllGameSessions(),
-    fetchVenues(),
-  ])
-  const venueById = new Map(
-    (venues || []).map((venue) => [String(venue.id), venue]),
-  )
+  const [sessions, venues] = await Promise.all([fetchAllGameSessions(), fetchVenues()])
+  const venueById = new Map((venues || []).map((venue) => [String(venue.id), venue]))
 
   tournaments.value = (sessions || [])
     .filter((session) => session.handLogEventId)
@@ -125,7 +130,9 @@ const listTitle = computed(() => {
   return '최근 사용'
 })
 
-const recentTournaments = computed(() => tournaments.value.filter((item) => item.recent).slice(0, 5))
+const recentTournaments = computed(() =>
+  tournaments.value.filter((item) => item.recent).slice(0, 5),
+)
 const searchResults = computed(() => {
   const keyword = search.value.trim().toLowerCase()
   if (!keyword) return []
@@ -222,9 +229,7 @@ const startSelectedTournament = () => {
   align-content: start;
   gap: 9px;
   min-height: 100%;
-  padding:
-    var(--v2-page-padding-top)
-    var(--v2-page-padding-x)
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
     calc(180px + env(safe-area-inset-bottom));
 }
 
@@ -439,9 +444,7 @@ const startSelectedTournament = () => {
 
 @media (max-width: 420px) {
   .preset-page {
-    padding:
-      var(--v2-page-padding-top)
-      var(--v2-page-padding-x)
+    padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
       calc(180px + env(safe-area-inset-bottom));
   }
 

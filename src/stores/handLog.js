@@ -22,7 +22,9 @@ import {
 import { getHandStrength } from 'src/utils/handLogHandAnalysis'
 
 const normalizeCardRankForApi = (rank) => {
-  const value = String(rank || '').trim().toUpperCase()
+  const value = String(rank || '')
+    .trim()
+    .toUpperCase()
 
   if (!value) return null
   return value === '10' ? 'T' : value
@@ -316,6 +318,7 @@ export const useHandLogStore = defineStore('handLog', () => {
     try {
       const saved = await createHandLogEvent({
         name: payload.name.trim(),
+        venueId: payload.venueId,
         startingStack: payload.startingStack ?? null,
       })
 

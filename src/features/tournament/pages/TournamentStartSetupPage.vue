@@ -1,37 +1,57 @@
 <template>
   <q-page class="start-setup-page">
     <header class="setup-topbar">
-      <button class="setup-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
+      <button
+        class="setup-topbar__back"
+        type="button"
+        aria-label="뒤로 가기"
+        @click="router.back()"
+      >
         <q-icon name="chevron_left" size="28px" />
       </button>
       <span aria-hidden="true"></span>
     </header>
 
-    <section class="tournament-summary">
-      <div class="tournament-summary__main">
-        <div>
-          <span>대회명</span>
-          <strong>{{ selectedTournament.name }}</strong>
-        </div>
-        <div>
-          <span>매장</span>
-          <strong>{{ selectedTournament.venue }}</strong>
+    <form class="setup-form" @submit.prevent="startTournament">
+      <div class="setup-card">
+        <label class="setup-label" for="name">대회명<span>필수</span></label>
+        <div class="text-field">
+          <input
+            id="name"
+            v-model="form.name"
+            maxlength="50"
+            placeholder="예) Prime Daily"
+            type="text"
+          />
+          <span>{{ form.name?.length }}/50</span>
         </div>
       </div>
 
-      <dl>
-        <div>
-          <dt>시작 스택</dt>
-          <dd>{{ selectedTournament.stack }}</dd>
-        </div>
-        <div>
-          <dt>바인 금액</dt>
-          <dd>{{ selectedTournament.buyIn }}</dd>
-        </div>
-      </dl>
-    </section>
+      <div class="setup-card">
+        <label class="setup-label" for="venue">매장</label>
+        <button id="venue" class="select-field" type="button" @click="venueOpen = !venueOpen">
+          <span>{{ form.venueName }}</span>
+          <q-icon name="expand_more" size="24px" />
+        </button>
 
-    <form class="setup-form" @submit.prevent="startTournament">
+        <div v-if="venueOpen" class="venue-list">
+          <button
+            v-for="venue in venues"
+            :key="venue.id"
+            class="venue-list__item"
+            type="button"
+            @click="selectVenue(venue)"
+          >
+            <span>{{ venue.name }}</span>
+            <q-icon v-if="form.venueId === venue.id" name="check" size="20px" />
+          </button>
+          <button class="venue-list__add" type="button" @click="showVenueSheet = true">
+            <q-icon name="add" size="20px" />
+            <span>매장 추가</span>
+          </button>
+        </div>
+      </div>
+
       <div class="setup-card">
         <label class="setup-label" for="startLevel">시작 레벨</label>
         <button id="startLevel" class="select-field" type="button" @click="levelOpen = !levelOpen">
@@ -45,7 +65,6 @@
             <q-icon v-if="form.level === level" name="check" size="20px" />
           </button>
         </div>
-
       </div>
 
       <div class="setup-card">
@@ -62,9 +81,45 @@
           <input id="buyIn" v-model="form.buyIn" inputmode="numeric" />
         </div>
       </div>
-
     </form>
-    <StickyPrimaryAction label="토너먼트 시작" :loading="submitting" loading-label="시작 중..." @click="startTournament" />
+    <q-dialog v-model="showVenueSheet" position="bottom">
+      <div class="venue-sheet">
+        <h2>매장 추가</h2>
+
+        <label class="form-label" for="venueName">매장명 <span>필수</span></label>
+        <div class="text-field">
+          <input
+            id="venueName"
+            v-model="venueForm.name"
+            maxlength="50"
+            placeholder="예) Prime 강남"
+          />
+          <span>{{ venueForm.name.length }}/50</span>
+        </div>
+
+        <label class="form-label" for="venueArea">지역 <em>(선택)</em></label>
+        <div class="text-field">
+          <input
+            id="venueArea"
+            v-model="venueForm.area"
+            maxlength="50"
+            placeholder="예) 서울 강남구"
+          />
+          <span>{{ venueForm.area.length }}/50</span>
+        </div>
+
+        <div class="venue-sheet__actions">
+          <AppButton label="취소" variant="secondary" block @click="showVenueSheet = false" />
+          <AppButton label="추가" block :loading="venueSaving" @click="addVenue" />
+        </div>
+      </div>
+    </q-dialog>
+    <StickyPrimaryAction
+      label="토너먼트 시작"
+      :loading="submitting"
+      loading-label="시작 중..."
+      @click="startTournament"
+    />
   </q-page>
 </template>
 
@@ -72,6 +127,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import AppButton from 'src/shared/components/AppButton.vue'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
@@ -79,35 +135,91 @@ import { createGameSession, fetchGameSession } from 'src/api/gameSession'
 import { deleteHandLogEvent } from 'src/api/handLogApi'
 import { fetchVenue } from 'src/api/venue'
 import { formatLocalDate } from 'src/utils/localDate'
-import { tournamentDisplayName } from 'src/utils/tournamentName'
+
+import { useVenueStore } from 'src/stores/venue'
+import { storeToRefs } from 'pinia'
 
 const route = useRoute()
 const router = useRouter()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
+const venueOpen = ref(false)
 const levelOpen = ref(false)
 const submitting = ref(false)
+const showVenueSheet = ref(false)
+const venueSaving = ref(false)
+const selectedVenue = ref(null)
 
+const venueStore = useVenueStore()
+const { venues } = storeToRefs(venueStore)
 const sourceSession = ref(null)
-const selectedTournament = reactive({ name: '-', venue: '-', stack: '', buyIn: '' })
+const selectedTournament = reactive({
+  venueId: null,
+  venueName: '',
+  stack: '',
+  buyIn: '',
+})
 
 const levels = ref([])
 
 const form = reactive({
+  name: '',
+  venueId: null,
+  venueName: '',
   level: 'L1',
   stack: '',
   buyIn: '',
 })
 
+const venueForm = reactive({
+  name: '',
+  area: '',
+})
+
+const addVenue = async () => {
+  if (!venueForm.name.trim()) return
+  if (venueSaving.value) return
+
+  venueSaving.value = true
+  try {
+    const created = await venueStore.addVenue({
+      name: venueForm.name.trim(),
+      location: venueForm.area.trim(),
+      notes: '',
+      pointBalance: 0,
+    })
+
+    selectVenue(created)
+    venueForm.name = ''
+    venueForm.area = ''
+    showVenueSheet.value = false
+    venueOpen.value = false
+    alert.show('매장이 추가되었습니다.', 'success')
+  } catch (error) {
+    if (error?.response?.data?.error?.code === 'CONFLICT') {
+      alert.show('이미 등록된 장소명입니다. 다른 이름을 입력해주세요.', 'warning')
+      return
+    }
+    alert.show('장소 등록 중 오류가 발생했습니다.', 'error')
+  } finally {
+    venueSaving.value = false
+  }
+}
+
 onMounted(async () => {
+  try {
+    await venueStore.loadVenues()
+  } catch {
+    alert.show('장소 목록을 불러오지 못했습니다.', 'error')
+  }
   try {
     sourceSession.value = await fetchGameSession(route.query.presetId)
     const venue = sourceSession.value.venueId
       ? await fetchVenue(sourceSession.value.venueId).catch(() => null)
       : null
     Object.assign(selectedTournament, {
-      name: tournamentDisplayName(sourceSession.value),
-      venue:
+      venueId: sourceSession.value.venueId || null,
+      venueName:
         venue?.name ||
         sourceSession.value.collabLabel ||
         (sourceSession.value.sessionType === 'VENUE' ? '등록 장소' : '기타'),
@@ -121,9 +233,9 @@ onMounted(async () => {
       .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
       .map((level) => `L${level.levelNo}`)
     const sourceStartLevel = sourceSession.value.startLevel || ''
-    form.level = levels.value.includes(sourceStartLevel)
-      ? sourceStartLevel
-      : levels.value[0] || ''
+    form.venueId = selectedTournament.venueId
+    form.venueName = selectedTournament.venueName
+    form.level = levels.value.includes(sourceStartLevel) ? sourceStartLevel : levels.value[0] || ''
     form.stack = selectedTournament.stack
     form.buyIn = selectedTournament.buyIn
   } catch {
@@ -131,13 +243,22 @@ onMounted(async () => {
   }
 })
 
+const selectVenue = (venue) => {
+  selectedVenue.value = venue
+  form.venueId = venue.id
+  form.venueName = venue.name
+  venueOpen.value = false
+}
+
 const selectLevel = (level) => {
   form.level = level
   levelOpen.value = false
 }
 
 const parseNumber = (value) => {
-  const normalized = String(value ?? '').replaceAll(',', '').trim()
+  const normalized = String(value ?? '')
+    .replaceAll(',', '')
+    .trim()
   if (!normalized) return null
   const number = Number(normalized)
   return Number.isFinite(number) ? number : null
@@ -145,15 +266,20 @@ const parseNumber = (value) => {
 
 const startTournament = async () => {
   if (submitting.value) return
+
+  if (!form.name.trim()) {
+    alert.show('대회명을 입력해 주세요.', 'warning')
+    return
+  }
   if (!form.level) {
     alert.show('선택할 수 있는 블라인드 레벨이 없습니다.', 'warning')
     return
   }
   const startLevel = form.level
   const runningTournament = {
-    name: selectedTournament.name,
-    venueId: sourceSession.value?.venueId || null,
-    venueName: selectedTournament.venue,
+    name: form.name.trim(),
+    venueId: form.venueId,
+    venueName: form.venueName,
     startLevel,
     currentLevel: startLevel,
     startingStack: form.stack || null,
@@ -169,8 +295,10 @@ const startTournament = async () => {
   let createdEventId = null
   submitting.value = true
   try {
+    console.log('startTournament runningTournament:', runningTournament)
     const eventId = await handLogStore.createEvent({
       name: runningTournament.name,
+      venueId: runningTournament.venueId,
       startingStack: parseNumber(form.stack),
     })
     if (!eventId) throw new Error('이벤트 생성에 실패했습니다.')
@@ -199,7 +327,7 @@ const startTournament = async () => {
     runningTournament.eventId = eventId
     runningTournament.currentBlindLevelId = firstLevel.id
     const session = await createGameSession({
-      venueId: sourceSession.value?.venueId || null,
+      venueId: runningTournament.venueId || null,
       playDate: formatLocalDate(),
       sessionType: sourceSession.value?.sessionType || 'OTHER',
       gameType: 'TOURNAMENT',
@@ -350,16 +478,23 @@ const startTournament = async () => {
 
 .setup-label {
   color: var(--v2-text-main);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 560;
-  line-height: 1.2;
+  line-height: 1;
 }
 
+.setup-label span,
 .setup-label em {
-  color: var(--v2-text-sub);
-  font-size: 13px;
+  display: inline-flex;
+  margin-left: 6px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  font-size: 10px;
   font-style: normal;
-  font-weight: 430;
+  font-weight: 520;
+  vertical-align: 1px;
 }
 
 .text-field,
@@ -367,12 +502,12 @@ const startTournament = async () => {
   min-height: 44px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-md);
-  background: #ffffff;
+  background: #fff;
   color: var(--v2-text-main);
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 11px;
+  gap: 8px;
+  padding: 0 12px;
 }
 
 .text-field:focus-within,
@@ -389,14 +524,19 @@ const startTournament = async () => {
   background: transparent;
   color: var(--v2-text-main);
   font: inherit;
-  font-size: 18px;
-  font-weight: 520;
+  font-size: 14px;
 }
 
-.text-field span {
+.text-field input::placeholder {
+  color: #aaa5b8;
+}
+
+.text-field span,
+.text-field strong,
+.select-field .q-icon {
   flex: 0 0 auto;
-  color: var(--v2-text-main);
-  font-size: 13px;
+  color: var(--v2-text-sub);
+  font-size: 12px;
   font-weight: 430;
 }
 
@@ -404,13 +544,71 @@ const startTournament = async () => {
   width: 100%;
   justify-content: space-between;
   font: inherit;
-  font-size: 16px;
-  font-weight: 520;
+  font-size: 14px;
+  font-weight: 450;
   text-align: left;
 }
 
-.select-field .q-icon {
+.venue-list {
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  background: #fff;
+}
+
+.venue-list__item,
+.venue-list__add {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: transparent;
   color: var(--v2-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 430;
+  text-align: left;
+}
+
+.venue-list__item .q-icon,
+.venue-list__add {
+  color: var(--v2-primary);
+}
+
+.venue-list__add {
+  justify-content: flex-start;
+  gap: 8px;
+  border-bottom: 0;
+  font-weight: 520;
+}
+
+.venue-sheet {
+  width: 100%;
+  padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 18px 18px 0 0;
+  background: #fff;
+  display: grid;
+  gap: 14px;
+}
+
+.venue-sheet h2 {
+  margin: 0 0 4px;
+  color: var(--v2-text-main);
+  font-size: 17px;
+  font-weight: 560;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.venue-sheet__actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
 }
 
 .level-list {
@@ -443,11 +641,9 @@ const startTournament = async () => {
 .level-list .q-icon {
   color: var(--v2-primary);
 }
-
 @media (max-width: 420px) {
   .start-setup-page {
     padding-top: var(--v2-page-padding-top);
   }
-
 }
 </style>
