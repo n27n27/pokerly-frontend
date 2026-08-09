@@ -77,6 +77,11 @@
               <em>{{ currentLevel.bb }}</em>
             </div>
             <div>
+              <span>평균 스택</span>
+              <strong>{{ currentLevel.averageStack }}</strong>
+              <em>{{ currentLevel.averageBb }}</em>
+            </div>
+            <div>
               <span>핸드 수</span>
               <strong>{{ currentLevel.hands }}</strong>
             </div>
@@ -126,15 +131,6 @@
       title="대회 요약"
       @open-hand="openSummaryHand"
     />
-
-    <button
-      class="new-tournament-fab"
-      type="button"
-      aria-label="새 토너먼트 시작"
-      @click="startNewTournament"
-    >
-      <q-icon name="add" size="30px" />
-    </button>
 
     <StickyPrimaryAction label="토너먼트 종료" @click="openFinish" />
 
@@ -269,6 +265,13 @@ const levels = computed(() => {
       const sessionStack = isCurrent ? parseStoredNumber(runningTournament.currentStack) : null
       const stack = sessionStack ?? storedStack ?? previousStack
       const bbCount = stack != null && level.bigBlind > 0 ? stack / level.bigBlind : null
+      const levelAverageStack = parseStoredNumber(level.averageStack)
+      const sessionAverageStack = isCurrent
+        ? parseStoredNumber(runningTournament.averageStack)
+        : null
+      const averageStack = levelAverageStack ?? sessionAverageStack
+      const averageBbCount =
+        averageStack != null && level.bigBlind > 0 ? averageStack / level.bigBlind : null
       const row = {
         id: level.id,
         name: `L${level.levelNo}`,
@@ -278,6 +281,11 @@ const levels = computed(() => {
         endStack: formatValue(stack),
         bb:
           bbCount == null ? '-' : `${Number.isInteger(bbCount) ? bbCount : bbCount.toFixed(1)} BB`,
+        averageStack: formatValue(averageStack),
+        averageBb:
+          averageBbCount == null
+            ? '-'
+            : `${Number.isInteger(averageBbCount) ? averageBbCount : averageBbCount.toFixed(1)} BB`,
         current: isCurrent,
       }
 
@@ -473,10 +481,18 @@ const saveLevel = async () => {
         saved.displayStartStack ??
         saved.startStack ??
         parseStoredNumber(runningTournament.currentStack)
+      const inheritedAverageStack =
+        parseStoredNumber(saved.averageStack) ??
+        parseStoredNumber(runningTournament.averageStack)
       runningTournament.currentStack = formatInputNumber(inheritedStack)
       runningTournament.currentBb =
         inheritedStack != null && saved.bigBlind > 0
           ? Number((inheritedStack / saved.bigBlind).toFixed(1))
+          : null
+      runningTournament.averageStack = formatInputNumber(inheritedAverageStack)
+      runningTournament.averageBb =
+        inheritedAverageStack != null && saved.bigBlind > 0
+          ? Number((inheritedAverageStack / saved.bigBlind).toFixed(1))
           : null
       localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
       await persistRunningSession()
@@ -645,10 +661,6 @@ const openFinish = () => {
   router.push('/app/tournament/running/finish')
 }
 
-const startNewTournament = () => {
-  router.push('/app/tournament/start')
-}
-
 const goBack = () => {
   router.push({ name: 'home' })
 }
@@ -661,27 +673,6 @@ const goBack = () => {
   gap: 20px;
   min-height: 100%;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
-}
-
-.new-tournament-fab {
-  position: fixed;
-  right: max(20px, calc((100vw - 480px) / 2 + 20px));
-  bottom: calc(78px + var(--v2-sticky-cta-bottom-gap) + var(--v2-sticky-cta-height) + 22px);
-  z-index: 1890;
-  display: grid;
-  width: 56px;
-  height: 56px;
-  place-items: center;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: var(--v2-primary);
-  color: #fff;
-  box-shadow: 0 10px 24px rgba(109, 69, 232, 0.3);
-}
-
-.new-tournament-fab:active {
-  transform: translateY(1px);
 }
 
 .running-topbar {
@@ -933,13 +924,13 @@ const goBack = () => {
 
 .current-level-card__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.72fr);
-  gap: 22px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(64px, 0.5fr);
+  gap: 14px;
   padding-top: 18px;
 }
 
 .current-level-card__body div + div {
-  padding-left: 22px;
+  padding-left: 14px;
   border-left: 1px solid var(--v2-border);
 }
 
@@ -959,7 +950,7 @@ const goBack = () => {
   display: inline-block;
   margin-top: 9px;
   color: var(--v2-text-main);
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 620;
   line-height: 1;
 }
@@ -1244,7 +1235,7 @@ const goBack = () => {
   }
 
   .current-level-card__body strong {
-    font-size: 30px;
+    font-size: 25px;
   }
 
   .level-row {

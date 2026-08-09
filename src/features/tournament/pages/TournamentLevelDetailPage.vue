@@ -666,6 +666,7 @@ const syncRunningTournament = (runningSession) => {
     eventId: runningSession.handLogEventId,
     currentBlindLevelId: runningSession.currentBlindLevelId,
     currentStack: runningSession.currentStack,
+    averageStack: runningSession.averageStack,
   })
   localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
   return runningSession.handLogEventId || null
@@ -795,6 +796,8 @@ const endLevel = async () => {
   endingLevel.value = true
   const nextStack =
     nextLevel.endStack ?? nextLevel.displayStartStack ?? nextLevel.startStack ?? currentStack.value
+  const nextAverageStack =
+    parseStoredNumber(nextLevel.averageStack) ?? parseStoredNumber(averageStack.value)
   storedTournament.currentBlindLevelId = nextLevel.id
   storedTournament.currentLevel = `L${nextLevel.levelNo}`
   storedTournament.currentBlinds = {
@@ -811,12 +814,19 @@ const endLevel = async () => {
     nextStack != null && Number(nextLevel.bigBlind) > 0
       ? Number((Number(nextStack) / Number(nextLevel.bigBlind)).toFixed(1))
       : null
+  storedTournament.averageStack =
+    nextAverageStack == null ? null : formatNumber(nextAverageStack)
+  storedTournament.averageBb =
+    nextAverageStack != null && Number(nextLevel.bigBlind) > 0
+      ? Number((Number(nextAverageStack) / Number(nextLevel.bigBlind)).toFixed(1))
+      : null
   localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
   try {
     if (storedTournament.sessionId) {
       await updateGameSessionProgress(storedTournament.sessionId, {
         currentLevel: storedTournament.currentLevel,
         currentStack: nextStack,
+        averageStack: nextAverageStack,
         currentSmallBlind: nextLevel.smallBlind,
         currentBigBlind: nextLevel.bigBlind,
         currentAnte: nextLevel.ante,

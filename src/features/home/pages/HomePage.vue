@@ -336,6 +336,15 @@
         <StatCard label="ITM" :value="monthlyItmCount" icon="workspace_premium" />
       </div>
     </AppSection>
+
+    <button
+      class="tournament-start-fab"
+      type="button"
+      aria-label="새 토너먼트 시작"
+      @click="goTournamentStart"
+    >
+      <q-icon name="add" size="30px" />
+    </button>
   </q-page>
 </template>
 
@@ -854,7 +863,9 @@ const loadRunningTournamentDetail = async () => {
     }
 
     const currentStack = level.endStack ?? level.displayStartStack ?? level.startStack
-    const averageStack = level.averageStack
+    // 새 레벨에는 아직 평균 스택이 기록되지 않았을 수 있다.
+    // 레벨 전환 직후에는 진행 중 세션의 마지막 평균 스택을 유지한다.
+    const averageStack = level.averageStack ?? parseQuickNumber(tournament.averageStack)
     const currentBb =
       currentStack != null && level.bigBlind > 0
         ? Number((currentStack / level.bigBlind).toFixed(1))
@@ -1380,7 +1391,8 @@ const goSimpleRecord = (recordId) => {
   font-weight: 520;
 }
 
-.simple-record-fab {
+.simple-record-fab,
+.tournament-start-fab {
   position: fixed;
   z-index: 5;
   right: max(20px, calc((100vw - 480px) / 2 + 20px));
@@ -1399,7 +1411,8 @@ const goSimpleRecord = (recordId) => {
   transform: translateZ(0);
 }
 
-.simple-record-fab:active {
+.simple-record-fab:active,
+.tournament-start-fab:active {
   transform: translate3d(0, 1px, 0);
 }
 
