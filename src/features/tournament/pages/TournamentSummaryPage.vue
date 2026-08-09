@@ -39,7 +39,7 @@
     >
       <div v-for="metric in resultMetrics" :key="metric.label">
         <span>{{ metric.label }}</span>
-        <strong :class="{ primary: metric.primary }" :title="metric.value">
+        <strong :class="{ primary: metric.primary }" :title="metric.title || metric.value">
           <i v-if="metric.icon"><q-icon :name="metric.icon" size="16px" /></i>
           {{ metric.value }}
         </strong>
@@ -87,7 +87,7 @@
           <strong>{{ level.name }}</strong
           ><span>{{ level.stack }}</span>
           <span class="stack-change" :class="level.tone">
-            <i aria-hidden="true">{{ level.changeSymbol }}</i
+            <i v-if="level.changeSymbol" aria-hidden="true">{{ level.changeSymbol }}</i
             ><b>{{ level.changeAmount }}</b>
           </span>
           <q-icon name="chevron_right" size="18px" />
@@ -192,6 +192,7 @@ import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
 import { createStartingHandRunSummary } from 'src/utils/handLogHandAnalysis'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
+import { formatCompactNumber } from 'src/utils/numberFormat'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
 import { copyToClipboard } from 'src/utils/copyToClipboard'
 import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
@@ -288,10 +289,19 @@ const resultMetrics = computed(() => {
     metrics.push({ label: '최종 순위', value: `${current.finalRank}위` })
   }
   if (current.prize != null) {
-    metrics.push({ label: '총 상금', value: Number(current.prize || 0).toLocaleString('ko-KR') })
+    const prize = Number(current.prize || 0)
+    metrics.push({
+      label: '총 상금',
+      value: formatCompactNumber(prize),
+      title: prize.toLocaleString('ko-KR'),
+    })
   }
   if (totalBuyIn.value > 0) {
-    metrics.push({ label: '총 바인', value: totalBuyIn.value.toLocaleString('ko-KR') })
+    metrics.push({
+      label: '총 바인',
+      value: formatCompactNumber(totalBuyIn.value),
+      title: totalBuyIn.value.toLocaleString('ko-KR'),
+    })
   }
   if (Number(current.entries) > 0) {
     metrics.push({ label: '참가', value: `${current.entries}회` })
@@ -899,13 +909,14 @@ const goBack = () => {
   font-weight: 600;
 }
 .level-table .stack-change {
-  display: grid;
-  width: 100%;
-  grid-template-columns: 13px minmax(0, 1fr);
+  display: inline-flex;
+  width: auto;
   align-items: center;
-  column-gap: 4px;
+  justify-self: end;
+  gap: 4px;
 }
 .level-table .stack-change i {
+  width: 13px;
   font-style: normal;
   text-align: center;
 }
@@ -914,11 +925,11 @@ const goBack = () => {
   text-align: right;
 }
 .level-table .up {
-  color: #2563eb;
+  color: var(--v2-danger);
   font-weight: 540;
 }
 .level-table .down {
-  color: var(--v2-danger);
+  color: #2563eb;
   font-weight: 540;
 }
 .level-table .q-icon {

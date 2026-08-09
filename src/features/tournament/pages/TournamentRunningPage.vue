@@ -127,6 +127,15 @@
       @open-hand="openSummaryHand"
     />
 
+    <button
+      class="new-tournament-fab"
+      type="button"
+      aria-label="새 토너먼트 시작"
+      @click="startNewTournament"
+    >
+      <q-icon name="add" size="30px" />
+    </button>
+
     <StickyPrimaryAction label="토너먼트 종료" @click="openFinish" />
 
     <q-dialog v-model="levelSheetOpen" position="bottom">
@@ -157,15 +166,6 @@
             <input :value="levelForm.ante" inputmode="numeric" @input="updateLevelAnte" />
           </label>
         </div>
-
-        <label v-if="editingLevelId">
-          <span>현재 스택</span>
-          <input
-            :value="levelForm.endStack"
-            inputmode="numeric"
-            @input="setLevelNumber('endStack', $event)"
-          />
-        </label>
 
         <div v-if="editingLevelId && editingIsCurrent" class="level-sheet__current-status">
           현재 진행 중인 레벨
@@ -318,7 +318,6 @@ const levelForm = reactive({
   smallBlind: '',
   bigBlind: '',
   ante: '',
-  endStack: '',
   makeCurrent: false,
 })
 
@@ -394,9 +393,6 @@ const updateLevelAnte = (inputEvent) => {
 
 const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave = false) => {
   const source = level ? getBackendLevel(level.id) : null
-  const displayedLevel = level
-    ? levels.value.find((item) => String(item.id) === String(level.id))
-    : null
   const nextLevelNo = requestedLevelNo
     ? Number(requestedLevelNo)
     : Math.max(0, ...(event.value?.blindLevels || []).map((item) => Number(item.levelNo) || 0)) + 1
@@ -408,14 +404,6 @@ const openLevelSheet = (level = null, requestedLevelNo = null, activateAfterSave
     smallBlind: formatInputNumber(source?.smallBlind),
     bigBlind: formatInputNumber(source?.bigBlind),
     ante: formatInputNumber(source?.ante),
-    endStack: source
-      ? formatInputNumber(
-          source.endStack ??
-            source.displayStartStack ??
-            source.startStack ??
-            displayedLevel?.rawStack,
-        )
-      : '',
     makeCurrent: Boolean(
       source &&
         runningTournament.currentBlindLevelId &&
@@ -445,7 +433,7 @@ const saveLevel = async () => {
       })
       saved = await handLogStore.updateBlindLevelInfo(eventId, editingLevelId.value, {
         startStack: getBackendLevel(editingLevelId.value)?.startStack,
-        endStack: parseStoredNumber(levelForm.endStack),
+        endStack: getBackendLevel(editingLevelId.value)?.endStack,
         averageStack: getBackendLevel(editingLevelId.value)?.averageStack,
         memo: getBackendLevel(editingLevelId.value)?.memo,
       })
@@ -551,6 +539,7 @@ const ensureEventId = async () => {
   const eventId = await handLogStore.createEvent({
     name: runningTournament.name || '이름 없는 토너먼트',
     startingStack: parseStoredNumber(runningTournament.startingStack),
+    date: runningTournament.date?.replaceAll('.', '-') || formatLocalDate(),
   })
   if (!eventId) return null
 
@@ -656,6 +645,10 @@ const openFinish = () => {
   router.push('/app/tournament/running/finish')
 }
 
+const startNewTournament = () => {
+  router.push('/app/tournament/start')
+}
+
 const goBack = () => {
   router.push({ name: 'home' })
 }
@@ -668,6 +661,27 @@ const goBack = () => {
   gap: 20px;
   min-height: 100%;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+}
+
+.new-tournament-fab {
+  position: fixed;
+  right: max(20px, calc((100vw - 480px) / 2 + 20px));
+  bottom: calc(78px + var(--v2-sticky-cta-bottom-gap) + var(--v2-sticky-cta-height) + 22px);
+  z-index: 1890;
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--v2-primary);
+  color: #fff;
+  box-shadow: 0 10px 24px rgba(109, 69, 232, 0.3);
+}
+
+.new-tournament-fab:active {
+  transform: translateY(1px);
 }
 
 .running-topbar {

@@ -17,6 +17,7 @@
 </template>
 
 <script setup>
+import { onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
@@ -31,9 +32,31 @@ const items = [
 
 const isActive = (item) => item.prefixes.some((prefix) => route.path.startsWith(prefix))
 
+const MODAL_SELECTOR = '.q-dialog__inner, .q-dialog__backdrop, .picker-backdrop'
+let modalPointerStartedAt = 0
+
+const hasOpenModal = () => Boolean(document.querySelector(MODAL_SELECTOR))
+
+const rememberModalPointer = () => {
+  if (hasOpenModal()) modalPointerStartedAt = Date.now()
+}
+
 const go = (to) => {
+  // On iOS, the pointer that closes a bottom sheet can otherwise click the
+  // navigation item revealed underneath it. Ignore that same pointer cycle.
+  if (hasOpenModal() || Date.now() - modalPointerStartedAt < 500) return
   if (route.path !== to) router.push(to)
 }
+
+onMounted(() => {
+  document.addEventListener('pointerdown', rememberModalPointer, true)
+  document.addEventListener('touchstart', rememberModalPointer, true)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('pointerdown', rememberModalPointer, true)
+  document.removeEventListener('touchstart', rememberModalPointer, true)
+})
 </script>
 
 <style scoped>
@@ -42,6 +65,10 @@ const go = (to) => {
   box-shadow: none;
   backface-visibility: hidden;
   transform: translateZ(0);
+}
+
+:global(body.q-body--prevent-scroll) .bottom-nav {
+  pointer-events: none;
 }
 
 .bottom-nav-inner {

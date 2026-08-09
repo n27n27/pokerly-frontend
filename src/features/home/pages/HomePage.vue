@@ -59,7 +59,7 @@
         >
           <span class="simple-record__main">
             <strong>{{ item.title }}</strong>
-            <small>{{ item.date }} · 바인 {{ item.buyIn }} · {{ item.entries }} Entries</small>
+            <small>{{ item.date }} · 총 바인 {{ item.totalBuyIn }} · {{ item.entries }}회</small>
           </span>
           <strong v-if="item.result" class="simple-record__result" :class="item.tone">{{ item.result }}</strong>
           <span v-else class="simple-record__pending">결과 미입력</span>
@@ -295,7 +295,6 @@
           v-for="item in recentSection.items"
           :key="item.id"
           class="recent-row"
-          :class="{ 'recent-row--no-badge': !item.badge }"
           type="button"
           @click="openRecentTournament(item)"
         >
@@ -304,12 +303,22 @@
             <span>{{ item.meta }}</span>
           </span>
 
-          <span v-if="item.badge" class="recent-row__badge" :class="`recent-row__badge--${item.tone}`">
-            {{ item.badge }}
+          <span class="recent-row__outcome">
+            <span
+              v-if="item.badge"
+              class="recent-row__badge"
+              :class="`recent-row__badge--${item.tone}`"
+            >
+              {{ item.badge }}
+            </span>
+            <strong
+              v-if="item.result"
+              class="recent-row__result"
+              :class="`recent-row__result--${item.tone}`"
+            >
+              {{ item.result }}
+            </strong>
           </span>
-          <strong v-if="item.result" class="recent-row__result" :class="`recent-row__result--${item.tone}`">
-            {{ item.result }}
-          </strong>
         </button>
       </AppCard>
     </AppSection>
@@ -344,6 +353,7 @@ import { fetchVenues } from 'src/api/venue'
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
 import { formatLocalDate } from 'src/utils/localDate'
+import { formatCompactNumber } from 'src/utils/numberFormat'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
@@ -463,11 +473,10 @@ const isSimpleSummaryCurrentMonth = computed(() => simpleSummaryMonthOffset.valu
 const hasSimpleSummaryData = computed(() =>
   !simpleSummaryLoading.value && Number(simpleSummary.value?.totalSessions || 0) > 0,
 )
-const fullMoney = (value, signed = false) => {
-  const amount = Number(value) || 0
-  const sign = signed && amount > 0 ? '+' : ''
-  return `${sign}${amount.toLocaleString('ko-KR')}`
-}
+const compactMoney = (value, signed = false) =>
+  formatCompactNumber(Number(value) || 0, {
+    signDisplay: signed ? 'exceptZero' : 'auto',
+  })
 const simpleMetrics = computed(() => {
   const summary = simpleSummary.value
   if (!hasSimpleSummaryData.value) return [
@@ -479,11 +488,11 @@ const simpleMetrics = computed(() => {
   return [
     {
       label: '순수익',
-      value: fullMoney(profit, true),
+      value: compactMoney(profit, true),
       tone: profit > 0 ? 'positive' : profit < 0 ? 'negative' : '',
     },
-    { label: '총 바인', value: fullMoney(summary.totalBuyIn) },
-    { label: '총 상금', value: fullMoney(summary.totalPrize) },
+    { label: '총 바인', value: compactMoney(summary.totalBuyIn) },
+    { label: '총 상금', value: compactMoney(summary.totalPrize) },
     { label: 'ROI', value: `${Number(summary.roi || 0).toFixed(1)}%` },
     { label: '참가', value: `${summary.totalSessions || 0}회` },
     { label: 'ITM', value: `${summary.itmCount || 0}회` },
@@ -493,10 +502,10 @@ const simpleRecords = computed(() => recentSection.items.map((item) => ({
   id: item.id,
   title: item.title,
   date: item.meta,
-  buyIn: item.buyIn || '-',
+  totalBuyIn: item.totalBuyIn || '-',
   entries: item.entries || 1,
   result: item.result || '',
-  tone: item.tone === 'success' ? 'win' : item.tone === 'danger' ? 'lose' : '',
+  tone: item.netProfit > 0 ? 'profit' : item.netProfit < 0 ? 'loss' : '',
 })))
 
 const loadSimpleMonthlySummary = async () => {
@@ -705,16 +714,7 @@ const recentSection = reactive({
 })
 
 const formatSignedNumber = (value) => {
-  const amount = Number(value) || 0
-  const sign = amount > 0 ? '+' : amount < 0 ? '-' : ''
-  const absolute = Math.abs(amount)
-
-  if (absolute >= 10000) {
-    const man = absolute / 10000
-    const digits = Number.isInteger(man) ? 0 : 1
-    return `${sign}${man.toFixed(digits)}만`
-  }
-  return `${sign}${absolute.toLocaleString('ko-KR')}`
+  return formatCompactNumber(Number(value) || 0, { signDisplay: 'exceptZero' })
 }
 
 const formatPercent = (value) => {
@@ -776,11 +776,10 @@ const loadRecentTournaments = async () => {
       meta: formatDate(session.playDate),
       badge: resultBadges[session.tournamentResult] || '',
       tone: session.tournamentResult === 'WIN' ? 'success' : 'default',
-      buyIn: Number(session.buyInPerEntry || 0).toLocaleString('ko-KR'),
+      totalBuyIn: totalBuyInOf(session).toLocaleString('ko-KR'),
       entries: session.entries || 1,
-      result: session.netProfit
-        ? `${session.netProfit > 0 ? '+' : ''}${Number(session.netProfit).toLocaleString('ko-KR')}`
-        : '',
+      netProfit: Number(session.netProfit || 0),
+      result: session.netProfit != null ? formatSignedNumber(session.netProfit) : '',
     }))
   } catch {
     recentLoadFailed.value = true
@@ -1137,14 +1136,15 @@ const goSimpleRecord = (recordId) => {
 
 .simple-summary span {
   color: var(--v2-text-sub);
-  font-size: 10px;
+  font-size: 12px;
+  font-weight: 520;
   line-height: 1.2;
 }
 
 .simple-summary strong {
-  font-size: 14px;
-  font-weight: 680;
-  line-height: 1.15;
+  font-size: 19px;
+  font-weight: 560;
+  line-height: 1;
   white-space: nowrap;
 }
 
@@ -1492,8 +1492,8 @@ const goSimpleRecord = (recordId) => {
   white-space: nowrap;
 }
 
-.simple-record__result.win { color: var(--v2-success); }
-.simple-record__result.lose { color: var(--v2-danger); }
+.simple-record__result.profit { color: var(--v2-danger); }
+.simple-record__result.loss { color: #2563eb; }
 .simple-record__pending {
   padding: 5px 7px;
   border-radius: 7px;
@@ -2027,7 +2027,7 @@ const goSimpleRecord = (recordId) => {
   background: transparent;
   color: var(--v2-text-main);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) 148px;
   align-items: center;
   gap: 10px;
   text-align: left;
@@ -2091,14 +2091,30 @@ const goSimpleRecord = (recordId) => {
   color: #777188;
 }
 
-.recent-row--no-badge {
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
 .recent-row__main {
   display: grid;
   gap: 6px;
   min-width: 0;
+}
+
+.recent-row__outcome {
+  display: grid;
+  grid-template-columns: 48px 92px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.recent-row__outcome > :only-child {
+  grid-column: 2;
+}
+
+.recent-row__badge {
+  justify-self: end;
+}
+
+.recent-row__result {
+  justify-self: end;
 }
 
 .recent-row__main strong {
@@ -2138,18 +2154,20 @@ const goSimpleRecord = (recordId) => {
 }
 
 .recent-row__result {
+  min-width: 0;
   font-size: 16px;
   font-weight: 560;
   line-height: 1;
+  text-align: right;
   white-space: nowrap;
 }
 
 .recent-row__result--success {
-  color: var(--v2-success);
+  color: var(--v2-danger);
 }
 
 .recent-row__result--danger {
-  color: var(--v2-danger);
+  color: #2563eb;
 }
 
 .home-page__stats-grid {

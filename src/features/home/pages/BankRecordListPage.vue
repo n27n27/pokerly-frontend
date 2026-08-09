@@ -36,13 +36,32 @@
     <section class="record-list-section">
       <div class="list-heading">
         <h2>{{ selectedMonth }}월 기록</h2>
+        <div class="view-switch" aria-label="기록 보기 방식">
+          <button
+            type="button"
+            :class="{ active: viewMode === 'list' }"
+            @click="viewMode = 'list'"
+          >
+            목록
+          </button>
+          <button
+            type="button"
+            :class="{ active: viewMode === 'calendar' }"
+            @click="viewMode = 'calendar'"
+          >
+            달력
+          </button>
+        </div>
+      </div>
+
+      <div v-if="viewMode === 'list'" class="list-sort">
         <button type="button" @click="sortOrder = sortOrder === 'desc' ? 'asc' : 'desc'">
           {{ sortOrder === 'desc' ? '최신순' : '오래된순' }}
           <q-icon name="expand_more" size="18px" />
         </button>
       </div>
 
-      <div class="record-list">
+      <div v-if="viewMode === 'list'" class="record-list">
         <div v-if="records.length === 0" class="record-list__empty">
           선택한 달의 기록이 없습니다.
         </div>
@@ -58,7 +77,7 @@
           </span>
           <span class="record-main">
             <strong>{{ record.title }}</strong>
-            <small>바인 {{ record.buyIn }} · {{ record.entries }} Entries</small>
+            <small>총 바인 {{ record.totalBuyIn }} · {{ record.entries }}회</small>
           </span>
           <strong v-if="record.result" class="record-result" :class="record.tone">{{
             record.result
@@ -66,6 +85,61 @@
           <span v-else class="record-pending">결과 미입력</span>
           <q-icon name="chevron_right" size="21px" />
         </button>
+      </div>
+
+      <div v-else class="calendar-view">
+        <div class="calendar-weekdays" aria-hidden="true">
+          <span v-for="weekday in weekdays" :key="weekday">{{ weekday }}</span>
+        </div>
+        <div class="calendar-grid">
+          <span v-for="index in calendarLeadingBlankCount" :key="`blank-${index}`"></span>
+          <button
+            v-for="day in calendarDays"
+            :key="day.dateKey"
+            type="button"
+            :class="[
+              day.tone,
+              { selected: selectedDateKey === day.dateKey, recorded: day.sessions.length > 0 },
+            ]"
+            :aria-label="day.ariaLabel"
+            @click="selectCalendarDay(day)"
+          >
+            <strong>{{ day.day }}</strong>
+            <small :class="{ placeholder: !day.displayProfit }">{{
+              day.displayProfit || '\u00a0'
+            }}</small>
+          </button>
+        </div>
+
+        <section v-if="selectedCalendarDay" class="calendar-day-detail">
+          <div class="calendar-day-heading">
+            <div>
+              <h3>{{ selectedMonth }}월 {{ selectedCalendarDay.day }}일</h3>
+              <span>{{ selectedCalendarDay.sessions.length }}개 기록</span>
+            </div>
+            <strong :class="selectedCalendarDay.tone">
+              {{ selectedCalendarDay.totalLabel }}
+            </strong>
+          </div>
+
+          <div v-if="selectedCalendarDay.records.length" class="calendar-day-records">
+            <button
+              v-for="record in selectedCalendarDay.records"
+              :key="record.id"
+              type="button"
+              @click="openRecord(record.id)"
+            >
+              <span>
+                <strong>{{ record.title }}</strong>
+                <small>총 바인 {{ record.totalBuyIn }} · {{ record.entries }}회</small>
+              </span>
+              <strong v-if="record.result" :class="record.tone">{{ record.result }}</strong>
+              <small v-else class="record-pending">결과 미입력</small>
+              <q-icon name="chevron_right" size="19px" />
+            </button>
+          </div>
+          <div v-else class="calendar-day-empty">이 날짜에 기록이 없습니다.</div>
+        </section>
       </div>
     </section>
 
@@ -79,6 +153,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
+import { formatCompactNumber } from 'src/utils/numberFormat'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
@@ -92,8 +167,13 @@ const selectedYear = ref(hasValidQueryMonth ? queryYear : now.getFullYear())
 const selectedMonth = ref(hasValidQueryMonth ? queryMonth : now.getMonth() + 1)
 const sessions = ref([])
 const sortOrder = ref('desc')
+const viewMode = ref('list')
+const selectedDateKey = ref('')
+const weekdays = ['월', '화', '수', '목', '금', '토', '일']
 const signed = (value) =>
-  `${Number(value) > 0 ? '+' : ''}${Number(value || 0).toLocaleString('ko-KR')}`
+  formatCompactNumber(Number(value) || 0, {
+    signDisplay: 'exceptZero',
+  })
 const selectedMonthLabel = computed(() => `${selectedYear.value}년 ${selectedMonth.value}월`)
 const isCurrentMonth = computed(
   () => selectedYear.value === now.getFullYear() && selectedMonth.value === now.getMonth() + 1,
@@ -117,6 +197,19 @@ const summary = computed(() => {
     roi: totalBuyIn > 0 ? (totalProfit * 100) / totalBuyIn : 0,
   }
 })
+const recordFromSession = (session) => {
+  const [, month = '', day = ''] = String(session.playDate || '').split('-')
+  return {
+    id: session.id,
+    day,
+    month: month ? `${Number(month)}월` : '-',
+    title: tournamentDisplayName(session),
+    totalBuyIn: totalBuyInOf(session).toLocaleString('ko-KR'),
+    entries: session.entries || 1,
+    result: session.tournamentStatus === 'RUNNING' ? '' : signed(session.netProfit),
+    tone: Number(session.netProfit) >= 0 ? 'win' : 'lose',
+  }
+}
 const records = computed(() =>
   [...scopedSessions.value]
     .sort((a, b) =>
@@ -124,19 +217,55 @@ const records = computed(() =>
         ? String(b.playDate || '').localeCompare(String(a.playDate || ''))
         : String(a.playDate || '').localeCompare(String(b.playDate || '')),
     )
-    .map((session) => {
-      const [, month = '', day = ''] = String(session.playDate || '').split('-')
-      return {
-        id: session.id,
-        day,
-        month: month ? `${Number(month)}월` : '-',
-        title: tournamentDisplayName(session),
-        buyIn: Number(session.buyInPerEntry || 0).toLocaleString('ko-KR'),
-        entries: session.entries || 1,
-        result: session.tournamentStatus === 'RUNNING' ? '' : signed(session.netProfit),
-        tone: Number(session.netProfit) >= 0 ? 'win' : 'lose',
-      }
-    }),
+    .map(recordFromSession),
+)
+const sessionsByDate = computed(() => {
+  const grouped = new Map()
+  scopedSessions.value.forEach((session) => {
+    const dateKey = String(session.playDate || '').slice(0, 10)
+    if (!dateKey) return
+    if (!grouped.has(dateKey)) grouped.set(dateKey, [])
+    grouped.get(dateKey).push(session)
+  })
+  return grouped
+})
+const calendarLeadingBlankCount = computed(() => {
+  const firstDay = new Date(selectedYear.value, selectedMonth.value - 1, 1).getDay()
+  return (firstDay + 6) % 7
+})
+const calendarDays = computed(() => {
+  const daysInMonth = new Date(selectedYear.value, selectedMonth.value, 0).getDate()
+  return Array.from({ length: daysInMonth }, (_, index) => {
+    const day = index + 1
+    const dateKey = `${selectedYear.value}-${String(selectedMonth.value).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const daySessions = sessionsByDate.value.get(dateKey) || []
+    const completed = daySessions.filter((session) => session.tournamentStatus !== 'RUNNING')
+    const totalProfit = completed.reduce((sum, session) => sum + (Number(session.netProfit) || 0), 0)
+    const hasCompleted = completed.length > 0
+    const tone = !hasCompleted ? 'pending' : totalProfit > 0 ? 'win' : totalProfit < 0 ? 'lose' : 'even'
+    const displayProfit = hasCompleted
+      ? formatCompactNumber(totalProfit, { signDisplay: 'exceptZero', maximumFractionDigits: 1 })
+      : daySessions.length
+        ? '진행 중'
+        : ''
+    return {
+      day,
+      dateKey,
+      sessions: daySessions,
+      completed,
+      totalProfit,
+      tone,
+      displayProfit,
+      totalLabel: hasCompleted ? signed(totalProfit) : daySessions.length ? '진행 중' : '-',
+      records: [...daySessions]
+        .sort((a, b) => Number(b.id || 0) - Number(a.id || 0))
+        .map(recordFromSession),
+      ariaLabel: `${selectedMonth.value}월 ${day}일${displayProfit ? `, ${displayProfit}` : ''}`,
+    }
+  })
+})
+const selectedCalendarDay = computed(
+  () => calendarDays.value.find((day) => day.dateKey === selectedDateKey.value) || null,
 )
 
 onMounted(async () => {
@@ -149,6 +278,11 @@ const moveMonth = (delta) => {
   if (date > new Date(now.getFullYear(), now.getMonth(), 1)) return
   selectedYear.value = date.getFullYear()
   selectedMonth.value = date.getMonth() + 1
+  selectedDateKey.value = ''
+}
+
+const selectCalendarDay = (day) => {
+  selectedDateKey.value = day.dateKey
 }
 
 const openRecord = (recordId) => {
@@ -258,10 +392,10 @@ const goBack = () => {
   white-space: nowrap;
 }
 .win {
-  color: var(--v2-success);
+  color: var(--v2-danger);
 }
 .lose {
-  color: var(--v2-danger);
+  color: #2563eb;
 }
 .record-list-section {
   display: grid;
@@ -278,7 +412,37 @@ const goBack = () => {
   font-size: 16px;
   font-weight: 620;
 }
-.list-heading button {
+.view-switch {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  padding: 3px;
+  border-radius: 10px;
+  background: #f0edf6;
+}
+.view-switch button {
+  min-width: 50px;
+  height: 30px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--v2-text-sub);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+}
+.view-switch button.active {
+  background: #fff;
+  color: var(--v2-primary);
+  box-shadow: 0 2px 8px rgba(28, 18, 60, 0.08);
+}
+.list-sort {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -4px;
+}
+.list-sort button {
   display: flex;
   min-height: 32px;
   align-items: center;
@@ -292,7 +456,8 @@ const goBack = () => {
   font: inherit;
   font-size: 11px;
 }
-.list-heading button:focus-visible {
+.list-sort button:focus-visible,
+.view-switch button:focus-visible {
   box-shadow: 0 0 0 2px rgba(109, 69, 232, 0.18);
 }
 .record-list {
@@ -378,6 +543,176 @@ const goBack = () => {
 }
 .record-list .q-icon {
   color: var(--v2-text-sub);
+}
+.calendar-view {
+  display: grid;
+  gap: 12px;
+}
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+.calendar-weekdays {
+  padding: 0 4px;
+}
+.calendar-weekdays span {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+  font-weight: 600;
+  text-align: center;
+}
+.calendar-grid {
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  box-shadow: var(--v2-shadow-card);
+}
+.calendar-grid > span,
+.calendar-grid > button {
+  min-width: 0;
+  min-height: 52px;
+}
+.calendar-grid > button {
+  display: grid;
+  grid-template-rows: 14px 12px;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  padding: 5px 1px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--v2-text-main);
+  font: inherit;
+}
+.calendar-grid > button.recorded {
+  background: #faf9fc;
+}
+.calendar-grid > button.selected {
+  border-color: rgba(109, 69, 232, 0.32);
+  background: #f2edff;
+}
+.calendar-grid strong {
+  font-size: 11px;
+  font-weight: 620;
+}
+.calendar-grid small {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 8px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-grid button.win small,
+.calendar-day-heading strong.win,
+.calendar-day-records .win {
+  color: var(--v2-danger);
+}
+.calendar-grid button.lose small,
+.calendar-day-heading strong.lose,
+.calendar-day-records .lose {
+  color: #2563eb;
+}
+.calendar-grid button.even small,
+.calendar-grid button.pending small,
+.calendar-day-heading strong.even,
+.calendar-day-heading strong.pending {
+  color: var(--v2-text-sub);
+}
+.calendar-grid small.placeholder {
+  visibility: hidden;
+}
+.calendar-day-detail {
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  box-shadow: var(--v2-shadow-card);
+}
+.calendar-day-heading {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--v2-border);
+}
+.calendar-day-heading > div {
+  display: grid;
+  gap: 4px;
+}
+.calendar-day-heading h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+.calendar-day-heading span {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+}
+.calendar-day-heading > strong {
+  font-size: 14px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.calendar-day-records > button {
+  display: grid;
+  width: 100%;
+  min-height: 64px;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: transparent;
+  color: var(--v2-text-main);
+  font: inherit;
+  text-align: left;
+}
+.calendar-day-records > button:last-child {
+  border-bottom: 0;
+}
+.calendar-day-records > button > span {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+.calendar-day-records > button > span strong {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 620;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-day-records > button > span small {
+  overflow: hidden;
+  color: var(--v2-text-sub);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.calendar-day-records > button > strong {
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.calendar-day-records .q-icon {
+  color: var(--v2-text-sub);
+}
+.calendar-day-empty {
+  display: grid;
+  min-height: 76px;
+  place-items: center;
+  padding: 14px;
+  color: var(--v2-text-sub);
+  font-size: 11px;
 }
 .record-fab {
   position: fixed;

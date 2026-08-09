@@ -326,6 +326,7 @@ import { fetchHandLogEvent } from 'src/api/handLogApi'
 import { fetchVenues } from 'src/api/venue'
 import { useAuthStore } from 'src/stores/auth'
 import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
+import { formatCompactNumber } from 'src/utils/numberFormat'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -427,6 +428,9 @@ const formatSignedMan = (value) => {
   const man = Math.round(Math.abs(amount) / 1000) / 10
   return `${amount > 0 ? '+' : amount < 0 ? '-' : ''}${man.toLocaleString('ko-KR')}만`
 }
+const formatSignedCompact = (value) =>
+  formatCompactNumber(numberValue(value), { signDisplay: 'exceptZero' })
+const formatCompact = (value) => formatCompactNumber(numberValue(value))
 const formatPercent = (value) => `${numberValue(value).toFixed(1)}%`
 const isItm = (session) =>
   ['ITM', 'CHOP', 'WIN'].includes(String(session.tournamentResult || '').toUpperCase())
@@ -556,7 +560,7 @@ const bestRecordCards = computed(() => [
   {
     key: 'prize',
     label: '최고 상금',
-    value: bestPrizeSession.value ? formatNumber(bestPrizeSession.value.prize) : '-',
+    value: bestPrizeSession.value ? formatCompact(bestPrizeSession.value.prize) : '-',
     sub: bestPrizeSession.value?.tournamentName || '',
     tone: 'point',
     hasValue: Boolean(bestPrizeSession.value),
@@ -590,7 +594,7 @@ const bestRecordCards = computed(() => [
 const bankCards = computed(() => [
   {
     label: '순수익',
-    value: filteredSessions.value.length ? formatSignedMan(totals.value.totalProfit) : '-',
+    value: filteredSessions.value.length ? formatSignedCompact(totals.value.totalProfit) : '-',
     tone: 'profit',
     primary: true,
     valueTone:
@@ -610,12 +614,12 @@ const bankCards = computed(() => [
   },
   {
     label: '총 바인금액',
-    value: filteredSessions.value.length ? formatNumber(totals.value.totalBuyIn) : '-',
+    value: filteredSessions.value.length ? formatCompact(totals.value.totalBuyIn) : '-',
     tone: 'totalBuyIn',
   },
   {
     label: '총 상금',
-    value: filteredSessions.value.length ? formatNumber(totals.value.totalPrize) : '-',
+    value: filteredSessions.value.length ? formatCompact(totals.value.totalPrize) : '-',
     tone: 'totalPrize',
   },
   {
@@ -630,7 +634,7 @@ const bankCards = computed(() => [
   },
   {
     label: '평균 바인',
-    value: filteredSessions.value.length ? formatNumber(totals.value.avgBuyIn) : '-',
+    value: filteredSessions.value.length ? formatCompact(totals.value.avgBuyIn) : '-',
     tone: 'averageBuyIn',
   },
 ])

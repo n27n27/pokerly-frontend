@@ -329,8 +329,10 @@ const submitTournament = async () => {
     bigBlind: form.bigBlind || null,
     ante: form.ante || null,
   }
+  const playDate = formatLocalDate()
   const runningTournament = {
     name: form.name.trim() || '이름 없는 토너먼트',
+    date: playDate,
     venueId: selectedVenue.value?.id || null,
     venueName: selectedVenue.value?.name || '',
     startLevel,
@@ -356,6 +358,7 @@ const submitTournament = async () => {
     const eventId = await handLogStore.createEvent({
       name: runningTournament.name,
       startingStack: parseNumber(form.startingStack),
+      date: playDate,
     })
     if (!eventId) throw new Error('이벤트 생성에 실패했습니다.')
     createdEventId = eventId
@@ -374,7 +377,7 @@ const submitTournament = async () => {
     runningTournament.currentBlindLevelId = firstLevel.id
     const session = await createGameSession({
       venueId: runningTournament.venueId,
-      playDate: formatLocalDate(),
+      playDate,
       sessionType: runningTournament.venueId ? 'VENUE' : 'OTHER',
       gameType: 'TOURNAMENT',
       tournamentName: runningTournament.name,

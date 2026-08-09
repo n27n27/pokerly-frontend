@@ -24,6 +24,34 @@ export function formatNumber(value, opts = {}) {
   return nfInt.format(Math.trunc(num))
 }
 
+export function formatCompactNumber(value, opts = {}) {
+  const {
+    locale = 'ko-KR',
+    empty = '-',
+    signDisplay = 'auto',
+    maximumFractionDigits = 1,
+  } = opts
+
+  if (value === null || value === undefined || value === '') return empty
+
+  const num = typeof value === 'number' ? value : Number(String(value).replace(/,/g, ''))
+  if (!Number.isFinite(num)) return empty
+
+  if (locale.toLowerCase().startsWith('ko') && Math.abs(num) >= 10_000 && Math.abs(num) < 100_000_000) {
+    return `${new Intl.NumberFormat(locale, {
+      maximumFractionDigits,
+      signDisplay,
+    }).format(num / 10_000)}만`
+  }
+
+  return new Intl.NumberFormat(locale, {
+    notation: 'compact',
+    compactDisplay: 'short',
+    maximumFractionDigits,
+    signDisplay,
+  }).format(num)
+}
+
 export function parseNumber(input) {
   if (input === null || input === undefined) return null
   const s = String(input).trim()

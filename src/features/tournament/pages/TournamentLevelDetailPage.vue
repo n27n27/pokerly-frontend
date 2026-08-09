@@ -23,14 +23,24 @@
     <section v-else-if="!blindLevel" class="level-state-card">레벨 정보가 없습니다.</section>
 
     <section v-else class="stack-card">
-      <div class="stack-card__item">
-        <div class="stack-card__heading">
+      <button class="stack-card__edit" type="button" aria-label="스택 수정" @click="openStackSheet">
+        <q-icon name="edit" size="18px" />
+      </button>
+      <div class="stack-card__metrics">
+        <div class="stack-card__item stack-card__item--current">
           <span>현재 스택</span>
-          <button type="button" aria-label="현재 스택 수정" @click="openStackSheet">
-            <q-icon name="edit" size="18px" />
-          </button>
+          <div class="stack-card__value">
+            <strong>{{ currentStackDisplay }}</strong>
+            <small v-if="currentStackBb">{{ currentStackBb }}</small>
+          </div>
         </div>
-        <strong>{{ stackWithBb }}</strong>
+        <div class="stack-card__item">
+          <span>평균 스택</span>
+          <div class="stack-card__value">
+            <strong>{{ averageStackDisplay }}</strong>
+            <small v-if="averageStackBb">{{ averageStackBb }}</small>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -231,7 +241,7 @@
     <q-dialog v-model="stackSheetOpen" position="bottom">
       <q-card class="stack-sheet" @click.stop>
         <div class="stack-sheet__handle"></div>
-        <h2>현재 스택</h2>
+        <h2>스택 기록</h2>
         <label>
           <span>현재 스택</span>
           <input
@@ -240,6 +250,16 @@
             autofocus
             @click.stop
             @input="updateStackInput"
+          />
+        </label>
+        <label>
+          <span>평균 스택</span>
+          <input
+            :value="averageStackInput"
+            inputmode="numeric"
+            placeholder="선택 입력"
+            @click.stop
+            @input="updateAverageStackInput"
           />
         </label>
         <button
@@ -293,6 +313,7 @@ const movingTargetLevelId = ref(null)
 const loadedEventId = ref(null)
 const stackSheetOpen = ref(false)
 const stackInput = ref('')
+const averageStackInput = ref('')
 const savingStack = ref(false)
 const endingLevel = ref(false)
 const selectedGroupHand = ref('')
@@ -374,13 +395,28 @@ const currentStack = computed(() => {
     parseStoredNumber(storedTournament.startingStack)
   )
 })
-const stackWithBb = computed(() => {
-  if (currentStack.value == null) return '-'
-  const stack = formatNumber(currentStack.value)
+const currentStackDisplay = computed(() => formatNumber(currentStack.value))
+const currentStackBb = computed(() => {
+  if (currentStack.value == null) return ''
   const bigBlind = Number(blindLevel.value?.bigBlind || 0)
-  if (!bigBlind) return stack
+  if (!bigBlind) return ''
   const bb = Number(currentStack.value) / bigBlind
-  return `${stack} (${Number.isInteger(bb) ? bb : bb.toFixed(1)}BB)`
+  return `${Number.isInteger(bb) ? bb : bb.toFixed(1)} BB`
+})
+const averageStack = computed(() => {
+  if (isCurrentLevel.value) {
+    const sessionAverage = parseStoredNumber(storedTournament.averageStack)
+    if (sessionAverage != null) return sessionAverage
+  }
+  return parseStoredNumber(blindLevel.value?.averageStack)
+})
+const averageStackDisplay = computed(() => formatNumber(averageStack.value))
+const averageStackBb = computed(() => {
+  if (averageStack.value == null) return ''
+  const bigBlind = Number(blindLevel.value?.bigBlind || 0)
+  if (!bigBlind) return ''
+  const bb = averageStack.value / bigBlind
+  return `${Number.isInteger(bb) ? bb : bb.toFixed(1)} BB`
 })
 
 const formatInputNumber = (value) => {
@@ -390,11 +426,15 @@ const formatInputNumber = (value) => {
 
 const openStackSheet = () => {
   stackInput.value = formatInputNumber(currentStack.value)
+  averageStackInput.value = formatInputNumber(averageStack.value)
   stackSheetOpen.value = true
 }
 
 const updateStackInput = (event) => {
   stackInput.value = formatInputNumber(event.target.value)
+}
+const updateAverageStackInput = (event) => {
+  averageStackInput.value = formatInputNumber(event.target.value)
 }
 
 const saveStack = async () => {
@@ -405,25 +445,30 @@ const saveStack = async () => {
   }
 
   const endStack = Number(stackInput.value.replaceAll(',', ''))
+  const savedAverageStack = parseStoredNumber(averageStackInput.value)
   savingStack.value = true
   try {
     const saved = await handLogStore.updateBlindLevelInfo(eventId.value, blindLevel.value.id, {
       startStack: blindLevel.value.startStack ?? blindLevel.value.displayStartStack,
       endStack,
-      averageStack: blindLevel.value.averageStack,
+      averageStack: savedAverageStack,
       memo: blindLevel.value.memo,
     })
     if (!saved) throw new Error('Stack update returned no data')
 
     if (isCurrentLevel.value) {
       storedTournament.currentStack = formatInputNumber(endStack)
+      storedTournament.averageStack = formatInputNumber(savedAverageStack)
       storedTournament.currentBb =
         Number(saved.bigBlind || blindLevel.value.bigBlind) > 0
           ? Number((endStack / Number(saved.bigBlind || blindLevel.value.bigBlind)).toFixed(1))
           : null
       localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
       if (storedTournament.sessionId) {
-        await updateGameSessionProgress(storedTournament.sessionId, { currentStack: endStack })
+        await updateGameSessionProgress(storedTournament.sessionId, {
+          currentStack: endStack,
+          averageStack: savedAverageStack,
+        })
       }
     }
     stackSheetOpen.value = false
@@ -897,13 +942,13 @@ const goBack = () => {
 }
 
 .stack-card {
-  padding: 18px;
+  position: relative;
+  padding: 44px 18px 18px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
   background: #ffffff;
   box-shadow: 0 6px 18px rgba(28, 18, 60, 0.035);
-  display: grid;
-  gap: 16px;
+  display: block;
 }
 
 .level-topbar__copy {
@@ -939,47 +984,77 @@ const goBack = () => {
   border-radius: 0;
 }
 
-.stack-card__item {
-  min-width: 0;
-}
-
-.stack-card__heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.stack-card__heading button {
+.stack-card__edit {
+  position: absolute;
+  top: 9px;
+  right: 12px;
   width: 32px;
   height: 32px;
   padding: 0;
   border: 0;
-  outline: 0;
   background: transparent;
-  color: #817899;
+  color: var(--v2-primary);
   display: grid;
   place-items: center;
 }
 
-.stack-card__heading button:active {
-  color: var(--v2-primary);
+.stack-card__metrics {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  padding-top: 2px;
+}
+
+.stack-card__item {
+  min-width: 0;
+  padding: 0 0 0 18px;
+}
+
+.stack-card__item:first-child {
+  padding-right: 18px;
+  padding-left: 0;
+}
+
+.stack-card__item:last-child {
+  border-left: 1px solid var(--v2-border);
 }
 
 .stack-card__item span {
-  color: var(--v2-text-main);
-  font-size: 14px;
-  font-weight: 430;
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 450;
 }
 
-.stack-card__item strong {
-  margin-top: 11px;
+.stack-card__value {
+  min-width: 0;
+  margin-top: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.stack-card__value strong {
   color: var(--v2-text-main);
-  display: block;
+  font-size: 19px;
+  font-weight: 620;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.stack-card__item--current .stack-card__value strong {
   font-size: 24px;
+}
+
+.stack-card__value small {
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: #f2effb;
+  color: var(--v2-primary);
+  font-size: 11px;
   font-weight: 560;
   line-height: 1;
+  white-space: nowrap;
 }
+
 
 .level-stats,
 .rank-distribution,

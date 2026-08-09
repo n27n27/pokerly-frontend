@@ -26,7 +26,7 @@
 
         <label class="form-field">
           <span>날짜 <b>*</b></span>
-          <input v-model="form.date" type="date" />
+          <AppDatePicker v-model="form.date" aria-label="대회 날짜 선택" />
         </label>
 
         <div class="amount-grid">
@@ -130,6 +130,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
+import AppDatePicker from 'src/shared/components/AppDatePicker.vue'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { createGameSession, fetchGameSession, updateSimpleGameSession } from 'src/api/gameSession'
 import { useVenueStore } from 'src/stores/venue'

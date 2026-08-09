@@ -141,7 +141,7 @@ onMounted(async () => {
   const legacyItems = (legacyEvents || [])
     .filter((event) => !linkedEventIds.has(String(event.id)))
     .map((event) => {
-      const rawDate = String(event.eventAt || event.createdAt || '').slice(0, 10)
+      const rawDate = event.date || String(event.eventAt || event.createdAt || '').slice(0, 10)
       return {
         key: `event-${event.id}`,
         id: event.id,
@@ -151,7 +151,7 @@ onMounted(async () => {
         rawDate,
         venueId: null,
         venueName: '기타',
-        badge: `${Number(event.handCount || 0)}핸드`,
+        badge: '',
         tone: 'default',
       }
     })

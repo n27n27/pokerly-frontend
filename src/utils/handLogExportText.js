@@ -106,11 +106,12 @@ const formatTimeline = (hand) => {
     lines.push('   액션:')
     timeline.actions.forEach((action, index) => {
       const actionName = ACTION_TEXT[action.type] || action.type || '-'
-      const amount = Number(action.amount)
+      const amount = Number(action.isAllIn ? action.allInStack || action.amount : action.amount)
       const amountText = amount > 0 ? ` ${formatNumber(amount)}` : ''
+      const allInText = action.isAllIn ? ' · 올인' : ''
       const potText = Number(action.potAfter) > 0 ? ` | 팟 ${formatNumber(action.potAfter)}` : ''
       lines.push(
-        `     ${index + 1}. ${action.street || '-'} | ${action.player || '-'} | ${actionName}${amountText}${potText}`,
+        `     ${index + 1}. ${action.street || '-'} | ${action.player || '-'} | ${actionName}${amountText}${allInText}${potText}`,
       )
     })
   }

@@ -128,7 +128,23 @@
                   {{ action.player }}
                   <small v-if="isHeroAction(action)">나</small>
                 </b>
-                <p>{{ reviewActionText(action) }}</p>
+                <div class="review-action-badges">
+                  <span class="review-action-badge review-action-badge--type">
+                    {{ reviewActionLabel(action) }}
+                  </span>
+                  <span
+                    v-if="reviewActionAmount(action)"
+                    class="review-action-badge review-action-badge--amount"
+                  >
+                    {{ reviewActionAmount(action) }}
+                  </span>
+                  <span
+                    v-if="action.isAllIn"
+                    class="review-action-badge review-action-badge--all-in"
+                  >
+                    올인
+                  </span>
+                </div>
               </li>
             </ol>
           </section>
@@ -281,17 +297,19 @@ const actionLabels = {
   RAISE: '레이즈',
 }
 const formatChips = (value) => Number(value || 0).toLocaleString('ko-KR')
-const reviewActionText = (action) => {
-  const label = actionLabels[action.type] || action.type || '-'
-  if (!action.amount) return label
+const reviewActionLabel = (action) => actionLabels[action.type] || action.type || '-'
+const reviewActionAmount = (action) => {
+  const amount = Number(action.isAllIn ? action.allInStack || action.amount : action.amount)
+  if (!amount) return ''
   const bigBlind = Number(
     reviewTimeline.value.bigBlind ||
+      handLogStore.selectedBlindLevel?.bigBlind ||
       storedTournament.currentBlinds?.bigBlind ||
       storedTournament.startBlinds?.bigBlind ||
       0,
   )
-  const bb = bigBlind > 0 ? ` (${Number((Number(action.amount) / bigBlind).toFixed(1))}BB)` : ''
-  return `${label} ${formatChips(action.amount)}${bb}`
+  const bb = bigBlind > 0 ? ` (${Number((amount / bigBlind).toFixed(1))}BB)` : ''
+  return `${formatChips(amount)}${bb}`
 }
 const reviewActionClass = (action) => ({
   'is-aggressive': ['OPEN', 'BET', 'RAISE'].includes(action.type),
@@ -317,6 +335,7 @@ const storedTournament = (() => {
 onMounted(async () => {
   if (!eventId.value || !levelId.value || !handId.value) return
   try {
+    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
     await handLogStore.fetchHandDetail(eventId.value, levelId.value, handId.value)
   } catch {
     alert.show('핸드 정보를 불러오지 못했습니다.', 'error')
@@ -704,8 +723,8 @@ const goBack = () => {
 }
 .review-timeline__street {
   display: grid;
-  grid-template-columns: 52px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 46px minmax(0, 1fr);
+  gap: 8px;
 }
 .review-timeline__street-heading {
   padding-top: 2px;
@@ -732,10 +751,10 @@ const goBack = () => {
 .review-timeline li {
   position: relative;
   display: grid;
-  grid-template-columns: 14px 84px minmax(0, 1fr);
+  grid-template-columns: 14px 56px minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
-  min-height: 32px;
+  gap: 5px;
+  min-height: 36px;
 }
 .review-timeline li::before {
   position: absolute;
@@ -768,7 +787,7 @@ const goBack = () => {
 }
 .review-timeline li > b {
   display: inline-grid;
-  grid-template-columns: minmax(42px, max-content) 18px;
+  grid-template-columns: minmax(28px, max-content) 18px;
   align-items: center;
   gap: 4px;
   color: var(--v2-text-main);
@@ -788,15 +807,34 @@ const goBack = () => {
   font-size: 9px;
   font-weight: 700;
 }
-.review-timeline li > p {
-  justify-self: start;
-  margin: 0;
-  padding: 5px 9px;
+.review-action-badges {
+  display: flex;
+  min-width: 0;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 4px;
+}
+.review-action-badge {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  padding: 5px 7px;
   border-radius: 8px;
   background: #f7f5fa;
   color: #3f3a4e;
   font-size: 11px;
+  font-weight: 560;
   line-height: 1.25;
+  white-space: nowrap;
+}
+.review-action-badge--amount {
+  color: var(--v2-text-sub);
+  font-variant-numeric: tabular-nums;
+}
+.review-action-badge--all-in {
+  background: #fff0f1;
+  color: #e5484d;
+  font-weight: 700;
 }
 .review-timeline li.is-hero > i {
   width: 9px;
@@ -809,7 +847,8 @@ const goBack = () => {
   background: var(--v2-primary);
   box-shadow: 0 0 0 1px #a98cff;
 }
-.review-timeline li.is-aggressive > p {
+.review-timeline li.is-aggressive .review-action-badge--type,
+.review-timeline li.is-aggressive .review-action-badge--amount {
   background: #f0ebff;
   color: var(--v2-primary);
   font-weight: 620;

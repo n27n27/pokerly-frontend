@@ -22,7 +22,16 @@
       </div>
 
       <section v-if="step === 1" class="edit-card">
-        <div class="step-heading"><h2>보드</h2></div>
+        <div class="step-heading">
+          <h2>보드</h2>
+          <button
+            v-if="hasBoardCards"
+            type="button"
+            @click="clearBoardCards"
+          >
+            전체 삭제
+          </button>
+        </div>
         <div class="board-editor">
           <template v-for="(street, streetIndex) in boardStreets" :key="street.name">
             <div class="street-group" :class="`street-group--${street.key}`">
@@ -116,13 +125,29 @@
 
           <div v-if="pendingAction" class="amount-entry">
             <label>
-              <span>금액</span>
+              <span>{{ pendingAllIn ? '올인 당시 스택' : '금액' }}</span>
               <input v-model="actionAmount" inputmode="numeric" autofocus />
             </label>
+            <button
+              class="amount-entry__all-in"
+              :class="{ selected: pendingAllIn }"
+              type="button"
+              role="checkbox"
+              :aria-checked="pendingAllIn"
+              @click="pendingAllIn = !pendingAllIn"
+            >
+              <span aria-hidden="true">{{ pendingAllIn ? '✓' : '' }}</span>
+              올인
+            </button>
             <span class="amount-entry__bb">
               {{ amountInBb ? `${amountInBb} BB` : '' }}
             </span>
-            <button type="button" :disabled="!validActionAmount" @click="confirmTimelineAction">
+            <button
+              class="amount-entry__submit"
+              type="button"
+              :disabled="!validActionAmount"
+              @click="confirmTimelineAction"
+            >
               입력
             </button>
           </div>
@@ -162,7 +187,7 @@
       <section v-else-if="showdownRequired && step === 3" class="edit-card">
         <div class="step-heading"><h2>쇼다운 카드</h2></div>
         <div class="showdown-editor">
-          <p>리버 콜 이후 공개된 카드를 입력해주세요.</p>
+          <p>쇼다운에서 공개된 상대 카드가 있다면 입력해주세요. 공개되지 않은 카드는 비워둘 수 있습니다.</p>
           <div
             v-for="position in opponentShowdownPlayers"
             :key="position"
@@ -234,6 +259,7 @@ const step = ref(1)
 const pickerOpen = ref(false)
 const activeStreetKey = ref('flop')
 const activeCardIndex = ref(0)
+const replacingCard = ref(false)
 const activeShowdownPlayer = ref('')
 const showdownCards = ref({})
 const memo = ref('')
@@ -257,19 +283,24 @@ const storedTournament = (() => {
     return {}
   }
 })()
-const bigBlind = Number(
-  String(
-    storedTournament.currentBlinds?.bigBlind ||
-      storedTournament.startBlinds?.bigBlind ||
-      0,
-  ).replaceAll(',', ''),
+const parseNumber = (value) => Number(String(value || '').replaceAll(',', '')) || 0
+const blindLevel = computed(() =>
+  handLogStore.selectedBlindLevel?.id &&
+  String(handLogStore.selectedBlindLevel.id) === levelId.value
+    ? handLogStore.selectedBlindLevel
+    : handLogStore.selectedEvent?.blindLevels?.find(
+        (level) => String(level.id) === levelId.value,
+      ),
 )
-const ante = Number(
-  String(
-    storedTournament.currentBlinds?.ante ||
-      storedTournament.startBlinds?.ante ||
-      0,
-  ).replaceAll(',', ''),
+const bigBlind = computed(() =>
+  parseNumber(blindLevel.value?.bigBlind) ||
+  parseNumber(storedTournament.currentBlinds?.bigBlind) ||
+  parseNumber(storedTournament.startBlinds?.bigBlind),
+)
+const ante = computed(() =>
+  parseNumber(blindLevel.value?.ante) ||
+  parseNumber(storedTournament.currentBlinds?.ante) ||
+  parseNumber(storedTournament.startBlinds?.ante),
 )
 const handedCount = ref(
   Math.min(10, Math.max(4, Number(storedTournament.currentHandedCount) || 10)),
@@ -297,19 +328,13 @@ const opponentShowdownPlayers = computed(() =>
   timeline.showdownPlayers.value.filter((position) => position !== heroPosition.value),
 )
 const totalSteps = computed(() => (showdownRequired.value ? 4 : 3))
-const showdownComplete = computed(() =>
-  !showdownRequired.value ||
-  opponentShowdownPlayers.value.every(
-    (position) => showdownCards.value[position]?.filter(Boolean).length === 2,
-  ),
-)
 const stepBlocked = computed(
   () =>
-    (step.value === 2 && !timeline.handComplete.value) ||
-    (showdownRequired.value && step.value === 3 && !showdownComplete.value),
+    step.value === 2 && !timeline.handComplete.value,
 )
 const pendingAction = ref('')
 const actionAmount = ref('')
+const pendingAllIn = ref(false)
 const aggressiveActions = ['OPEN', 'BET', 'RAISE']
 
 const togglePlayer = (position) => {
@@ -339,6 +364,7 @@ const timelineButtonLabel = (action) => {
 const selectTimelineAction = (action) => {
   if (aggressiveActions.includes(action)) {
     pendingAction.value = action
+    pendingAllIn.value = false
     actionAmount.value = ''
     return
   }
@@ -346,23 +372,33 @@ const selectTimelineAction = (action) => {
 }
 const numericActionAmount = computed(() => Number(String(actionAmount.value).replaceAll(',', '')))
 const validActionAmount = computed(
-  () => numericActionAmount.value >= Number(timeline.minRaiseAmount.value || 0),
+  () =>
+    numericActionAmount.value > 0 &&
+    (pendingAction.value === 'CALL' ||
+      (pendingAllIn.value && numericActionAmount.value > Number(timeline.currentBet.value || 0)) ||
+      numericActionAmount.value >= Number(timeline.minRaiseAmount.value || 0)),
 )
 const amountInBb = computed(() =>
-  bigBlind > 0 && numericActionAmount.value
-    ? Number((numericActionAmount.value / bigBlind).toFixed(1))
+  bigBlind.value > 0 && numericActionAmount.value
+    ? Number((numericActionAmount.value / bigBlind.value).toFixed(1))
     : '',
 )
 const confirmTimelineAction = () => {
   if (!validActionAmount.value) return
-  if (timeline.recordAction(pendingAction.value, numericActionAmount.value)) {
+  const actionAmountValue = pendingAction.value === 'CALL' ? null : numericActionAmount.value
+  if (timeline.recordAction(pendingAction.value, actionAmountValue, {
+    isAllIn: pendingAllIn.value,
+    allInStack: pendingAllIn.value ? numericActionAmount.value : null,
+  })) {
     pendingAction.value = ''
     actionAmount.value = ''
+    pendingAllIn.value = false
   }
 }
 const clearPendingTimelineAction = () => {
   pendingAction.value = ''
   actionAmount.value = ''
+  pendingAllIn.value = false
   showdownCards.value = {}
 }
 const editParticipants = () => {
@@ -396,9 +432,12 @@ const timelineItemLabel = (item) => {
       ).length
     label = `${previousAggressions + 2}벳`
   }
-  if (!item.amount) return label
-  const bb = bigBlind > 0 ? ` (${Number((item.amount / bigBlind).toFixed(1))}BB)` : ''
-  return `${label} ${Number(item.amount).toLocaleString('ko-KR')}${bb}`
+  const amount = item.isAllIn ? item.allInStack || item.amount : item.amount
+  if (!amount) return item.isAllIn ? `${label} · 올인` : label
+  const bb = bigBlind.value > 0
+    ? ` (${Number((amount / bigBlind.value).toFixed(1))}BB)`
+    : ''
+  return `${label} ${Number(amount).toLocaleString('ko-KR')}${bb}${item.isAllIn ? ' · 올인' : ''}`
 }
 const nextStreetLabel = computed(() => {
   const streets = ['PREFLOP', 'FLOP', 'TURN', 'RIVER']
@@ -408,6 +447,7 @@ const nextStreetLabel = computed(() => {
 const loadReview = async () => {
   if (!eventId.value || !levelId.value || !handId.value) return
   try {
+    await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
     const hand = await handLogStore.fetchHandDetail(
       eventId.value,
       levelId.value,
@@ -450,6 +490,9 @@ const activeCard = computed(() =>
     ? showdownCards.value[activeShowdownPlayer.value]?.[activeCardIndex.value] || null
     : activeStreet.value?.cards[activeCardIndex.value] || null,
 )
+const hasBoardCards = computed(() =>
+  boardStreets.value.some((street) => street.cards.some(Boolean)),
+)
 const flopSelectionIncomplete = computed(
   () =>
     activeStreetKey.value === 'flop' &&
@@ -479,6 +522,9 @@ const openCardPicker = (streetKey, index) => {
   activeShowdownPlayer.value = ''
   activeStreetKey.value = streetKey
   activeCardIndex.value = index
+  replacingCard.value = Boolean(
+    boardStreets.value.find((street) => street.key === streetKey)?.cards[index],
+  )
   pickerOpen.value = true
 }
 const openShowdownCardPicker = (position, index) => {
@@ -488,6 +534,7 @@ const openShowdownCardPicker = (position, index) => {
   activeStreetKey.value = 'showdown'
   activeShowdownPlayer.value = position
   activeCardIndex.value = index
+  replacingCard.value = Boolean(showdownCards.value[position]?.[index])
   pickerOpen.value = true
 }
 const closeCardPicker = () => {
@@ -498,12 +545,18 @@ const selectCard = (card) => {
     const cards = showdownCards.value[activeShowdownPlayer.value] || [null, null]
     cards[activeCardIndex.value] = card
     showdownCards.value[activeShowdownPlayer.value] = cards
-    if (activeCardIndex.value === 0 && !cards[1]) activeCardIndex.value = 1
+    if (replacingCard.value) closeCardPicker()
+    else if (activeCardIndex.value === 0 && !cards[1]) activeCardIndex.value = 1
     else closeCardPicker()
     return
   }
   if (!activeStreet.value) return
   activeStreet.value.cards[activeCardIndex.value] = card
+
+  if (replacingCard.value) {
+    closeCardPicker()
+    return
+  }
 
   const currentStreetIndex = boardStreets.value.findIndex(
     (street) => street.key === activeStreetKey.value,
@@ -525,18 +578,24 @@ const selectCard = (card) => {
 }
 const clearActiveCard = () => {
   if (activeStreetKey.value === 'showdown') {
-    showdownCards.value[activeShowdownPlayer.value] = [null, null]
-    activeCardIndex.value = 0
+    const cards = showdownCards.value[activeShowdownPlayer.value] || [null, null]
+    cards[activeCardIndex.value] = null
+    showdownCards.value[activeShowdownPlayer.value] = cards
+    closeCardPicker()
     return
   }
   if (activeStreet.value) {
-    if (activeStreetKey.value === 'flop') {
-      activeStreet.value.cards = activeStreet.value.cards.map(() => null)
-      activeCardIndex.value = 0
-    } else {
-      activeStreet.value.cards[activeCardIndex.value] = null
-    }
+    activeStreet.value.cards[activeCardIndex.value] = null
+    closeCardPicker()
   }
+}
+const clearBoardCards = () => {
+  boardStreets.value.forEach((street) => {
+    street.cards = street.cards.map(() => null)
+  })
+  activeStreetKey.value = 'flop'
+  activeCardIndex.value = 0
+  replacingCard.value = false
 }
 const saveReview = async () => {
   const hand = handLogStore.selectedHand
@@ -571,10 +630,6 @@ const saveReview = async () => {
 }
 
 const nextStep = () => {
-  if (showdownRequired.value && step.value === 3 && !showdownComplete.value) {
-    alert.show('쇼다운 카드를 모두 입력해 주세요.', 'warning')
-    return
-  }
   if (step.value < totalSteps.value) step.value += 1
   else saveReview()
 }
@@ -629,13 +684,16 @@ const nextStep = () => {
 .available-actions { margin-top: 14px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .available-actions button { min-height: 48px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-sm); background: #fff; color: var(--v2-text-main); font: inherit; font-size: 14px; font-weight: 560; }
 .available-actions button:active { border-color: var(--v2-primary); background: var(--v2-primary-soft); color: var(--v2-primary); }
-.amount-entry { margin-top: 12px; padding: 12px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); display: grid; grid-template-columns: minmax(0, 1fr) 64px 64px; align-items: end; gap: 9px; }
+.amount-entry { margin-top: 12px; padding: 12px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); display: grid; grid-template-columns: minmax(0, 1fr) auto 54px 64px; align-items: end; gap: 8px; }
 .amount-entry label { display: grid; gap: 5px; }
 .amount-entry label span { color: var(--v2-text-sub); font-size: 11px; }
 .amount-entry input { width: 100%; height: 42px; padding: 0 10px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-sm); outline: 0; color: var(--v2-text-main); font: inherit; font-size: 15px; }
 .amount-entry > span { padding-bottom: 12px; color: var(--v2-primary); font-size: 12px; font-weight: 560; text-align: center; white-space: nowrap; }
-.amount-entry > button { height: 42px; border: 0; border-radius: var(--v2-radius-sm); background: var(--v2-primary); color: #fff; font: inherit; font-size: 13px; font-weight: 600; }
-.amount-entry > button:disabled { background: #e9e4f7; color: #aaa3bc; }
+.amount-entry__all-in { height: 42px; padding: 0 9px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-sm); background: #fff; color: var(--v2-text-sub); display: inline-flex; align-items: center; justify-content: center; gap: 5px; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.amount-entry__all-in span { width: 17px; height: 17px; border: 1.5px solid currentColor; border-radius: 5px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
+.amount-entry__all-in.selected { border-color: #ffc8c8; background: #fff2f2; color: #ef4444; }
+.amount-entry__submit { height: 42px; border: 0; border-radius: var(--v2-radius-sm); background: var(--v2-primary); color: #fff; font: inherit; font-size: 13px; font-weight: 600; }
+.amount-entry__submit:disabled { background: #e9e4f7; color: #aaa3bc; }
 .timeline-list { margin-top: 16px; overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); }
 .timeline-list__heading { min-height: 42px; padding: 0 12px; background: #faf9fd; display: flex; align-items: center; justify-content: space-between; }
 .timeline-list__heading strong { font-size: 13px; font-weight: 600; }

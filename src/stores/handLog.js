@@ -18,6 +18,7 @@ import {
   updateHandLogBlindLevelInfo,
   updateHandLogHand,
 } from 'src/api/handLogApi'
+import { formatLocalDate } from 'src/utils/localDate'
 
 import { getHandStrength } from 'src/utils/handLogHandAnalysis'
 
@@ -320,6 +321,7 @@ export const useHandLogStore = defineStore('handLog', () => {
         name: payload.name.trim(),
         venueId: payload.venueId,
         startingStack: payload.startingStack ?? null,
+        date: payload.date || formatLocalDate(),
       })
 
       const normalized = upsertEvent(saved)
