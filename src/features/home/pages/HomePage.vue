@@ -1,5 +1,22 @@
 <template>
-  <q-page v-if="isSimpleMode" class="home-page simple-home">
+  <q-page
+    v-if="homeInitializing"
+    class="home-page home-page--initializing"
+    aria-busy="true"
+    aria-label="홈 화면 불러오는 중"
+  >
+    <div class="home-initial-skeleton__heading">
+      <q-skeleton type="text" width="132px" height="42px" />
+      <q-skeleton type="rect" width="170px" height="48px" />
+    </div>
+    <div class="home-initial-skeleton__grid">
+      <q-skeleton v-for="index in 6" :key="index" type="rect" height="96px" />
+    </div>
+    <q-skeleton type="text" width="112px" height="36px" />
+    <q-skeleton type="rect" height="228px" />
+  </q-page>
+
+  <q-page v-else-if="isSimpleMode" class="home-page simple-home">
     <AppSection :title="simpleSummaryTitle" class="simple-summary-section">
       <template #action>
         <div class="simple-month-navigation" aria-label="요약 기간 선택">
@@ -349,7 +366,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AppCard from 'src/shared/components/AppCard.vue'
@@ -368,7 +385,9 @@ import { tournamentDisplayName } from 'src/utils/tournamentName'
 const router = useRouter()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
-const recordMode = ref('simple')
+// 첫 렌더 전에 저장된 모드를 확정해 간편/상세 화면이 서로 번쩍이는 것을 막는다.
+const recordMode = ref(localStorage.getItem('pokerly-record-mode') || 'simple')
+const homeInitializing = ref(true)
 const selectedPeriod = ref('month')
 const manageSheetOpen = ref(false)
 const manageSheetMode = ref('level')
@@ -440,24 +459,39 @@ const loadRunningTournament = async () => {
   }
 }
 
-onMounted(async () => {
-  recordMode.value = localStorage.getItem('pokerly-record-mode') || 'simple'
+const syncRunningTournament = (event) => {
+  if (recordMode.value !== 'detailed' || !event.detail) return
+  runningTournament.value = {
+    ...(runningTournament.value || {}),
+    ...event.detail,
+  }
+}
 
-  if (recordMode.value === 'simple') {
+onMounted(async () => {
+  window.addEventListener('pokerly-running-tournament-updated', syncRunningTournament)
+  try {
+    if (recordMode.value === 'simple') {
+      await Promise.all([
+        loadRecentTournaments(),
+        loadSimpleMonthlySummary(),
+        loadSimpleTrendSessions(),
+        loadSimpleVenues(),
+      ])
+      return
+    }
+
     await Promise.all([
       loadRecentTournaments(),
-      loadSimpleMonthlySummary(),
-      loadSimpleTrendSessions(),
-      loadSimpleVenues(),
+      loadRunningTournament(),
+      loadMonthlySummary(),
     ])
-    return
+  } finally {
+    homeInitializing.value = false
   }
+})
 
-  await Promise.all([
-    loadRecentTournaments(),
-    loadRunningTournament(),
-    loadMonthlySummary(),
-  ])
+onBeforeUnmount(() => {
+  window.removeEventListener('pokerly-running-tournament-updated', syncRunningTournament)
 })
 
 const isSimpleMode = computed(() => recordMode.value === 'simple')
@@ -847,7 +881,7 @@ const loadRunningTournamentDetail = async () => {
     if (!level) {
       const cleared = {
         ...tournament,
-        name: event.name || tournament.name,
+        name: tournament.name || event.name,
         currentBlindLevelId: null,
         currentLevel: null,
         currentBlinds: null,
@@ -877,7 +911,7 @@ const loadRunningTournamentDetail = async () => {
 
     const updated = {
       ...tournament,
-      name: event.name || tournament.name,
+      name: tournament.name || event.name,
       startingStack: formatQuickNumber(event.startingStack ?? tournament.startingStack),
       currentBlindLevelId: level.id,
       currentLevel: `L${level.levelNo}`,
@@ -1068,6 +1102,30 @@ const goSimpleRecord = (recordId) => {
   display: grid;
   gap: 26px;
   padding: 10px var(--v2-page-padding-x) 24px;
+}
+
+.home-page--initializing {
+  align-content: start;
+  gap: 24px;
+  pointer-events: none;
+}
+
+.home-initial-skeleton__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.home-initial-skeleton__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.home-page--initializing :deep(.q-skeleton) {
+  border-radius: var(--v2-radius-md);
+  background: #eeebf5;
 }
 
 .simple-home {

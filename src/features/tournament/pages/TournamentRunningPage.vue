@@ -227,7 +227,9 @@ const runningTournament = reactive(
 const totalBuyIns = computed(() => runningTournament.totalBuyIns ?? runningTournament.entries ?? 1)
 const event = computed(() => handLogStore.selectedEvent)
 const loading = computed(() => handLogStore.detailLoading)
-const tournamentName = computed(() => event.value?.name || runningTournament.name || '-')
+// GameSession is the canonical tournament record. HandLogEvent keeps a copy of the
+// name for hand-log screens, so it can temporarily lag behind an edited session.
+const tournamentName = computed(() => runningTournament.name || event.value?.name || '-')
 const tournamentSeats = ref([])
 
 const copyTournamentText = async () => {

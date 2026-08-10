@@ -74,7 +74,7 @@ const routes = [
       {
         path: 'simple-record',
         name: 'simple-record',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/home/pages/SimpleRecordPage.vue'),
       },
       {
@@ -98,7 +98,7 @@ const routes = [
       {
         path: 'tournament/create',
         name: 'tournament-create',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/tournament/pages/TournamentCreatePage.vue'),
       },
       {
@@ -110,7 +110,7 @@ const routes = [
       {
         path: 'tournament/start/setup',
         name: 'tournament-start-setup',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/tournament/pages/TournamentStartSetupPage.vue'),
       },
       {
@@ -146,7 +146,7 @@ const routes = [
       {
         path: 'tournament/running/finish',
         name: 'tournament-finish',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/tournament/pages/TournamentFinishPage.vue'),
       },
       {
@@ -158,19 +158,19 @@ const routes = [
       {
         path: 'tournament/running/level/:levelName/hand/new',
         name: 'tournament-hand-record',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/tournament/pages/TournamentHandRecordPage.vue'),
       },
       {
         path: 'tournament/running/level/:levelName/hand/:handId/edit',
         name: 'tournament-hand-edit',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/tournament/pages/TournamentHandRecordPage.vue'),
       },
       {
         path: 'tournament/running/level/:levelName/hand/:handId/review',
         name: 'tournament-hand-review-edit',
-        meta: { hideHeader: true },
+        meta: { hideHeader: true, disableBottomNavigation: true },
         component: () => import('src/features/tournament/pages/TournamentHandEditPage.vue'),
       },
       {

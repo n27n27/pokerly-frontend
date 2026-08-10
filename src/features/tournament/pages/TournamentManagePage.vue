@@ -29,6 +29,9 @@
           </button>
           <div v-if="tournamentMenuOpen" class="tournament-menu" @click.stop>
             <button type="button" @click="openTournamentEdit">수정</button>
+            <button class="destructive" type="button" @click="requestTournamentDelete">
+              대회 삭제
+            </button>
           </div>
         </div>
         <dl>
@@ -457,7 +460,8 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
+import { deleteGameSession, fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
+import { useAlert } from 'src/composables/useAlert'
 import { formatLocalDate } from 'src/utils/localDate'
 import {
   createTournamentPlayer,
@@ -471,6 +475,7 @@ import {
 } from 'src/api/tournamentParticipant'
 
 const router = useRouter()
+const alert = useAlert()
 const tournamentMenuOpen = ref(false)
 const editSheetOpen = ref(false)
 const participantSheetOpen = ref(false)
@@ -563,6 +568,41 @@ const setNumberField = (field, event, useGrouping = true) => {
   editForm[field] = formatNumber(event.target.value, useGrouping)
 }
 
+const applyServerSession = (session) => {
+  Object.assign(tournament, {
+    sessionId: session.id,
+    eventId: session.handLogEventId,
+    name: session.tournamentName,
+    venueId: session.venueId,
+    date: session.playDate,
+    buyIn: formatNumber(session.buyInPerEntry),
+    totalBuyIns: session.entries || 1,
+    discountAmount: formatNumber(session.discount),
+    memo: session.notes || '',
+    startLevel: session.startLevel,
+    currentLevel: session.currentLevel,
+    startingStack: formatNumber(session.startingStack),
+    currentStack: formatNumber(session.currentStack),
+    averageStack: formatNumber(session.averageStack),
+    currentBlinds: {
+      smallBlind: formatNumber(session.currentSmallBlind),
+      bigBlind: formatNumber(session.currentBigBlind),
+      ante: formatNumber(session.currentAnte),
+    },
+    tableMaxPlayers: Number(session.tableMaxPlayers) || 10,
+  })
+}
+
+const persistSynchronizedTournament = () => {
+  const synchronizedTournament = JSON.parse(JSON.stringify(tournament))
+  localStorage.setItem('pokerly-running-tournament', JSON.stringify(synchronizedTournament))
+  window.dispatchEvent(
+    new CustomEvent('pokerly-running-tournament-updated', {
+      detail: synchronizedTournament,
+    }),
+  )
+}
+
 const closePageMenus = () => {
   tournamentMenuOpen.value = false
   seatMenuNumber.value = null
@@ -607,6 +647,16 @@ const tournamentUpdatePayload = () => ({
 })
 
 const saveTournamentEdit = async () => {
+  if (!tournament.sessionId) return
+
+  const previous = {
+    name: tournament.name,
+    buyIn: tournament.buyIn,
+    totalBuyIns: tournament.totalBuyIns,
+    discountAmount: tournament.discountAmount,
+    memo: tournament.memo,
+  }
+
   Object.assign(tournament, {
     name: editForm.name.trim() || tournament.name,
     buyIn: editForm.buyIn || null,
@@ -614,11 +664,16 @@ const saveTournamentEdit = async () => {
     discountAmount: editForm.discountAmount || null,
     memo: editForm.memo.trim(),
   })
-  localStorage.setItem('pokerly-running-tournament', JSON.stringify(tournament))
-  if (tournament.sessionId) {
-    await updateGameSession(tournament.sessionId, tournamentUpdatePayload())
+
+  try {
+    const updatedSession = await updateGameSession(tournament.sessionId, tournamentUpdatePayload())
+    applyServerSession(updatedSession)
+    persistSynchronizedTournament()
+    editSheetOpen.value = false
+  } catch {
+    Object.assign(tournament, previous)
+    alert.show('대회 정보를 수정하지 못했습니다.', 'error')
   }
-  editSheetOpen.value = false
 }
 
 const createEmptySeat = (number) => ({
@@ -644,37 +699,26 @@ const mySeatNumber = ref('')
 const registeredOpponents = reactive([])
 
 onMounted(async () => {
-  if (!tournament.sessionId) {
+  try {
     const session = await fetchRunningGameSession()
-    if (!session) return
-    Object.assign(tournament, {
-      sessionId: session.id,
-      eventId: session.handLogEventId,
-      name: session.tournamentName,
-      venueId: session.venueId,
-      buyIn: formatNumber(session.buyInPerEntry),
-      totalBuyIns: session.entries || 1,
-      discountAmount: formatNumber(session.discount),
-      memo: session.notes || '',
-      startLevel: session.startLevel,
-      currentLevel: session.currentLevel,
-      startingStack: formatNumber(session.startingStack),
-      currentStack: formatNumber(session.currentStack),
-      averageStack: formatNumber(session.averageStack),
-      currentBlinds: {
-        smallBlind: formatNumber(session.currentSmallBlind),
-        bigBlind: formatNumber(session.currentBigBlind),
-        ante: formatNumber(session.currentAnte),
-      },
-      tableMaxPlayers: Number(session.tableMaxPlayers) || 10,
-    })
+    if (!session) {
+      localStorage.removeItem('pokerly-running-tournament')
+      router.replace('/app/home')
+      return
+    }
+
+    applyServerSession(session)
     seats.splice(
       0,
       seats.length,
       ...Array.from({ length: tournament.tableMaxPlayers }, (_, index) => createEmptySeat(index + 1)),
     )
-    localStorage.setItem('pokerly-running-tournament', JSON.stringify(tournament))
+    persistSynchronizedTournament()
+  } catch {
+    alert.show('진행 중인 대회 정보를 불러오지 못했습니다.', 'error')
+    return
   }
+
   const [players, assignedSeats] = await Promise.all([
     fetchTournamentPlayers(),
     fetchTournamentSeats(tournament.sessionId),
@@ -819,6 +863,40 @@ const runConfirmedAction = () => {
   confirmSheetOpen.value = false
   confirmState.action = null
   action?.()
+}
+
+const clearTournamentCache = (sessionId) => {
+  const runningKey = 'pokerly-running-tournament'
+  try {
+    const running = JSON.parse(localStorage.getItem(runningKey))
+    if (String(running?.sessionId || running?.id) === String(sessionId)) {
+      localStorage.removeItem(runningKey)
+    }
+  } catch {
+    localStorage.removeItem(runningKey)
+  }
+}
+
+const deleteTournament = async () => {
+  if (!tournament.sessionId) return
+  try {
+    await deleteGameSession(tournament.sessionId)
+    clearTournamentCache(tournament.sessionId)
+    alert.show('토너먼트를 삭제했습니다.', 'success')
+    await router.replace({ name: 'home' })
+  } catch (error) {
+    alert.show(error?.response?.data?.error?.message || '토너먼트를 삭제하지 못했습니다.', 'error')
+  }
+}
+
+const requestTournamentDelete = () => {
+  tournamentMenuOpen.value = false
+  requestConfirmation({
+    title: '토너먼트를 삭제할까요?',
+    message: '레벨, 핸드, 복기 및 좌석 기록도 함께 삭제되며 되돌릴 수 없습니다.',
+    confirmLabel: '삭제',
+    action: deleteTournament,
+  })
 }
 
 const applyMySeat = async (nextSeatNumber) => {
@@ -1202,6 +1280,10 @@ const saveParticipant = async () => {
 
 .tournament-menu button:active {
   background: #f0edf8;
+}
+
+.tournament-menu button.destructive {
+  color: var(--v2-danger, #ef4444);
 }
 
 .memo-row {

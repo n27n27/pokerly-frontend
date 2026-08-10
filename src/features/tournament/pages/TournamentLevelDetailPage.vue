@@ -238,7 +238,7 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="stackSheetOpen" position="bottom">
+    <q-dialog v-model="stackSheetOpen" position="bottom" no-refocus>
       <q-card class="stack-sheet" @click.stop>
         <div class="stack-sheet__handle"></div>
         <h2>스택 기록</h2>
@@ -247,7 +247,6 @@
           <input
             :value="stackInput"
             inputmode="numeric"
-            autofocus
             @click.stop
             @input="updateStackInput"
           />

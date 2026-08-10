@@ -7,6 +7,8 @@
         type="button"
         class="nav-item"
         :class="{ active: isActive(item) }"
+        :disabled="disabled"
+        :aria-disabled="disabled"
         @click="go(item.to)"
       >
         <q-icon :name="item.icon" size="22px" />
@@ -19,6 +21,10 @@
 <script setup>
 import { onBeforeUnmount, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+const props = defineProps({
+  disabled: { type: Boolean, default: false },
+})
 
 const route = useRoute()
 const router = useRouter()
@@ -42,6 +48,7 @@ const rememberModalPointer = () => {
 }
 
 const go = (to) => {
+  if (props.disabled) return
   // On iOS, the pointer that closes a bottom sheet can otherwise click the
   // navigation item revealed underneath it. Ignore that same pointer cycle.
   if (hasOpenModal() || Date.now() - modalPointerStartedAt < 500) return
@@ -102,5 +109,10 @@ onBeforeUnmount(() => {
 .nav-item.active {
   background: #f1ecff;
   color: #6d45e8;
+}
+
+.nav-item:disabled {
+  cursor: default;
+  pointer-events: none;
 }
 </style>

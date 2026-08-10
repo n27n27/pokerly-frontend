@@ -6,7 +6,7 @@
       <router-view />
     </q-page-container>
 
-    <BottomNavigation />
+    <BottomNavigation :disabled="Boolean(route.meta.disableBottomNavigation)" />
   </q-layout>
 </template>
 

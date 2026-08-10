@@ -17,8 +17,21 @@
           <button v-if="!legacyEventId" type="button" @click="resumeTournament">
             토너먼트 재개
           </button>
+          <button
+            v-if="!legacyEventId"
+            class="destructive"
+            type="button"
+            @click="deleteDialogOpen = true; menuOpen = false"
+          >
+            토너먼트 삭제
+          </button>
         </template>
-        <button v-else type="button" @click="editBankRecord">기록 수정</button>
+        <template v-else>
+          <button type="button" @click="editBankRecord">기록 수정</button>
+          <button class="destructive" type="button" @click="deleteDialogOpen = true; menuOpen = false">
+            기록 삭제
+          </button>
+        </template>
       </div>
     </header>
 
@@ -181,6 +194,18 @@
         </p>
       </div>
     </section>
+    <q-dialog v-model="deleteDialogOpen">
+      <q-card class="delete-dialog">
+        <h2>{{ eventId ? '토너먼트를 삭제할까요?' : '기록을 삭제할까요?' }}</h2>
+        <p>연결된 레벨, 핸드, 복기 및 좌석 기록도 함께 삭제되며 되돌릴 수 없습니다.</p>
+        <div>
+          <button type="button" @click="deleteDialogOpen = false">취소</button>
+          <button class="danger" type="button" :disabled="deleting" @click="removeTournament">
+            {{ deleting ? '삭제 중...' : '삭제' }}
+          </button>
+        </div>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
@@ -196,13 +221,20 @@ import { formatCompactNumber } from 'src/utils/numberFormat'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
 import { copyToClipboard } from 'src/utils/copyToClipboard'
 import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
-import { fetchGameSession, fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
+import {
+  deleteGameSession,
+  fetchGameSession,
+  fetchRunningGameSession,
+  updateGameSession,
+} from 'src/api/gameSession'
 
 const router = useRouter()
 const route = useRoute()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
 const menuOpen = ref(false)
+const deleteDialogOpen = ref(false)
+const deleting = ref(false)
 const selectedMajorHand = ref('')
 const tournamentSeats = ref([])
 const tournamentSeatsLoaded = ref(false)
@@ -531,6 +563,44 @@ const resumeTournament = async () => {
     alert.show(message, 'error')
   }
 }
+
+const clearDeletedTournamentCache = () => {
+  for (const key of ['pokerly-running-tournament', 'pokerly-last-tournament-result']) {
+    try {
+      const cached = JSON.parse(localStorage.getItem(key))
+      if (String(cached?.sessionId || cached?.id) === String(tournamentId)) {
+        localStorage.removeItem(key)
+      }
+    } catch {
+      localStorage.removeItem(key)
+    }
+  }
+  try {
+    const results = JSON.parse(localStorage.getItem('pokerly-tournament-results')) || []
+    localStorage.setItem(
+      'pokerly-tournament-results',
+      JSON.stringify(results.filter((item) => String(item.id) !== String(tournamentId))),
+    )
+  } catch {
+    localStorage.removeItem('pokerly-tournament-results')
+  }
+}
+
+const removeTournament = async () => {
+  if (deleting.value || legacyEventId.value) return
+  deleting.value = true
+  try {
+    await deleteGameSession(tournamentId)
+    clearDeletedTournamentCache()
+    deleteDialogOpen.value = false
+    alert.show(eventId.value ? '토너먼트를 삭제했습니다.' : '기록을 삭제했습니다.', 'success')
+    await router.replace({ name: 'home' })
+  } catch (error) {
+    alert.show(error?.response?.data?.error?.message || '기록을 삭제하지 못했습니다.', 'error')
+  } finally {
+    deleting.value = false
+  }
+}
 const openHand = (hand) =>
   router.push({
     name: 'tournament-hand-detail',
@@ -680,6 +750,44 @@ const goBack = () => {
 }
 .page-menu button:last-child {
   border-bottom: 0;
+}
+.page-menu button.destructive {
+  color: var(--v2-danger, #ef4444);
+}
+.delete-dialog {
+  width: min(360px, calc(100vw - 40px));
+  padding: 24px;
+  border-radius: 18px;
+}
+.delete-dialog h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+.delete-dialog p {
+  margin: 12px 0 22px;
+  color: var(--v2-text-sub);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.delete-dialog > div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.delete-dialog button {
+  min-height: 46px;
+  border: 1px solid var(--v2-border);
+  border-radius: 12px;
+  background: #fff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-weight: 650;
+}
+.delete-dialog button.danger {
+  border-color: transparent;
+  background: #fff0f0;
+  color: var(--v2-danger, #ef4444);
 }
 .title-row {
   display: flex;

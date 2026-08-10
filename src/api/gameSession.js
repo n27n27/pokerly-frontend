@@ -43,7 +43,9 @@ export const fetchRecentGameSessions = async () => {
 }
 
 export const fetchRunningGameSession = async () => {
-  const res = await api.get('/game-sessions/running')
+  const res = await api.get('/game-sessions/running', {
+    params: { _: Date.now() },
+  })
   return res.data.data
 }
 
