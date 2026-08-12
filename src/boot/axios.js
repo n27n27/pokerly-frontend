@@ -52,6 +52,20 @@ api.interceptors.request.use(
 // =============================
 let isRefreshing = false
 let pendingRequests = []
+let isRedirectingToLogin = false
+
+const redirectToLogin = () => {
+  clearTokens()
+
+  if (typeof window === 'undefined' || isRedirectingToLogin) return
+
+  isRedirectingToLogin = true
+  const loginUrl = `${window.location.origin}/#/login`
+
+  if (window.location.href !== loginUrl) {
+    window.location.replace(loginUrl)
+  }
+}
 
 const processQueue = (error, token = null) => {
   pendingRequests.forEach(({ resolve, reject }) => {
@@ -106,7 +120,14 @@ api.interceptors.response.use(
       config?.url?.includes('/auth/oauth/google') ||
       config?.url?.includes('/auth/oauth/apple')
 
-    if (status !== 401 || originalRequest._retry || isAuthUrl) {
+    if (status !== 401 || isAuthUrl) {
+      return Promise.reject(error)
+    }
+
+    // 토큰 갱신 후 재시도까지 401이면 더 이상 복구할 수 없는 인증 상태다.
+    // 현재 화면에 남겨 요청을 반복하지 않고 즉시 로그인 홈으로 이동한다.
+    if (originalRequest._retry) {
+      redirectToLogin()
       return Promise.reject(error)
     }
 
@@ -141,14 +162,7 @@ api.interceptors.response.use(
       processQueue(refreshError, null)
       clearTokens()
       console.error('axios refresh 실패', refreshError)
-
-      // pathname과 이전 hash를 모두 제거해 항상 canonical 로그인 URL로 이동한다.
-      if (typeof window !== 'undefined') {
-        const loginUrl = `${window.location.origin}/#/login`
-        if (window.location.href !== loginUrl) {
-          window.location.replace(loginUrl)
-        }
-      }
+      redirectToLogin()
 
       // 호출 측에서 필요하면 에러를 캐치해서 따로 처리할 수 있게 그대로 reject
       return Promise.reject(refreshError)

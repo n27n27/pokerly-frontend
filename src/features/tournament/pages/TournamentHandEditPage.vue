@@ -1,29 +1,50 @@
 <template>
   <q-page class="review-edit-page">
     <header class="edit-topbar">
-      <button class="topbar-text" type="button" @click="router.back()">취소</button>
-      <h1>{{ isEditMode ? '복기 수정' : '복기 작성' }} ({{ step }}/{{ totalSteps }})</h1>
-      <button
-        class="topbar-text next"
-        type="button"
-        :disabled="stepBlocked"
-        @click="nextStep"
-      >
-        {{ step === totalSteps ? '완료' : '다음' }}
+      <button v-if="step === 0" class="topbar-text" type="button" @click="router.back()">취소</button>
+      <button v-else class="topbar-back" type="button" aria-label="복기로 돌아가기" @click="step = 0">
+        <q-icon name="chevron_left" size="28px" />
       </button>
+      <h1>{{ step === 0 ? (isEditMode ? '복기 수정' : '복기 작성') : detailTitle }}</h1>
+      <button v-if="step === 0" class="topbar-text next" type="button" @click="saveReview">저장</button>
+      <span v-else aria-hidden="true"></span>
     </header>
 
-    <div
-      class="step-progress"
-      :style="{ gridTemplateColumns: `repeat(${totalSteps}, 1fr)` }"
-      aria-label="복기 작성 진행 단계"
-    >
-        <i v-for="index in totalSteps" :key="index" :class="{ active: index <= step }"></i>
-      </div>
+      <section v-if="step === 0" class="review-start">
+        <div class="review-start__intro">
+          <h2>이 핸드에서 무엇을 기억하고 싶나요?</h2>
+        </div>
+
+        <div class="memo-field memo-field--primary">
+          <textarea v-model="memo" maxlength="500" placeholder="고민했던 지점, 상대의 플레이, 다시 보고 싶은 판단 등을 자유롭게 남겨보세요." />
+          <span>{{ memo.length }}/500</span>
+        </div>
+
+        <section class="detail-section">
+          <h2>정보 추가</h2>
+          <div class="detail-options">
+          <button type="button" @click="step = 1">
+            <span><q-icon name="add" size="18px" />보드</span>
+            <small>{{ hasBoardCards ? '입력됨' : '기억나는 카드만' }}</small>
+            <q-icon name="chevron_right" size="20px" />
+          </button>
+          <button type="button" @click="step = 2">
+            <span><q-icon name="add" size="18px" />액션</span>
+            <small>{{ timeline.actions.value.length ? `${timeline.actions.value.length}개 입력됨` : '기억나는 액션까지만' }}</small>
+            <q-icon name="chevron_right" size="20px" />
+          </button>
+          <button type="button" @click="step = 3">
+            <span><q-icon name="add" size="18px" />쇼다운 카드</span>
+            <small>{{ hasShowdownCards ? '입력됨' : '공개된 카드만' }}</small>
+            <q-icon name="chevron_right" size="20px" />
+          </button>
+          </div>
+        </section>
+      </section>
 
       <section v-if="step === 1" class="edit-card">
         <div class="step-heading">
-          <h2>보드</h2>
+          <h2>기억나는 카드</h2>
           <button
             v-if="hasBoardCards"
             type="button"
@@ -70,7 +91,18 @@
         <div v-if="!timeline.started.value" class="participant-setup">
           <div>
             <strong>액션을 기록할 플레이어</strong>
-            <span>선택하지 않은 플레이어는 프리플랍 폴드로 처리됩니다.</span>
+            <span>기억나는 스트리트와 플레이어만 선택해도 됩니다.</span>
+          </div>
+          <div class="street-selector" aria-label="액션 시작 스트리트">
+            <button
+              v-for="streetOption in actionStreetOptions"
+              :key="streetOption.value"
+              type="button"
+              :class="{ selected: actionStartStreet === streetOption.value }"
+              @click="actionStartStreet = streetOption.value"
+            >
+              {{ streetOption.label }}
+            </button>
           </div>
           <div class="participant-grid">
             <button
@@ -88,7 +120,7 @@
             class="start-actions"
             type="button"
             :disabled="selectedPlayers.length < 2"
-            @click="timeline.start(selectedPlayers, positionOptions)"
+            @click="timeline.start(selectedPlayers, positionOptions, actionStartStreet)"
           >
             액션 입력 시작
           </button>
@@ -134,7 +166,7 @@
               type="button"
               role="checkbox"
               :aria-checked="pendingAllIn"
-              @click="pendingAllIn = !pendingAllIn"
+              @click="togglePendingAllIn"
             >
               <span aria-hidden="true">{{ pendingAllIn ? '✓' : '' }}</span>
               올인
@@ -184,10 +216,13 @@
         </template>
       </section>
 
-      <section v-else-if="showdownRequired && step === 3" class="edit-card">
-        <div class="step-heading"><h2>쇼다운 카드</h2></div>
+      <section v-else-if="step === 3" class="edit-card">
+        <div class="step-heading"><h2>공개된 카드</h2></div>
         <div class="showdown-editor">
           <p>쇼다운에서 공개된 상대 카드가 있다면 입력해주세요. 공개되지 않은 카드는 비워둘 수 있습니다.</p>
+          <p v-if="!opponentShowdownPlayers.length" class="showdown-empty">
+            액션에서 참여 플레이어를 선택하면 상대 카드를 입력할 수 있습니다.
+          </p>
           <div
             v-for="position in opponentShowdownPlayers"
             :key="position"
@@ -211,23 +246,13 @@
         </div>
       </section>
 
-      <section v-else class="edit-card">
-        <div class="step-heading"><h2>메모</h2></div>
-        <div class="memo-field">
-          <textarea v-model="memo" maxlength="500" placeholder="이 핸드에서 기억하고 싶은 상황이나 생각을 남겨보세요." />
-          <span>{{ memo.length }}/500</span>
-        </div>
-      </section>
-
       <div class="bottom-actions">
-        <button v-if="step > 1" class="secondary-action" type="button" @click="step -= 1">이전</button>
         <button
           class="primary-action"
           type="button"
-          :disabled="stepBlocked"
-          @click="nextStep"
+          @click="step === 0 ? saveReview() : (step = 0)"
         >
-          {{ step === totalSteps ? '저장하기' : '다음' }}
+          {{ step === 0 ? '저장하기' : '완료' }}
         </button>
     </div>
 
@@ -235,7 +260,6 @@
       v-model="pickerOpen"
       :active-card="activeCard"
       :used-codes="usedCardCodes"
-      :done-disabled="flopSelectionIncomplete"
       @select="selectCard"
       @clear="clearActiveCard"
     />
@@ -255,7 +279,7 @@ const route = useRoute()
 const router = useRouter()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
-const step = ref(1)
+const step = ref(0)
 const pickerOpen = ref(false)
 const activeStreetKey = ref('flop')
 const activeCardIndex = ref(0)
@@ -264,6 +288,7 @@ const activeShowdownPlayer = ref('')
 const showdownCards = ref({})
 const memo = ref('')
 const isEditMode = ref(false)
+const detailTitle = computed(() => ({ 1: '보드', 2: '액션', 3: '쇼다운 카드' })[step.value] || '')
 const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(() => String(route.query.levelName || '') || '-')
 const handId = computed(() => String(route.params.handId || ''))
@@ -322,20 +347,24 @@ const isHeroTurn = computed(
     timeline.currentPlayer.value === heroPosition.value,
 )
 const selectedPlayers = ref([])
+const actionStartStreet = ref('PREFLOP')
+const actionStreetOptions = [
+  { label: '프리플랍', value: 'PREFLOP' },
+  { label: '플랍', value: 'FLOP' },
+  { label: '턴', value: 'TURN' },
+  { label: '리버', value: 'RIVER' },
+]
 const timeline = useHandActionTimeline({ bigBlind, ante })
-const showdownRequired = computed(() => timeline.showdownRequired.value)
 const opponentShowdownPlayers = computed(() =>
-  timeline.showdownPlayers.value.filter((position) => position !== heroPosition.value),
-)
-const totalSteps = computed(() => (showdownRequired.value ? 4 : 3))
-const stepBlocked = computed(
-  () =>
-    step.value === 2 && !timeline.handComplete.value,
+  [...new Set([
+    ...selectedPlayers.value,
+    ...timeline.trackedPlayers.value,
+  ])].filter((position) => position !== heroPosition.value),
 )
 const pendingAction = ref('')
 const actionAmount = ref('')
 const pendingAllIn = ref(false)
-const aggressiveActions = ['OPEN', 'BET', 'RAISE']
+const amountActions = ['CALL', 'OPEN', 'BET', 'RAISE']
 
 const togglePlayer = (position) => {
   selectedPlayers.value = selectedPlayers.value.includes(position)
@@ -362,10 +391,10 @@ const timelineButtonLabel = (action) => {
   return `${preflopAggressionCount.value + 2}벳`
 }
 const selectTimelineAction = (action) => {
-  if (aggressiveActions.includes(action)) {
+  if (amountActions.includes(action)) {
     pendingAction.value = action
     pendingAllIn.value = false
-    actionAmount.value = ''
+    actionAmount.value = action === 'CALL' ? String(timeline.callAmount.value || '') : ''
     return
   }
   timeline.recordAction(action)
@@ -374,7 +403,11 @@ const numericActionAmount = computed(() => Number(String(actionAmount.value).rep
 const validActionAmount = computed(
   () =>
     numericActionAmount.value > 0 &&
-    (pendingAction.value === 'CALL' ||
+    (pendingAction.value === 'CALL'
+      ? pendingAllIn.value
+        ? numericActionAmount.value <= Number(timeline.callAmount.value || 0)
+        : numericActionAmount.value === Number(timeline.callAmount.value || 0)
+      :
       (pendingAllIn.value && numericActionAmount.value > Number(timeline.currentBet.value || 0)) ||
       numericActionAmount.value >= Number(timeline.minRaiseAmount.value || 0)),
 )
@@ -393,6 +426,12 @@ const confirmTimelineAction = () => {
     pendingAction.value = ''
     actionAmount.value = ''
     pendingAllIn.value = false
+  }
+}
+const togglePendingAllIn = () => {
+  pendingAllIn.value = !pendingAllIn.value
+  if (!pendingAllIn.value && pendingAction.value === 'CALL') {
+    actionAmount.value = String(timeline.callAmount.value || '')
   }
 }
 const clearPendingTimelineAction = () => {
@@ -493,10 +532,8 @@ const activeCard = computed(() =>
 const hasBoardCards = computed(() =>
   boardStreets.value.some((street) => street.cards.some(Boolean)),
 )
-const flopSelectionIncomplete = computed(
-  () =>
-    activeStreetKey.value === 'flop' &&
-    activeStreet.value?.cards.some((card) => !card),
+const hasShowdownCards = computed(() =>
+  Object.values(showdownCards.value).some((cards) => cards.some(Boolean)),
 )
 const heroCardCodes = computed(() => {
   const hand = handLogStore.selectedHand
@@ -629,22 +666,34 @@ const saveReview = async () => {
   }
 }
 
-const nextStep = () => {
-  if (step.value < totalSteps.value) step.value += 1
-  else saveReview()
-}
 </script>
 
 <style scoped>
-.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 14px; padding: 0 var(--v2-page-padding-x) 130px; }
+.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 14px; padding: 0 var(--v2-page-padding-x) 96px; }
 .edit-topbar { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; min-height: 36px; }
 .edit-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
 .topbar-text { min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 13px; text-align: left; }
 .topbar-text.next { color: #806bd2; font-weight: 480; text-align: right; }
+.topbar-back { display: grid; width: 38px; height: 38px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .step-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: -28px; padding: 0 2px; }
 .step-progress i { height: 3px; border-radius: 3px; background: #e6e2f0; }
 .step-progress i.active { background: var(--v2-primary); }
 .edit-card { padding: 16px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28, 18, 60, .025); }
+.review-start { display: grid; gap: 14px; margin-top: -26px; }
+.review-start__intro { display: grid; gap: 5px; padding: 4px 2px 0; }
+.review-start__intro h2 { margin: 0; color: var(--v2-text-main); font-size: 18px; font-weight: 650; line-height: 1.4; }
+.review-start__intro p { margin: 0; color: var(--v2-text-sub); font-size: 12px; }
+.memo-field--primary textarea { min-height: 180px; border-color: var(--v2-border); background: #fff; }
+.memo-field--primary textarea:focus { border-color: var(--v2-primary); box-shadow: 0 0 0 3px rgba(109, 69, 232, .08); }
+.detail-section { display: grid; gap: 10px; }
+.detail-section > h2 { margin: 0; padding: 0 2px; color: var(--v2-text-main); font-size: 18px; font-weight: 650; line-height: 1.4; }
+.detail-options { overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
+.detail-options > button { display: grid; width: 100%; min-height: 54px; grid-template-columns: minmax(0, 1fr) auto 20px; align-items: center; gap: 8px; padding: 0 14px; border: 0; border-top: 1px solid var(--v2-border); background: #fff; color: var(--v2-text-main); font: inherit; text-align: left; }
+.detail-options > button:first-child { border-top: 0; }
+.detail-options > button > span { display: flex; align-items: center; gap: 5px; font-size: 14px; font-weight: 600; }
+.detail-options > button > span .q-icon { color: var(--v2-primary); }
+.detail-options > button > small { color: var(--v2-text-sub); font-size: 11px; }
+.detail-options > button > .q-icon { color: var(--v2-text-sub); }
 .step-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0edf6; color: var(--v2-primary); }
 .step-heading h2 { margin: 0; font-size: 16px; font-weight: 600; }
 .step-heading > button { min-height: 30px; margin-left: auto; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 11px; font-weight: 600; }
@@ -668,6 +717,9 @@ const nextStep = () => {
 .participant-setup > div:first-child strong { color: var(--v2-text-main); font-size: 14px; font-weight: 600; }
 .participant-setup > div:first-child span { color: var(--v2-text-sub); font-size: 12px; line-height: 1.45; }
 .participant-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.street-selector { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.street-selector button { min-height: 36px; padding: 0 4px; border: 1px solid var(--v2-border); border-radius: 9px; background: #fff; color: var(--v2-text-sub); font: inherit; font-size: 11px; font-weight: 560; }
+.street-selector button.selected { border-color: var(--v2-primary); background: var(--v2-primary-soft); color: var(--v2-primary); }
 .participant-grid button { min-height: 44px; padding: 0 6px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-sm); background: #fff; color: var(--v2-text-main); font: inherit; font-size: 13px; font-weight: 560; }
 .participant-grid button.selected { border-color: var(--v2-primary); background: var(--v2-primary-soft); color: var(--v2-primary); }
 .participant-grid small { margin-left: 3px; font-size: 10px; font-weight: 560; }
@@ -707,6 +759,7 @@ const nextStep = () => {
 .next-street { margin-top: 14px; }
 .showdown-editor { display: grid; gap: 14px; }
 .showdown-editor > p { margin: 0; color: var(--v2-text-sub); font-size: 12px; line-height: 1.5; }
+.showdown-editor > .showdown-empty { padding: 14px; border-radius: var(--v2-radius-md); background: #faf9fd; text-align: center; }
 .showdown-player { display: grid; min-height: 92px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; padding: 10px 12px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-md); }
 .showdown-player > strong { min-width: 0; color: var(--v2-text-main); font-size: 15px; font-weight: 620; }
 .showdown-player > div { display: grid; grid-template-columns: repeat(2, 56px); gap: 8px; }
@@ -714,7 +767,7 @@ const nextStep = () => {
 .memo-field { position: relative; }
 .memo-field textarea { width: 100%; min-height: 245px; padding: 13px 13px 31px; border: 1.5px solid var(--v2-primary); border-radius: 10px; outline: 0; resize: none; color: var(--v2-text-main); font: inherit; font-size: 13px; line-height: 1.6; }
 .memo-field span { position: absolute; right: 12px; bottom: 10px; color: var(--v2-text-sub); font-size: 11px; }
-.bottom-actions { display: flex; gap: 10px; }
+.bottom-actions { display: flex; gap: 10px; margin-top: auto; }
 .bottom-actions button { min-height: 50px; border: 0; border-radius: var(--v2-radius-md); font: inherit; font-size: 14px; font-weight: 600; }
 .secondary-action { flex: .45; background: #ece9f4; color: var(--v2-text-main); }
 .primary-action { flex: 1; background: var(--v2-primary); color: #fff; }

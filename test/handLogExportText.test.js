@@ -79,3 +79,52 @@ test('보드와 액션 타임라인을 구조화된 데이터로 내보낸다', 
   assert.match(text, /PREFLOP \| BTN \| 오픈 2,500 \| 팟 5,500/)
   assert.match(text, /최종 팟: 12,000/)
 })
+
+test('일반 패는 쇼다운 패배로 바꾸지 않고 내보낸다', () => {
+  const text = buildEventReviewText({
+    name: '결과 테스트',
+    blindLevels: [
+      {
+        levelNo: 3,
+        smallBlind: 300,
+        bigBlind: 500,
+        ante: 500,
+        hands: [
+          {
+            holeCards: 'K6s',
+            position: 'UTG',
+            handedCount: 10,
+            actionType: 'CALL',
+            actionLabel: '콜 → 폴드',
+            resultType: 'LOSS',
+          },
+        ],
+      },
+    ],
+  })
+
+  assert.match(text, /결과: 패/)
+  assert.doesNotMatch(text, /결과: 쇼다운 패배/)
+})
+
+test('기존 쇼다운 승패 기록도 복사할 때 일반 승패로 내보낸다', () => {
+  const text = buildEventReviewText({
+    name: '기존 결과 테스트',
+    blindLevels: [
+      {
+        levelNo: 2,
+        smallBlind: 200,
+        bigBlind: 300,
+        ante: 300,
+        hands: [
+          { holeCards: 'AA', position: 'UTG', resultType: 'SHOWDOWN_WIN' },
+          { holeCards: 'K6s', position: 'BB', resultType: 'SHOWDOWN_LOSS' },
+        ],
+      },
+    ],
+  })
+
+  assert.match(text, /결과: 승/)
+  assert.match(text, /결과: 패/)
+  assert.doesNotMatch(text, /쇼다운 승리|쇼다운 패배/)
+})

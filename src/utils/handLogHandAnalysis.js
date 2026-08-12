@@ -159,6 +159,8 @@ export const RESULT_LABEL_MAP = RESULT_OPTIONS.reduce(
   },
   {
     FOLD: '폴드',
+    WIN: '승',
+    LOSS: '패',
   },
 )
 

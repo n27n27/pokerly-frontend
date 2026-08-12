@@ -83,6 +83,34 @@
             <strong>{{ action.label }}</strong>
           </button>
         </div>
+        <div v-if="secondaryActionOptions.length" class="secondary-action-area">
+          <button
+            v-if="!showSecondaryAction && !form.secondaryAction"
+            class="add-secondary-action"
+            type="button"
+            @click="showSecondaryAction = true"
+          >
+            <q-icon name="add" size="17px" />
+            이후 액션 추가
+          </button>
+          <template v-else>
+            <div class="secondary-action-heading">
+              <span>{{ primaryActionLabel }} 이후</span>
+              <button type="button" @click="clearSecondaryAction">삭제</button>
+            </div>
+            <div class="action-grid action-grid--secondary">
+              <button
+                v-for="action in secondaryActionOptions"
+                :key="action.value"
+                type="button"
+                :class="{ selected: form.secondaryAction === action.value }"
+                @click="selectSecondaryAction(action.value)"
+              >
+                <strong>{{ action.label }}</strong>
+              </button>
+            </div>
+          </template>
+        </div>
       </div>
 
       <div class="record-section">
@@ -93,7 +121,7 @@
               :key="result.value"
               type="button"
               :class="{ selected: form.result === result.value }"
-              :disabled="['FOLD', 'WALK'].includes(form.preflopAction)"
+              :disabled="hasAutomaticResult"
               @click="form.result = result.value"
           >
             {{ result.label }}
@@ -205,18 +233,46 @@ const handResults = [
   { value: 'DRAW', label: '무승부' },
   { value: 'LOSS', label: '패' },
 ]
+const secondaryActionsByPrimary = {
+  CALL: [
+    { value: 'FOLD', label: '폴드' },
+    { value: 'CALL', label: '콜' },
+    { value: 'THREE_BET_PLUS', label: '3벳+' },
+  ],
+  OPEN: [
+    { value: 'FOLD', label: '폴드' },
+    { value: 'CALL', label: '콜' },
+    { value: 'FOUR_BET_PLUS', label: '4벳+' },
+  ],
+  THREE_BET_PLUS: [
+    { value: 'FOLD', label: '폴드' },
+    { value: 'CALL', label: '콜' },
+    { value: 'FIVE_BET_PLUS', label: '5벳+' },
+  ],
+}
 
 const heroCards = ref([null, null])
 const activeCardIndex = ref(0)
 const pickerOpen = ref(false)
+const showSecondaryAction = ref(false)
 const form = reactive({
   position: getSuggestedPosition(),
   preflopAction: 'FOLD',
+  secondaryAction: null,
   result: 'LOSS',
   reviewRequired: false,
 })
 const preflopActions = computed(() =>
   form.position === 'BB' ? bbPreflopActions : basePreflopActions,
+)
+const secondaryActionOptions = computed(() =>
+  secondaryActionsByPrimary[form.preflopAction] || [],
+)
+const primaryActionLabel = computed(() =>
+  preflopActions.value.find((action) => action.value === form.preflopAction)?.label || '',
+)
+const hasAutomaticResult = computed(() =>
+  ['FOLD', 'WALK'].includes(form.preflopAction) || form.secondaryAction === 'FOLD',
 )
 
 const loadHandForEdit = async () => {
@@ -229,11 +285,12 @@ const loadHandForEdit = async () => {
     )
     if (!hand) return
 
+    const storedPrimaryAction = hand.primaryAction || hand.actionType
     const action =
-      hand.actionType === 'THREE_BET' || hand.actionType === 'FOUR_BET_PLUS'
+      storedPrimaryAction === 'THREE_BET' || storedPrimaryAction === 'FOUR_BET_PLUS'
         ? 'THREE_BET_PLUS'
-        : hand.actionType || 'FOLD'
-    const result = ['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN'].includes(hand.resultType)
+        : storedPrimaryAction || 'FOLD'
+    const result = ['WIN', 'SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN'].includes(hand.resultType)
       ? 'WIN'
       : hand.resultType === 'CHOP'
         ? 'DRAW'
@@ -247,6 +304,8 @@ const loadHandForEdit = async () => {
       : Math.max(minimumHandedCount, handedCount.value)
     form.position = hand.position || positions.value[0]
     form.preflopAction = action
+    form.secondaryAction = hand.secondaryAction || null
+    showSecondaryAction.value = Boolean(form.secondaryAction)
     form.result = result
     form.reviewRequired = Boolean(hand.reviewRequired)
     heroCards.value = [hand.firstRank, hand.secondRank].map((rank, index) => ({
@@ -310,6 +369,8 @@ const clearCards = () => {
 const selectPreflopAction = (action) => {
   const hadAutomaticResult = ['FOLD', 'WALK'].includes(form.preflopAction)
   form.preflopAction = action
+  form.secondaryAction = null
+  showSecondaryAction.value = false
 
   if (action === 'FOLD') {
     form.result = 'LOSS'
@@ -318,6 +379,20 @@ const selectPreflopAction = (action) => {
   } else if (hadAutomaticResult) {
     form.result = ''
   }
+}
+
+const selectSecondaryAction = (action) => {
+  const wasFold = form.secondaryAction === 'FOLD'
+  form.secondaryAction = action
+  if (action === 'FOLD') form.result = 'LOSS'
+  else if (wasFold) form.result = ''
+}
+
+const clearSecondaryAction = () => {
+  const wasFold = form.secondaryAction === 'FOLD'
+  form.secondaryAction = null
+  showSecondaryAction.value = false
+  if (wasFold) form.result = ''
 }
 
 const saveHand = async () => {
@@ -335,7 +410,7 @@ const saveHand = async () => {
       ? 'PREFLOP_FOLD'
       : form.preflopAction === 'WALK'
         ? 'NON_SHOWDOWN_WIN'
-      : { WIN: 'SHOWDOWN_WIN', DRAW: 'CHOP', LOSS: 'SHOWDOWN_LOSS' }[form.result]
+      : { WIN: 'WIN', DRAW: 'CHOP', LOSS: 'LOSS' }[form.result]
   const payload = {
     holeCards: `${ranks.join('')}${ranks[0] === ranks[1] ? '' : suited ? 's' : 'o'}`,
     firstRank: ranks[0],
@@ -346,8 +421,12 @@ const saveHand = async () => {
     position: form.position,
     handedCount: handedCount.value,
     actionType: form.preflopAction === 'THREE_BET_PLUS' ? 'THREE_BET' : form.preflopAction,
-    actionLabel:
-      preflopActions.value.find((action) => action.value === form.preflopAction)?.label || '',
+    primaryAction: form.preflopAction,
+    secondaryAction: form.secondaryAction,
+    actionLabel: [
+      primaryActionLabel.value,
+      secondaryActionOptions.value.find((action) => action.value === form.secondaryAction)?.label,
+    ].filter(Boolean).join(' → '),
     resultType,
     reviewRequired: form.reviewRequired,
     memo: isEditMode.value ? handLogStore.selectedHand?.memo || '' : '',
@@ -600,6 +679,56 @@ const saveHand = async () => {
   font-size: 13px;
   font-weight: 560;
   line-height: 1.2;
+}
+
+.secondary-action-area {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.add-secondary-action {
+  display: inline-flex;
+  width: max-content;
+  min-height: 34px;
+  align-items: center;
+  gap: 3px;
+  padding: 0 5px;
+  border: 0;
+  background: transparent;
+  color: var(--v2-primary);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 580;
+}
+
+.secondary-action-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  font-weight: 540;
+}
+
+.secondary-action-heading button {
+  min-height: 28px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-sub);
+  font: inherit;
+  font-size: 11px;
+}
+
+.action-grid--secondary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.action-grid--secondary button {
+  min-height: 40px;
 }
 
 .result-grid {

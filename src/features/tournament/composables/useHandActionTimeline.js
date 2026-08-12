@@ -97,25 +97,28 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
     Object.assign(contributions, state.contributions)
   }
 
-  const start = (players, tablePlayers = players) => {
-    trackedPlayers.value = ordered([...new Set(players)], 'PREFLOP')
+  const start = (players, tablePlayers = players, initialStreet = 'PREFLOP') => {
+    const startStreet = STREETS.includes(initialStreet) ? initialStreet : 'PREFLOP'
+    trackedPlayers.value = ordered([...new Set(players)], startStreet)
     alivePlayers.value = [...trackedPlayers.value]
     allInPlayers.value = []
     pendingPlayers.value = [...trackedPlayers.value]
-    street.value = 'PREFLOP'
-    currentBet.value = blindValue()
-    lastRaiseSize.value = blindValue()
+    street.value = startStreet
+    currentBet.value = startStreet === 'PREFLOP' ? blindValue() : 0
+    lastRaiseSize.value = startStreet === 'PREFLOP' ? blindValue() : 1
     lastAggressor.value = ''
     const tablePositions = [...new Set(tablePlayers)]
     potSize.value =
-      (tablePositions.includes('SB') ? currentBet.value / 2 : 0) +
-      (tablePositions.includes('BB') ? currentBet.value : 0) +
+      (tablePositions.includes('SB') ? blindValue() / 2 : 0) +
+      (tablePositions.includes('BB') ? blindValue() : 0) +
       anteValue()
     actions.value = []
     history.value = []
     Object.keys(contributions).forEach((key) => delete contributions[key])
-    if (trackedPlayers.value.includes('SB')) contributions.SB = currentBet.value / 2
-    if (trackedPlayers.value.includes('BB')) contributions.BB = currentBet.value
+    if (startStreet === 'PREFLOP') {
+      if (trackedPlayers.value.includes('SB')) contributions.SB = currentBet.value / 2
+      if (trackedPlayers.value.includes('BB')) contributions.BB = currentBet.value
+    }
     started.value = true
   }
 
@@ -147,9 +150,9 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
     if (type === 'FOLD') {
       alivePlayers.value = alivePlayers.value.filter((item) => item !== player)
     } else if (['CALL', 'LIMP'].includes(type)) {
-      const allInContribution = Number(metadata.allInStack || 0)
-      contributions[player] = metadata.isAllIn && allInContribution > 0
-        ? Math.min(currentBet.value, allInContribution)
+      const allInCallAmount = Number(metadata.allInStack || 0)
+      contributions[player] = metadata.isAllIn && allInCallAmount > 0
+        ? Math.min(currentBet.value, previousContribution + allInCallAmount)
         : currentBet.value
     } else if (aggressive) {
       const invalidRegularRaise = !metadata.isAllIn && numericAmount < minRaiseAmount.value
@@ -267,9 +270,9 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
 
       const previous = Number(calculatedContributions[action.player] || 0)
       if (['CALL', 'LIMP'].includes(action.type)) {
-        const allInContribution = Number(action.allInStack || 0)
-        calculatedContributions[action.player] = action.isAllIn && allInContribution > 0
-          ? Math.min(calculatedBet, allInContribution)
+        const allInCallAmount = Number(action.allInStack || 0)
+        calculatedContributions[action.player] = action.isAllIn && allInCallAmount > 0
+          ? Math.min(calculatedBet, previous + allInCallAmount)
           : calculatedBet
       } else if (['OPEN', 'BET', 'RAISE'].includes(action.type)) {
         calculatedBet = Number(action.amount) || calculatedBet

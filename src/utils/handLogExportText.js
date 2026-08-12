@@ -142,6 +142,11 @@ const getResultText = (hand) => {
     return ''
   }
 
+  // 간편 기록은 승/패만 입력하므로 과거에 쇼다운으로 저장된 값도
+  // 복사 텍스트에서는 입력 범위를 넘겨 해석하지 않는다.
+  if (['WIN', 'SHOWDOWN_WIN'].includes(hand.resultType)) return '승'
+  if (['LOSS', 'SHOWDOWN_LOSS'].includes(hand.resultType)) return '패'
+
   return hand?.resultLabel || getResultLabel(hand.resultType)
 }
 

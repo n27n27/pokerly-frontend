@@ -253,9 +253,23 @@ const saveRecord = async () => {
     }
     alert.show(isEdit.value ? '기록이 수정되었습니다.' : '기록이 저장되었습니다.', 'success')
     const [year, month] = form.date.split('-').map(Number)
+    const returnYear = Number(route.query.returnYear)
+    const returnMonth = Number(route.query.returnMonth)
+    const hasReturnMonth =
+      Number.isInteger(returnYear) &&
+      Number.isInteger(returnMonth) &&
+      returnMonth >= 1 &&
+      returnMonth <= 12
     await router.replace({
       name: 'bank-records',
-      query: Number.isInteger(year) && Number.isInteger(month) ? { year, month } : {},
+      query: {
+        ...(hasReturnMonth
+          ? { year: returnYear, month: returnMonth }
+          : Number.isInteger(year) && Number.isInteger(month)
+            ? { year, month }
+            : {}),
+        ...(route.query.returnView === 'calendar' ? { view: 'calendar' } : {}),
+      },
     })
   } catch {
     alert.show('기록을 저장하지 못했습니다.', 'error')

@@ -40,14 +40,14 @@
           <button
             type="button"
             :class="{ active: viewMode === 'list' }"
-            @click="viewMode = 'list'"
+            @click="setViewMode('list')"
           >
             목록
           </button>
           <button
             type="button"
             :class="{ active: viewMode === 'calendar' }"
-            @click="viewMode = 'calendar'"
+            @click="setViewMode('calendar')"
           >
             달력
           </button>
@@ -167,7 +167,7 @@ const selectedYear = ref(hasValidQueryMonth ? queryYear : now.getFullYear())
 const selectedMonth = ref(hasValidQueryMonth ? queryMonth : now.getMonth() + 1)
 const sessions = ref([])
 const sortOrder = ref('desc')
-const viewMode = ref('list')
+const viewMode = ref(route.query.view === 'calendar' ? 'calendar' : 'list')
 const selectedDateKey = ref('')
 const weekdays = ['월', '화', '수', '목', '금', '토', '일']
 const signed = (value) =>
@@ -279,16 +279,44 @@ const moveMonth = (delta) => {
   selectedYear.value = date.getFullYear()
   selectedMonth.value = date.getMonth() + 1
   selectedDateKey.value = ''
+  router.replace({
+    name: 'bank-records',
+    query: {
+      ...route.query,
+      year: selectedYear.value,
+      month: selectedMonth.value,
+      ...(viewMode.value === 'calendar' ? { view: 'calendar' } : {}),
+    },
+  })
 }
 
 const selectCalendarDay = (day) => {
   selectedDateKey.value = day.dateKey
 }
 
+const setViewMode = (mode) => {
+  if (!['list', 'calendar'].includes(mode) || viewMode.value === mode) return
+  viewMode.value = mode
+  router.replace({
+    name: 'bank-records',
+    query: {
+      ...route.query,
+      year: selectedYear.value,
+      month: selectedMonth.value,
+      view: mode,
+    },
+  })
+}
+
 const openRecord = (recordId) => {
   router.push({
     path: '/app/simple-record',
-    query: recordId ? { recordId } : {},
+    query: {
+      ...(recordId ? { recordId } : {}),
+      returnYear: selectedYear.value,
+      returnMonth: selectedMonth.value,
+      returnView: viewMode.value,
+    },
   })
 }
 
