@@ -5,30 +5,56 @@
       <div class="filter-pair">
         <div class="month-filter" :class="{ 'month-filter--all': showAllPeriod }">
           <button
+            v-if="!showAllPeriod"
             type="button"
             aria-label="이전 달"
-            :disabled="showAllPeriod"
             @click="moveMonth(-1)"
           >
             <q-icon name="chevron_left" size="19px" />
           </button>
           <button class="month-filter__label" type="button">
             <span>{{ periodLabel }}</span>
-            <q-menu class="stats-filter-menu" anchor="bottom middle" self="top middle">
-              <q-list>
-                <q-item clickable v-close-popup @click="showAllPeriod = false">
+            <q-menu
+              class="stats-filter-menu stats-filter-menu--period"
+              anchor="bottom middle"
+              self="top middle"
+              transition-show="jump-down"
+              transition-hide="jump-up"
+              :offset="[0, 6]"
+            >
+              <q-list aria-label="조회 기간 선택">
+                <q-item
+                  clickable
+                  v-close-popup
+                  :active="!showAllPeriod"
+                  active-class="stats-filter-menu__active"
+                  @click="showAllPeriod = false"
+                >
                   <q-item-section>{{ monthLabel }}</q-item-section>
+                  <q-item-section side>
+                    <q-icon v-if="!showAllPeriod" name="check" size="17px" />
+                  </q-item-section>
                 </q-item>
-                <q-item clickable v-close-popup @click="showAllPeriod = true">
+                <q-item
+                  clickable
+                  v-close-popup
+                  :active="showAllPeriod"
+                  active-class="stats-filter-menu__active"
+                  @click="showAllPeriod = true"
+                >
                   <q-item-section>전체 기간</q-item-section>
+                  <q-item-section side>
+                    <q-icon v-if="showAllPeriod" name="check" size="17px" />
+                  </q-item-section>
                 </q-item>
               </q-list>
             </q-menu>
           </button>
           <button
+            v-if="!showAllPeriod"
             type="button"
             aria-label="다음 달"
-            :disabled="showAllPeriod || isCurrentMonth"
+            :disabled="isCurrentMonth"
             @click="moveMonth(1)"
           >
             <q-icon name="chevron_right" size="19px" />
@@ -36,24 +62,54 @@
         </div>
         <button type="button">
           <q-icon name="store" size="18px" />
-          <span>{{ selectedVenueLabel }}</span>
+          <span :title="selectedVenueLabel">{{ selectedVenueLabel }}</span>
           <q-icon name="expand_more" size="18px" />
-          <q-menu class="stats-filter-menu" anchor="bottom right" self="top right">
-            <q-list>
-              <q-item clickable v-close-popup @click="venueId = null">
+          <q-menu
+            class="stats-filter-menu stats-filter-menu--venue"
+            anchor="bottom right"
+            self="top right"
+            transition-show="jump-down"
+            transition-hide="jump-up"
+            :offset="[0, 6]"
+          >
+            <q-list aria-label="매장 선택">
+              <q-item
+                clickable
+                v-close-popup
+                :active="venueId === null"
+                active-class="stats-filter-menu__active"
+                @click="venueId = null"
+              >
                 <q-item-section>전체 매장</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="venueId === null" name="check" size="17px" />
+                </q-item-section>
               </q-item>
               <q-item
                 v-for="venue in venues"
                 :key="venue.id"
                 clickable
                 v-close-popup
+                :active="Number(venueId) === Number(venue.id)"
+                active-class="stats-filter-menu__active"
                 @click="venueId = venue.id"
               >
                 <q-item-section>{{ venue.name }}</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="Number(venueId) === Number(venue.id)" name="check" size="17px" />
+                </q-item-section>
               </q-item>
-              <q-item clickable v-close-popup @click="venueId = 'other'">
+              <q-item
+                clickable
+                v-close-popup
+                :active="venueId === 'other'"
+                active-class="stats-filter-menu__active"
+                @click="venueId = 'other'"
+              >
                 <q-item-section>기타</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="venueId === 'other'" name="check" size="17px" />
+                </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
@@ -1123,12 +1179,13 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 .best-records span {
   color: var(--v2-text-sub);
   font-size: 11px;
+  font-weight: 650;
 }
 
 .best-records strong {
   color: var(--v2-primary);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .best-records__rank strong.has-value {
@@ -1148,6 +1205,7 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   max-width: calc(100% - 20px);
   color: var(--v2-text-sub);
   font-size: 10px;
+  font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1161,7 +1219,8 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 }
 
 .filter-pair {
-  display: flex;
+  display: grid;
+  grid-template-columns: 156px 144px;
   justify-content: flex-end;
   gap: 6px;
   transform: translateY(-8px);
@@ -1169,7 +1228,7 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 
 .filter-pair > button,
 .panel-header button {
-  min-width: 112px;
+  min-width: 0;
   min-height: 38px;
   padding: 0 8px;
   border: 1px solid var(--v2-border);
@@ -1182,6 +1241,21 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   column-gap: 7px;
   font: inherit;
   font-size: 12px;
+}
+
+.filter-pair > button,
+.month-filter {
+  border-color: rgba(109, 69, 232, 0.14);
+  box-shadow: 0 4px 12px rgba(28, 18, 60, 0.035);
+}
+
+.month-filter--all {
+  grid-template-columns: 1fr;
+}
+
+.filter-pair > button:hover,
+.month-filter:hover {
+  border-color: rgba(109, 69, 232, 0.28);
 }
 
 .filter-pair > button:focus,
@@ -1198,7 +1272,8 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 }
 
 .month-filter {
-  min-width: 156px;
+  width: 156px;
+  min-width: 0;
   min-height: 38px;
   display: grid;
   grid-template-columns: 32px minmax(88px, 1fr) 32px;
@@ -1236,9 +1311,12 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 }
 
 .filter-pair span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--v2-text-main);
-  font-weight: 520;
+  font-weight: 650;
   line-height: 1;
+  text-overflow: ellipsis;
   white-space: nowrap;
 }
 
@@ -1250,6 +1328,61 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   align-items: center;
   justify-content: center;
   gap: 6px;
+}
+
+:global(.stats-filter-menu) {
+  overflow: hidden;
+  border: 1px solid rgba(109, 69, 232, 0.13);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(35, 25, 68, 0.15);
+}
+
+:global(.stats-filter-menu--period) {
+  width: 176px;
+}
+
+:global(.stats-filter-menu--venue) {
+  width: 224px;
+  max-height: min(420px, 65vh);
+}
+
+:global(.stats-filter-menu .q-list) {
+  padding: 6px;
+}
+
+:global(.stats-filter-menu--venue .q-list) {
+  max-height: min(408px, 65vh);
+  overflow-y: auto;
+}
+
+:global(.stats-filter-menu .q-item) {
+  min-height: 42px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+:global(.stats-filter-menu .q-item + .q-item) {
+  margin-top: 2px;
+}
+
+:global(.stats-filter-menu .q-item:hover) {
+  background: #f8f6fd;
+}
+
+:global(.stats-filter-menu .stats-filter-menu__active) {
+  color: var(--v2-primary);
+  background: color-mix(in srgb, var(--v2-primary) 8%, white);
+  font-weight: 700;
+}
+
+:global(.stats-filter-menu .q-item__section--side) {
+  min-width: 22px;
+  padding-left: 8px;
+  color: var(--v2-primary);
 }
 
 .summary-panel,
@@ -1267,9 +1400,9 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 
 h2 {
   margin: 0 0 10px;
-  color: var(--v2-text-main);
+  color: #373240;
   font-size: 14px;
-  font-weight: 520;
+  font-weight: 650;
   line-height: 1.15;
 }
 
@@ -1278,7 +1411,7 @@ h2 {
   margin: 0;
   color: var(--v2-text-main);
   font-size: 14px;
-  font-weight: 520;
+  font-weight: 700;
   line-height: 1.15;
 }
 
@@ -1324,7 +1457,7 @@ h2 {
 .summary-strip small {
   color: var(--v2-text-sub);
   font-size: 10px;
-  font-weight: 520;
+  font-weight: 600;
 }
 
 .summary-strip strong,
@@ -1332,7 +1465,7 @@ h2 {
 .bank-grid strong {
   color: var(--v2-text-main);
   font-size: 19px;
-  font-weight: 560;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -1342,6 +1475,10 @@ h2 {
 
 .bank-grid strong.negative {
   color: var(--v2-danger);
+}
+
+.bank-grid strong {
+  font-weight: 560;
 }
 
 .stats-section {
@@ -1356,40 +1493,43 @@ h2 {
 }
 
 .bank-grid article {
-  min-height: 64px;
-  padding: 10px 11px;
+  min-height: 74px;
+  padding: 10px 6px;
   display: grid;
   place-items: center;
   align-content: center;
-  gap: 7px;
+  gap: 5px;
   text-align: center;
   position: relative;
   overflow: hidden;
+  border-color: rgba(109, 69, 232, 0.08);
+  border-radius: 13px;
+  box-shadow: 0 5px 14px rgba(28, 18, 60, 0.035);
 }
 
 .bank-grid article::before {
   position: absolute;
   inset: 0;
   content: '';
-  opacity: 0.42;
+  opacity: 0;
   pointer-events: none;
 }
 
 .bank-grid article.bank-card--primary {
-  border-color: rgba(109, 69, 232, 0.14);
+  border-color: rgba(109, 69, 232, 0.08);
 }
 
 .bank-grid article.bank-card--primary strong {
-  font-size: 17px;
-  font-weight: 650;
+  font-size: 19px;
+  font-weight: 560;
 }
 
 .metric-grid article > span,
 .bank-grid article > span {
-  color: var(--v2-text-main);
+  color: var(--v2-text-sub);
   font-size: 12px;
   font-weight: 520;
-  line-height: 1.15;
+  line-height: 1.2;
 }
 
 .bank-card--roi::before {
@@ -1445,6 +1585,7 @@ h2 {
   background: transparent;
   color: var(--v2-text-sub);
   font-size: 11px;
+  font-weight: 600;
 }
 
 .panel-header .trend-segment button.active {
@@ -1469,6 +1610,7 @@ h2 {
   border-radius: 0;
   background: transparent;
   color: var(--v2-text-sub);
+  font-weight: 600;
 }
 
 .panel-header .period-tabs button.active {
@@ -1582,6 +1724,7 @@ h2 {
   padding: 0 8px;
   color: var(--v2-text-sub);
   font-size: 10px;
+  font-weight: 550;
   margin-top: -5px;
 }
 
@@ -1785,16 +1928,16 @@ h2 {
   }
 
   .filter-pair {
-    display: flex;
+    grid-template-columns: 148px 132px;
     gap: 5px;
   }
 
   .filter-pair > button {
-    min-width: 104px;
+    width: 132px;
   }
 
   .month-filter {
-    min-width: 148px;
+    width: 148px;
   }
 
   .summary-strip,
@@ -1833,14 +1976,19 @@ h2 {
     padding: 9px 8px;
   }
 
-  .metric-grid strong,
-  .bank-grid strong {
+  .metric-grid strong {
     font-size: 15px;
   }
 
   .bank-grid article {
-    min-height: 62px;
-    padding: 9px 8px;
+    min-height: 74px;
+    padding: 10px 6px;
+  }
+
+  .bank-grid strong,
+  .bank-grid article.bank-card--primary strong {
+    font-size: 19px;
+    font-weight: 560;
   }
 
   .table-grid {
@@ -1852,12 +2000,29 @@ h2 {
 }
 
 @media (max-width: 420px) {
+  .stats-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 8px;
+  }
+
+  .filter-pair {
+    grid-column: auto;
+    grid-template-columns: 148px 132px;
+    width: auto;
+    transform: translateY(-8px);
+  }
+
   .month-filter {
-    min-width: 138px;
+    width: 148px;
+    grid-template-columns: 30px minmax(76px, 1fr) 30px;
+  }
+
+  .month-filter--all {
+    grid-template-columns: 1fr;
   }
 
   .filter-pair > button {
-    min-width: 98px;
+    width: 132px;
   }
 
   .bank-grid,

@@ -5,41 +5,104 @@
     </button>
     <div class="detail-header__filters">
       <div class="month-filter" :class="{ 'month-filter--all': showAllPeriod }">
-        <button type="button" aria-label="이전 달" :disabled="showAllPeriod" @click="moveMonth(-1)">
+        <button v-if="!showAllPeriod" type="button" aria-label="이전 달" @click="moveMonth(-1)">
           <q-icon name="chevron_left" size="19px" />
         </button>
         <button class="month-filter__label" type="button">
           <span>{{ periodLabel }}</span>
-          <q-menu class="stats-filter-menu" anchor="bottom middle" self="top middle">
-            <q-list>
-              <q-item clickable v-close-popup @click="showAllPeriod = false">
+          <q-menu
+            class="stats-filter-menu stats-filter-menu--period"
+            anchor="bottom middle"
+            self="top middle"
+            transition-show="jump-down"
+            transition-hide="jump-up"
+            :offset="[0, 6]"
+          >
+            <q-list aria-label="조회 기간 선택">
+              <q-item
+                clickable
+                v-close-popup
+                :active="!showAllPeriod"
+                active-class="stats-filter-menu__active"
+                @click="showAllPeriod = false"
+              >
                 <q-item-section>{{ monthLabel }}</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="!showAllPeriod" name="check" size="17px" />
+                </q-item-section>
               </q-item>
-              <q-item clickable v-close-popup @click="showAllPeriod = true">
+              <q-item
+                clickable
+                v-close-popup
+                :active="showAllPeriod"
+                active-class="stats-filter-menu__active"
+                @click="showAllPeriod = true"
+              >
                 <q-item-section>전체 기간</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="showAllPeriod" name="check" size="17px" />
+                </q-item-section>
               </q-item>
             </q-list>
           </q-menu>
         </button>
-        <button type="button" aria-label="다음 달" :disabled="showAllPeriod || isCurrentMonth" @click="moveMonth(1)">
+        <button
+          v-if="!showAllPeriod"
+          type="button"
+          aria-label="다음 달"
+          :disabled="isCurrentMonth"
+          @click="moveMonth(1)"
+        >
           <q-icon name="chevron_right" size="19px" />
         </button>
       </div>
 
       <button class="venue-filter" type="button">
         <q-icon name="store" size="18px" />
-        <span>{{ selectedVenueLabel }}</span>
+        <span :title="selectedVenueLabel">{{ selectedVenueLabel }}</span>
         <q-icon name="expand_more" size="18px" />
-        <q-menu class="stats-filter-menu" anchor="bottom right" self="top right">
-          <q-list>
-            <q-item clickable v-close-popup @click="venueId = null">
+        <q-menu
+          class="stats-filter-menu stats-filter-menu--venue"
+          anchor="bottom right"
+          self="top right"
+          transition-show="jump-down"
+          transition-hide="jump-up"
+          :offset="[0, 6]"
+        >
+          <q-list aria-label="매장 선택">
+            <q-item
+              clickable
+              v-close-popup
+              :active="venueId === null"
+              active-class="stats-filter-menu__active"
+              @click="venueId = null"
+            >
               <q-item-section>전체 매장</q-item-section>
+              <q-item-section side><q-icon v-if="venueId === null" name="check" size="17px" /></q-item-section>
             </q-item>
-            <q-item v-for="venue in venues" :key="venue.id" clickable v-close-popup @click="venueId = venue.id">
+            <q-item
+              v-for="venue in venues"
+              :key="venue.id"
+              clickable
+              v-close-popup
+              :active="Number(venueId) === Number(venue.id)"
+              active-class="stats-filter-menu__active"
+              @click="venueId = venue.id"
+            >
               <q-item-section>{{ venue.name }}</q-item-section>
+              <q-item-section side>
+                <q-icon v-if="Number(venueId) === Number(venue.id)" name="check" size="17px" />
+              </q-item-section>
             </q-item>
-            <q-item clickable v-close-popup @click="venueId = 'other'">
+            <q-item
+              clickable
+              v-close-popup
+              :active="venueId === 'other'"
+              active-class="stats-filter-menu__active"
+              @click="venueId = 'other'"
+            >
               <q-item-section>기타</q-item-section>
+              <q-item-section side><q-icon v-if="venueId === 'other'" name="check" size="17px" /></q-item-section>
             </q-item>
           </q-list>
         </q-menu>
@@ -127,17 +190,19 @@ onMounted(async () => {
 }
 
 .detail-header__filters {
-  display: flex;
+  display: grid;
+  grid-template-columns: 156px 144px;
   justify-content: flex-end;
   gap: 6px;
   transform: translateY(-8px);
 }
 
 .venue-filter {
-  min-width: 112px;
+  width: 144px;
+  min-width: 0;
   min-height: 38px;
   padding: 0 8px;
-  border: 1px solid var(--v2-border);
+  border: 1px solid rgba(109, 69, 232, 0.14);
   border-radius: var(--v2-radius-md);
   background: #fff;
   color: #4f4a5e;
@@ -147,18 +212,25 @@ onMounted(async () => {
   column-gap: 7px;
   font: inherit;
   font-size: 12px;
+  box-shadow: 0 4px 12px rgba(28, 18, 60, 0.035);
 }
 
 .month-filter {
-  min-width: 156px;
+  width: 156px;
+  min-width: 0;
   min-height: 38px;
   display: grid;
   grid-template-columns: 32px minmax(88px, 1fr) 32px;
   align-items: center;
   overflow: hidden;
-  border: 1px solid var(--v2-border);
+  border: 1px solid rgba(109, 69, 232, 0.14);
   border-radius: var(--v2-radius-md);
   background: #fff;
+  box-shadow: 0 4px 12px rgba(28, 18, 60, 0.035);
+}
+
+.month-filter--all {
+  grid-template-columns: 1fr;
 }
 
 .month-filter > button {
@@ -192,7 +264,7 @@ onMounted(async () => {
   min-width: 0;
   color: var(--v2-text-main);
   font-size: 12px;
-  font-weight: 520;
+  font-weight: 650;
   line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -204,25 +276,30 @@ onMounted(async () => {
   }
 
   .detail-header__filters {
+    grid-template-columns: 148px 132px;
     gap: 5px;
   }
 
   .venue-filter {
-    min-width: 104px;
+    width: 132px;
   }
 
   .month-filter {
-    min-width: 148px;
+    width: 148px;
   }
 }
 
 @media (max-width: 360px) {
+  .detail-header__filters {
+    grid-template-columns: 138px 124px;
+  }
+
   .venue-filter {
-    min-width: 98px;
+    width: 124px;
   }
 
   .month-filter {
-    min-width: 138px;
+    width: 138px;
   }
 }
 </style>

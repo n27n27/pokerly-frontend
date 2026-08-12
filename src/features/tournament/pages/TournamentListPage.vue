@@ -416,6 +416,7 @@ const openTournament = (tournament) => {
 }
 
 .tournament-row__badge {
+  grid-column: 2;
   padding: 7px 10px;
   border-radius: var(--v2-radius-sm);
   color: #383241;
@@ -432,6 +433,7 @@ const openTournament = (tournament) => {
 }
 
 .tournament-row__arrow {
+  grid-column: 3;
   color: #777188;
 }
 

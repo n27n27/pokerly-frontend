@@ -10,7 +10,7 @@
     </section>
 
     <section class="tool-list">
-      <button v-for="tool in tools" :key="tool.title" class="tool-card" type="button" @click="openTool(tool.to)">
+      <button v-for="tool in visibleTools" :key="tool.title" class="tool-card" type="button" @click="openTool(tool.to)">
         <span class="tool-card__icon" :class="`tool-card__icon--${tool.tone}`">
           <q-icon :name="tool.icon" size="30px" />
         </span>
@@ -25,6 +25,7 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -51,7 +52,16 @@ const tools = [
     tone: 'icm',
     to: '/app/tools/icm-calculator',
   },
+  {
+    title: '기본 확률표',
+    description: '자주 쓰는 홀덤 확률을 빠르게 확인하세요.',
+    icon: 'percent',
+    tone: 'odds',
+    to: '/app/tools/basic-probabilities',
+  },
 ]
+
+const visibleTools = computed(() => tools.filter((tool) => !tool.hidden))
 
 const openTool = (to) => {
   if (to) router.push(to)

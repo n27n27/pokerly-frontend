@@ -163,6 +163,7 @@ export const RESULT_LABEL_MAP = RESULT_OPTIONS.reduce(
 )
 
 export const VPIP_ACTIONS = new Set([
+  // 자발적으로 칩을 투입한 모든 프리플랍 액션. 체크·워크·폴드는 제외한다.
   'LIMP',
   'CALL',
   'BB_DEFENSE',
@@ -176,6 +177,7 @@ export const VPIP_ACTIONS = new Set([
 ])
 
 export const PFR_ACTIONS = new Set([
+  // 레이즈를 시작하거나 기존 레이즈에 재레이즈한 프리플랍 액션만 포함한다.
   'OPEN',
   'ISO_RAISE',
   'THREE_BET',

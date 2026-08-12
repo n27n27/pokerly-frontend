@@ -222,6 +222,12 @@ const routes = [
         component: () => import('src/features/tools/pages/IcmCalculatorPage.vue'),
       },
       {
+        path: 'tools/basic-probabilities',
+        name: 'basic-probabilities',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tools/pages/BasicProbabilityPage.vue'),
+      },
+      {
         path: 'my',
         name: 'my',
         meta: { hideHeader: true },

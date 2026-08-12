@@ -365,7 +365,7 @@ const calculateEquity = async () => {
 }
 
 .equity-topbar {
-  margin: 0 0 12px;
+  margin: 0 0 20px;
   display: grid;
   justify-items: start;
 }

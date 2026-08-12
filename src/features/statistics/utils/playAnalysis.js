@@ -1,7 +1,7 @@
 import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
 
 const WIN_RESULTS = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
-const LOSS_RESULTS = new Set(['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS'])
+const LOSS_RESULTS = new Set(['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'])
 const DRAW_RESULTS = new Set(['CHOP', 'DRAW', 'TIE'])
 
 const ACTION_GROUPS = [
@@ -38,6 +38,15 @@ const ACTION_GROUPS = [
   },
 ]
 
+const POSITION_ORDER = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
+
+const normalizePosition = (position) => {
+  const value = String(position || '').trim().toUpperCase()
+  if (value === 'UTG+1') return 'UTG'
+  if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
+  return POSITION_ORDER.includes(value) ? value : ''
+}
+
 const actionOf = (hand) => String(hand?.actionType || hand?.preflopAction || '').toUpperCase()
 const resultOf = (hand) => String(hand?.resultType || hand?.result || '').toUpperCase()
 
@@ -46,6 +55,7 @@ const countResults = (hands) => hands.reduce((counts, hand) => {
   if (WIN_RESULTS.has(result)) counts.wins += 1
   else if (LOSS_RESULTS.has(result)) counts.losses += 1
   else if (DRAW_RESULTS.has(result)) counts.draws += 1
+  else if (actionOf(hand) === 'FOLD') counts.losses += 1
   else counts.unrecorded += 1
   return counts
 }, { wins: 0, losses: 0, draws: 0, unrecorded: 0 })
@@ -67,8 +77,13 @@ export const buildPlaySummary = (hands) => {
 
 export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
   const matchedHands = hands.filter((hand) => keyOf(hand) === key)
-  const participated = matchedHands.filter((hand) => isVpipAction(actionOf(hand))).length
+  const participatedHands = matchedHands.filter((hand) => isVpipAction(actionOf(hand)))
+  const participated = participatedHands.length
   const results = countResults(matchedHands)
+  const participatedResults = countResults(participatedHands)
+  const recordedParticipatedResults = participatedResults.wins
+    + participatedResults.losses
+    + participatedResults.draws
   const groupedActions = ACTION_GROUPS.map((group) => {
     const actionHands = matchedHands.filter((hand) => group.actions.has(actionOf(hand)))
     return {
@@ -76,6 +91,7 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
       label: group.label,
       count: actionHands.length,
       showResult: group.showResult,
+      hands: actionHands,
       ...countResults(actionHands),
     }
   }).filter((group) => group.count > 0)
@@ -83,11 +99,14 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
   const groupedCount = groupedActions.reduce((sum, group) => sum + group.count, 0)
   const unknownActions = matchedHands.length - groupedCount
   if (unknownActions > 0) {
+    const knownActions = new Set(ACTION_GROUPS.flatMap((group) => [...group.actions]))
+    const unknownHands = matchedHands.filter((hand) => !knownActions.has(actionOf(hand)))
     groupedActions.push({
       key: 'unknown',
       label: '기타·미기록',
       count: unknownActions,
       showResult: false,
+      hands: unknownHands,
       wins: 0,
       losses: 0,
       draws: 0,
@@ -95,13 +114,33 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
     })
   }
 
+  const positions = POSITION_ORDER.map((position) => {
+    const positionHands = matchedHands.filter((hand) => normalizePosition(hand.position) === position)
+    const positionParticipatedHands = positionHands.filter((hand) => isVpipAction(actionOf(hand)))
+    return {
+      key: position,
+      label: position,
+      count: positionHands.length,
+      participated: positionParticipatedHands.length,
+      ...countResults(positionParticipatedHands),
+    }
+  }).filter((position) => position.count > 0)
+
   return {
     key,
     label: key,
     total: matchedHands.length,
     participated,
     participationRate: matchedHands.length ? participated * 100 / matchedHands.length : 0,
+    winRate: recordedParticipatedResults
+      ? participatedResults.wins * 100 / recordedParticipatedResults
+      : 0,
+    participatedWins: participatedResults.wins,
+    participatedLosses: participatedResults.losses,
+    participatedDraws: participatedResults.draws,
+    participatedUnrecorded: participatedResults.unrecorded,
     actions: groupedActions,
+    positions,
     ...results,
   }
 })

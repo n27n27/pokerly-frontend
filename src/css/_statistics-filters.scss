@@ -1,0 +1,54 @@
+.stats-filter-menu {
+  overflow: hidden;
+  border: 1px solid rgba(109, 69, 232, 0.13);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(35, 25, 68, 0.15);
+}
+
+.stats-filter-menu--period {
+  width: 176px;
+}
+
+.stats-filter-menu--venue {
+  width: 224px;
+  max-height: min(420px, 65vh);
+}
+
+.stats-filter-menu .q-list {
+  padding: 6px;
+}
+
+.stats-filter-menu--venue .q-list {
+  max-height: min(408px, 65vh);
+  overflow-y: auto;
+}
+
+.stats-filter-menu .q-item {
+  min-height: 42px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.stats-filter-menu .q-item + .q-item {
+  margin-top: 2px;
+}
+
+.stats-filter-menu .q-item:hover {
+  background: #f8f6fd;
+}
+
+.stats-filter-menu .stats-filter-menu__active {
+  color: var(--v2-primary);
+  background: color-mix(in srgb, var(--v2-primary) 8%, white);
+  font-weight: 700;
+}
+
+.stats-filter-menu .q-item__section--side {
+  min-width: 22px;
+  padding-left: 8px;
+  color: var(--v2-primary);
+}
