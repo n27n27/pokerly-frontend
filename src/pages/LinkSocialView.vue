@@ -53,6 +53,7 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useAlert } from 'src/composables/useAlert'
+import { loadGoogleIdentity } from 'src/utils/googleIdentity'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -63,33 +64,6 @@ const googleButtonRef = ref(null)
 const googleReady = ref(false)
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
-
-const loadGoogleScript = () => {
-  return new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) {
-      resolve()
-      return
-    }
-
-    const existingScript = document.querySelector(
-      'script[src="https://accounts.google.com/gsi/client"]',
-    )
-
-    if (existingScript) {
-      existingScript.addEventListener('load', resolve, { once: true })
-      existingScript.addEventListener('error', reject, { once: true })
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    script.onload = resolve
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-}
 
 const logout = async () => {
   await auth.logout()
@@ -103,7 +77,7 @@ const initGoogleLink = async () => {
   }
 
   try {
-    await loadGoogleScript()
+    await loadGoogleIdentity()
     await nextTick()
 
     window.google.accounts.id.initialize({

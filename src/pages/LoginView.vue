@@ -36,10 +36,15 @@
         <section class="login-actions">
           <div class="google-slot">
             <div class="google-button-frame" :class="{ ready: googleReady }">
-              <div class="google-button-placeholder" aria-hidden="true">
+              <button
+                class="google-button-placeholder"
+                type="button"
+                :disabled="!googleFallbackEnabled"
+                @click="handleGoogleFallback"
+              >
                 <strong>G</strong>
-                <span>Google로 계속하기</span>
-              </div>
+                <span>{{ googleFallbackLabel }}</span>
+              </button>
               <div ref="googleButtonRef" class="google-button-wrap"></div>
             </div>
           </div>
@@ -61,6 +66,8 @@ import { ref, onMounted, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from 'stores/auth'
 import { useAlert } from 'src/composables/useAlert'
+import { loadGoogleIdentity } from 'src/utils/googleIdentity'
+import { isKakaoInAppBrowser, openInSystemBrowser } from 'src/utils/inAppBrowser'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -69,34 +76,22 @@ const alert = useAlert()
 const loading = ref(null)
 const googleButtonRef = ref(null)
 const googleReady = ref(false)
+const googleLoadFailed = ref(false)
+const isKakaoBrowser = isKakaoInAppBrowser()
+
+const googleFallbackEnabled = isKakaoBrowser || googleLoadFailed
+const googleFallbackLabel = isKakaoBrowser ? '기본 브라우저에서 Google 로그인' : 'Google로 계속하기'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-const loadGoogleScript = () => {
-  return new Promise((resolve, reject) => {
-    if (window.google?.accounts?.id) {
-      resolve()
-      return
-    }
+const handleGoogleFallback = () => {
+  if (isKakaoBrowser) {
+    openInSystemBrowser()
+    return
+  }
 
-    const existingScript = document.querySelector(
-      'script[src="https://accounts.google.com/gsi/client"]',
-    )
-
-    if (existingScript) {
-      existingScript.addEventListener('load', resolve, { once: true })
-      existingScript.addEventListener('error', reject, { once: true })
-      return
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://accounts.google.com/gsi/client'
-    script.async = true
-    script.defer = true
-    script.onload = resolve
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
+  googleLoadFailed.value = false
+  initGoogleLogin()
 }
 
 const handleAuthResult = async (payload) => {
@@ -123,8 +118,10 @@ const initGoogleLogin = async () => {
     return
   }
 
+  if (isKakaoBrowser) return
+
   try {
-    await loadGoogleScript()
+    await loadGoogleIdentity()
     await nextTick()
 
     window.google.accounts.id.initialize({
@@ -175,7 +172,8 @@ const initGoogleLogin = async () => {
   } catch (e) {
     console.error(e)
     googleReady.value = false
-    alert.show('Google 로그인 버튼을 불러오지 못했습니다.', 'error')
+    googleLoadFailed.value = true
+    alert.show('Google 로그인을 불러오지 못했습니다. 버튼을 눌러 다시 시도해주세요.', 'error')
   }
 }
 
@@ -349,6 +347,11 @@ onMounted(() => {
   font-family: Roboto, Arial, sans-serif;
   font-size: 14px;
   font-weight: 500;
+  cursor: default;
+}
+
+.google-button-placeholder:not(:disabled) {
+  cursor: pointer;
 }
 
 .google-button-placeholder strong {
