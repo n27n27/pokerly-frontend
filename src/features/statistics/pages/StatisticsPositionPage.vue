@@ -27,18 +27,25 @@
           <h2 id="action-hand-sheet-title">{{ selectedActionTitle }}</h2>
           <span>{{ selectedActionHands.length }}회</span>
         </header>
-        <div class="action-hand-sheet__list" aria-label="핸드별 발생 횟수">
-          <div
-            v-for="group in selectedActionHandGroups"
-            :key="group.key || 'unrecorded'"
-          >
-            <span class="action-hand-sheet__hand-count">
-              <strong>{{ group.label }}</strong>
-              <span>× {{ group.count }}</span>
-            </span>
-            <small v-if="selectedActionShowsResult">{{ formatGroupResult(group) }}</small>
+        <q-scroll-area
+          class="action-hand-sheet__scroll"
+          :thumb-style="scrollThumbStyle"
+          @touchmove.stop
+          @wheel.stop
+        >
+          <div class="action-hand-sheet__list" aria-label="핸드별 발생 횟수">
+            <div
+              v-for="group in selectedActionHandGroups"
+              :key="group.key || 'unrecorded'"
+            >
+              <span class="action-hand-sheet__hand-count">
+                <strong>{{ group.label }}</strong>
+                <span>× {{ group.count }}</span>
+              </span>
+              <small v-if="selectedActionShowsResult">{{ formatGroupResult(group) }}</small>
+            </div>
           </div>
-        </div>
+        </q-scroll-area>
       </section>
     </q-dialog>
   </q-page>
@@ -74,6 +81,13 @@ const loading = ref(false)
 const loadError = ref('')
 const actionSheetOpen = ref(false)
 const selectedAction = ref(null)
+const scrollThumbStyle = {
+  right: '3px',
+  width: '4px',
+  borderRadius: '4px',
+  backgroundColor: '#8f899b',
+  opacity: 0.45,
+}
 let loadSequence = 0
 
 const normalizePosition = (position) => {
@@ -215,6 +229,7 @@ onMounted(load)
 .action-hand-sheet {
   width: min(100%, 390px);
   height: min(var(--sheet-content-height, 136px), 70dvh, 620px);
+  min-height: 180px;
   max-height: min(70dvh, 620px);
   margin: 0 auto;
   overflow: hidden;
@@ -245,14 +260,16 @@ onMounted(load)
   font-size: 12px;
 }
 
-.action-hand-sheet__list {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 0 14px max(20px, env(safe-area-inset-bottom));
-  overflow-y: auto;
+.action-hand-sheet__scroll {
+  flex: 0 0 auto;
+  width: 100%;
+  height: calc(100% - 64px);
   overscroll-behavior: contain;
   touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+}
+
+.action-hand-sheet__list {
+  padding: 0 14px max(20px, env(safe-area-inset-bottom));
 }
 
 .action-hand-sheet__list > div {

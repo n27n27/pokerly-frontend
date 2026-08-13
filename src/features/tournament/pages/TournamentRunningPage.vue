@@ -926,8 +926,8 @@ const goBack = () => {
 
 .current-level-card__body {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(64px, 0.5fr);
-  gap: 14px;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr) minmax(56px, 0.5fr);
+  gap: 10px;
   padding-top: 18px;
 }
 
@@ -1225,7 +1225,7 @@ const goBack = () => {
   }
 
   .current-level-card__head {
-    gap: 20px;
+    gap: 14px;
   }
 
   .current-level-card__head strong {
@@ -1233,11 +1233,17 @@ const goBack = () => {
   }
 
   .current-level-card__head span {
-    font-size: 18px;
+    min-width: 0;
+    font-size: 17px;
   }
 
   .current-level-card__body strong {
-    font-size: 25px;
+    font-size: clamp(22px, 6.35vw, 25px);
+    white-space: nowrap;
+  }
+
+  .current-level-card__body div + div {
+    padding-left: 10px;
   }
 
   .level-row {
