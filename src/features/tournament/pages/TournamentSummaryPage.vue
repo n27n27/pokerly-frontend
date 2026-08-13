@@ -1345,4 +1345,14 @@ const goBack = () => {
     grid-template-columns: 70px minmax(0, 1fr) minmax(0, 1fr) 18px;
   }
 }
+
+@media (max-width: 360px) {
+  .table-head,
+  .level-table > button {
+    grid-template-columns: 38px minmax(70px, 1fr) minmax(82px, 1fr) 16px;
+    gap: 6px;
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+}
 </style>

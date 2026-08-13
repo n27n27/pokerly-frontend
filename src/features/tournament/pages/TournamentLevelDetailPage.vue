@@ -1765,7 +1765,7 @@ const goBack = () => {
 .hand-fab {
   position: fixed;
   right: 26px;
-  bottom: 160px;
+  bottom: 174px;
   width: 72px;
   height: 72px;
   border: 0;
@@ -1855,6 +1855,44 @@ const goBack = () => {
 }
 
 @media (max-width: 420px) {
+  .stack-card {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .stack-card__metrics {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  }
+
+  .stack-card__item {
+    padding-left: 14px;
+  }
+
+  .stack-card__item:first-child {
+    padding-right: 14px;
+  }
+
+  .stack-card__value {
+    flex-wrap: wrap;
+  }
+
+  .stack-card__item:not(.stack-card__item--current) .stack-card__value {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .stack-card__value strong {
+    font-size: clamp(17px, 4.8vw, 19px);
+  }
+
+  .hand-fab {
+    right: var(--v2-page-padding-x);
+    bottom: 170px;
+    width: 64px;
+    height: 64px;
+  }
+
   .level-topbar {
     grid-template-columns: 40px minmax(0, 1fr) 40px;
   }

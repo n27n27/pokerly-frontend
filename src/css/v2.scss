@@ -27,6 +27,12 @@
   --v2-sticky-cta-radius: var(--v2-radius-md);
 }
 
+@media (max-width: 360px) {
+  :root {
+    --v2-page-padding-x: 16px;
+  }
+}
+
 body {
   background: var(--v2-page-bg);
   color: var(--v2-text-main);
