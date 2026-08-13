@@ -266,7 +266,7 @@
           <button
             class="analysis-card--hand"
             type="button"
-            @click="router.push('/app/statistics/hands')"
+            @click="openAnalysisPage('statistics-hands')"
           >
             <div class="analysis-card-title">
               <span>핸드 통계</span>
@@ -280,7 +280,7 @@
           <button
             class="analysis-card--position"
             type="button"
-            @click="router.push('/app/statistics/position')"
+            @click="openAnalysisPage('statistics-position')"
           >
             <div class="analysis-card-title">
               <span>포지션 통계</span>
@@ -376,7 +376,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
 import { fetchHandLogEvent } from 'src/api/handLogApi'
 import { fetchVenues } from 'src/api/venue'
@@ -384,14 +384,18 @@ import { useAuthStore } from 'src/stores/auth'
 import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
 import { formatCompactNumber } from 'src/utils/numberFormat'
 
+const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1)
-const showAllPeriod = ref(false)
+const initialVenueName = String(route.query.venueName || '')
+const selectedYear = ref(Number(route.query.year) || now.getFullYear())
+const selectedMonth = ref(Number(route.query.month) || now.getMonth() + 1)
+const showAllPeriod = ref(route.query.allPeriod === '1')
 const trendMode = ref('cumulative')
-const venueId = ref(null)
+const venueId = ref(route.query.venueId === '' || route.query.venueId == null
+  ? null
+  : route.query.venueId)
 const venueSortKey = ref('itm')
 const venueSortDirection = ref('desc')
 const sessions = ref([])
@@ -417,12 +421,22 @@ const selectedVenueLabel = computed(() =>
     ? '전체 매장'
     : venueId.value === 'other'
       ? '기타'
-      : venues.value.find((item) => Number(item.id) === Number(venueId.value))?.name || '전체 매장',
+      : venues.value.find((item) => Number(item.id) === Number(venueId.value))?.name
+        || initialVenueName
+        || '전체 매장',
 )
 const recordMode = computed(
   () => auth.user?.recordMode || localStorage.getItem('pokerly-record-mode') || 'simple',
 )
 const isDetailedMode = computed(() => recordMode.value === 'detailed')
+const analysisFilterQuery = computed(() => ({
+  year: selectedYear.value,
+  month: selectedMonth.value,
+  allPeriod: showAllPeriod.value ? '1' : '0',
+  venueId: venueId.value ?? '',
+  venueName: selectedVenueLabel.value,
+}))
+const openAnalysisPage = (name) => router.push({ name, query: analysisFilterQuery.value })
 const emptyStatsTitle = computed(() => {
   if (venueId.value !== null) return '선택한 매장에 기록이 없어요'
   if (!showAllPeriod.value && allSessionCount.value > 0) return '선택한 달에 기록이 없어요'

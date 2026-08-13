@@ -3,6 +3,7 @@
     <StatisticsDetailHeader
       :title="position"
       :initial-filter="filter"
+      :back-to="positionListRoute"
       @change="applyFilters"
     />
 
@@ -98,11 +99,22 @@ const filter = ref({
   venueId: route.query.venueId === '' || route.query.venueId == null
     ? null
     : route.query.venueId,
+  venueName: String(route.query.venueName || ''),
 })
 const hands = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const selectedAction = ref('all')
+const positionListRoute = computed(() => ({
+  name: 'statistics-position',
+  query: {
+    year: filter.value.year,
+    month: filter.value.month,
+    allPeriod: filter.value.allPeriod ? '1' : '0',
+    venueId: filter.value.venueId ?? '',
+    venueName: filter.value.venueName || '',
+  },
+}))
 
 const normalizePosition = (value) => {
   const normalized = String(value || '').trim().toUpperCase()
@@ -225,6 +237,7 @@ const applyFilters = (nextFilter) => {
       month: nextFilter.month,
       allPeriod: nextFilter.allPeriod ? '1' : '0',
       venueId: nextFilter.venueId ?? '',
+      venueName: nextFilter.venueName || '',
     },
   })
   void load()

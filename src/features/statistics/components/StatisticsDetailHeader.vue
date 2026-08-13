@@ -1,7 +1,7 @@
 <template>
   <header class="detail-header">
     <div class="detail-header__identity">
-      <button class="detail-header__back" type="button" :aria-label="`${title} 닫기`" @click="router.back()">
+      <button class="detail-header__back" type="button" :aria-label="`${title} 닫기`" @click="goBack">
         <q-icon name="chevron_left" size="27px" />
       </button>
       <h1 v-if="showTitle">{{ title }}</h1>
@@ -132,6 +132,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  backTo: {
+    type: [String, Object],
+    default: null,
+  },
 })
 
 const emit = defineEmits(['change'])
@@ -152,7 +156,16 @@ const selectedVenueLabel = computed(() => venueId.value === null
   ? '전체 매장'
   : venueId.value === 'other'
     ? '기타'
-    : venues.value.find((item) => Number(item.id) === Number(venueId.value))?.name || '전체 매장')
+    : venues.value.find((item) => Number(item.id) === Number(venueId.value))?.name
+      || props.initialFilter?.venueName
+      || '전체 매장')
+const goBack = () => {
+  if (props.backTo) {
+    void router.replace(props.backTo)
+    return
+  }
+  router.back()
+}
 
 const moveMonth = (delta) => {
   const date = new Date(selectedYear.value, selectedMonth.value - 1 + delta, 1)
@@ -166,6 +179,7 @@ watch([selectedYear, selectedMonth, showAllPeriod, venueId], () => {
     month: selectedMonth.value,
     allPeriod: showAllPeriod.value,
     venueId: venueId.value,
+    venueName: selectedVenueLabel.value,
   })
 })
 

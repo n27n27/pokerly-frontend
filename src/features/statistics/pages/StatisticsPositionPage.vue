@@ -1,6 +1,11 @@
 <template>
   <q-page class="detail-page">
-    <StatisticsDetailHeader title="포지션 통계" @change="applyFilters" />
+    <StatisticsDetailHeader
+      title="포지션 통계"
+      :initial-filter="filter"
+      :back-to="statisticsHomeRoute"
+      @change="applyFilters"
+    />
 
     <PlayAnalysisSummary title="포지션 요약" :items="summaryItems" />
 
@@ -20,7 +25,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
 import { fetchHandLogEvent } from 'src/api/handLogApi'
 import StatisticsDetailHeader from '../components/StatisticsDetailHeader.vue'
@@ -31,14 +36,28 @@ import {
   formatAnalysisRate,
 } from '../utils/playAnalysis'
 
+const route = useRoute()
 const router = useRouter()
 const POSITION_ORDER = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 const filter = ref({
-  year: new Date().getFullYear(),
-  month: new Date().getMonth() + 1,
-  allPeriod: false,
-  venueId: null,
+  year: Number(route.query.year) || new Date().getFullYear(),
+  month: Number(route.query.month) || new Date().getMonth() + 1,
+  allPeriod: route.query.allPeriod === '1',
+  venueId: route.query.venueId === '' || route.query.venueId == null
+    ? null
+    : route.query.venueId,
+  venueName: String(route.query.venueName || ''),
 })
+const statisticsHomeRoute = computed(() => ({
+  name: 'statistics',
+  query: {
+    year: filter.value.year,
+    month: filter.value.month,
+    allPeriod: filter.value.allPeriod ? '1' : '0',
+    venueId: filter.value.venueId ?? '',
+    venueName: filter.value.venueName || '',
+  },
+}))
 const hands = ref([])
 const loading = ref(false)
 const loadError = ref('')
@@ -102,6 +121,7 @@ const openPositionDetail = (row) => {
       month: filter.value.month,
       allPeriod: filter.value.allPeriod ? '1' : '0',
       venueId: filter.value.venueId ?? '',
+      venueName: filter.value.venueName || '',
     },
   })
 }
@@ -149,6 +169,15 @@ const load = async () => {
 
 const applyFilters = (nextFilter) => {
   filter.value = { ...nextFilter }
+  void router.replace({
+    query: {
+      year: nextFilter.year,
+      month: nextFilter.month,
+      allPeriod: nextFilter.allPeriod ? '1' : '0',
+      venueId: nextFilter.venueId ?? '',
+      venueName: nextFilter.venueName || '',
+    },
+  })
   void load()
 }
 
