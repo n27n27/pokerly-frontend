@@ -10,7 +10,13 @@
       </button>
       <div v-if="menuOpen" class="page-menu" @click.stop>
         <template v-if="eventId">
-          <button type="button" @click="copyTournamentText">텍스트 복사</button>
+          <button
+            type="button"
+            :disabled="tournamentSeatsLoading"
+            @click="copyTournamentText"
+          >
+            {{ tournamentSeatsLoading ? '텍스트 준비 중' : '텍스트 복사' }}
+          </button>
           <button v-if="!legacyEventId" type="button" @click="editTournament">
             토너먼트 결과 수정
           </button>
@@ -236,10 +242,11 @@ const menuOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const deleting = ref(false)
 const selectedMajorHand = ref('')
-const tournamentSeats = ref([])
-const tournamentSeatsLoaded = ref(false)
 const tournamentId = route.params.tournamentId || '1'
 const legacyEventId = computed(() => route.query.legacyEventId || null)
+const tournamentSeats = ref([])
+const tournamentSeatsLoaded = ref(false)
+const tournamentSeatsLoading = ref(!legacyEventId.value)
 const runningTournament = (() => {
   try {
     return JSON.parse(localStorage.getItem('pokerly-running-tournament')) || {}
@@ -410,6 +417,7 @@ const normalizeHandName = (hand) => {
 }
 
 const actionLabel = (hand) =>
+  hand.actionLabel ||
   ({
     FOLD: '폴드',
     CHECK: '체크',
@@ -421,7 +429,6 @@ const actionLabel = (hand) =>
     THREE_BET_PLUS: '3벳+',
     FOUR_BET_PLUS: '4벳+',
   })[hand.actionType || hand.preflopAction] ||
-  hand.actionLabel ||
   '-'
 
 const tournamentHands = computed(() =>
@@ -657,10 +664,6 @@ const copyTournamentText = async () => {
   }
 
   try {
-    if (!legacyEventId.value && !tournamentSeatsLoaded.value) {
-      tournamentSeats.value = (await fetchTournamentSeats(tournamentId).catch(() => [])) || []
-      tournamentSeatsLoaded.value = true
-    }
     await copyToClipboard(buildEventReviewText(event.value, { seats: tournamentSeats.value }))
     alert.show('대회 전체 복기 텍스트를 복사했습니다.', 'success')
   } catch {
@@ -668,7 +671,26 @@ const copyTournamentText = async () => {
   }
 }
 
+const preloadTournamentSeats = async () => {
+  if (legacyEventId.value || tournamentSeatsLoaded.value) {
+    tournamentSeatsLoading.value = false
+    return
+  }
+
+  tournamentSeatsLoading.value = true
+  try {
+    tournamentSeats.value = (await fetchTournamentSeats(tournamentId).catch(() => [])) || []
+  } finally {
+    tournamentSeatsLoaded.value = true
+    tournamentSeatsLoading.value = false
+  }
+}
+
 onMounted(async () => {
+  // iOS Safari는 탭 이벤트와 클립보드 호출 사이에 네트워크 await가 있으면
+  // 사용자 활성화를 잃을 수 있으므로 복사에 필요한 좌석을 화면 진입 시 준비한다.
+  void preloadTournamentSeats()
+
   if (!legacyEventId.value) {
     try {
       session.value = await fetchGameSession(tournamentId)

@@ -204,7 +204,12 @@
       </div>
     </section>
 
-    <button v-if="!isSummaryView" class="hand-fab" type="button" @click="recordHand">
+    <button
+      v-if="!isSummaryView && isCurrentLevel"
+      class="hand-fab"
+      type="button"
+      @click="recordHand"
+    >
       <span class="hand-fab__icon" aria-hidden="true">
         <i></i>
       </span>
@@ -630,6 +635,7 @@ const handLevelLabel = (hand) =>
 const handActionLabel = (hand) => {
   const action = hand.actionType || hand.preflopAction || ''
   return (
+    hand.actionLabel ||
     {
       FOLD: '폴드',
       CHECK: '체크',

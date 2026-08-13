@@ -86,7 +86,7 @@ import { defineComponent, h, ref } from 'vue'
 import { basicProbabilitySections } from '../data/basicProbabilityData'
 
 const sections = [...basicProbabilitySections].sort((a, b) => a.order - b.order)
-const activeSectionId = ref(sections[0]?.id ?? null)
+const activeSectionId = ref(null)
 const toggleSection = (sectionId) => {
   activeSectionId.value = activeSectionId.value === sectionId ? null : sectionId
 }
