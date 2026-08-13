@@ -1,4 +1,4 @@
-import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
+import { isPfrAction, isVpipAction } from '../../../utils/handLogHandAnalysis.js'
 
 const WIN_RESULTS = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
 const LOSS_RESULTS = new Set(['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'])
@@ -61,6 +61,25 @@ const countResults = (hands) => hands.reduce((counts, hand) => {
 }, { wins: 0, losses: 0, draws: 0, unrecorded: 0 })
 
 export const formatAnalysisRate = (value) => `${Number(value || 0).toFixed(1)}%`
+
+export const groupHandsByRanking = (hands, ranking, handOf) => {
+  const grouped = new Map()
+
+  hands.forEach((hand) => {
+    const key = handOf(hand) || ''
+    const current = grouped.get(key) || { key, label: key || '핸드 미기록', count: 0, hands: [] }
+    current.count += 1
+    current.hands.push(hand)
+    grouped.set(key, current)
+  })
+
+  const rankMap = new Map(ranking.map((hand, index) => [hand, index]))
+  return [...grouped.values()].sort((a, b) => {
+    const aRank = rankMap.get(a.key) ?? Number.MAX_SAFE_INTEGER
+    const bRank = rankMap.get(b.key) ?? Number.MAX_SAFE_INTEGER
+    return aRank - bRank || a.label.localeCompare(b.label)
+  })
+}
 
 export const buildPlaySummary = (hands) => {
   const total = hands.length

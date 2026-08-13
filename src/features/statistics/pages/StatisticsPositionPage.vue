@@ -26,13 +26,16 @@
           <h2 id="action-hand-sheet-title">{{ selectedActionTitle }}</h2>
           <span>{{ selectedActionHands.length }}회</span>
         </header>
-        <div class="action-hand-sheet__list">
+        <div class="action-hand-sheet__list" aria-label="핸드별 발생 횟수">
           <div
-            v-for="(hand, index) in selectedActionHands"
-            :key="`${hand.eventId}-${hand.levelId}-${hand.id || index}`"
+            v-for="group in selectedActionHandGroups"
+            :key="group.key || 'unrecorded'"
           >
-            <strong>{{ handLabel(hand) }}</strong>
-            <span v-if="selectedActionShowsResult">{{ handResultLabel(hand) }}</span>
+            <span class="action-hand-sheet__hand-count">
+              <strong>{{ group.label }}</strong>
+              <span>× {{ group.count }}</span>
+            </span>
+            <small v-if="selectedActionShowsResult">{{ formatGroupResult(group) }}</small>
           </div>
         </div>
       </section>
@@ -44,13 +47,18 @@
 import { computed, onMounted, ref } from 'vue'
 import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
 import { fetchHandLogEvent } from 'src/api/handLogApi'
-import { getHandInputValue, normalizeHand } from 'src/utils/handLogHandAnalysis'
+import {
+  getHandInputValue,
+  normalizeHand,
+  PREFLOP_169_RANKING,
+} from 'src/utils/handLogHandAnalysis'
 import StatisticsDetailHeader from '../components/StatisticsDetailHeader.vue'
 import PlayAnalysisAccordionList from '../components/PlayAnalysisAccordionList.vue'
 import PlayAnalysisSummary from '../components/PlayAnalysisSummary.vue'
 import {
   buildAnalysisRows,
   formatAnalysisRate,
+  groupHandsByRanking,
 } from '../utils/playAnalysis'
 
 const POSITION_ORDER = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
@@ -118,16 +126,32 @@ const summaryItems = computed(() => [
 ])
 const selectedActionHands = computed(() => selectedAction.value?.action?.hands || [])
 const selectedActionShowsResult = computed(() => Boolean(selectedAction.value?.action?.showResult))
+const selectedActionHandGroups = computed(() => groupHandsByRanking(
+  selectedActionHands.value,
+  PREFLOP_169_RANKING,
+  (hand) => normalizeHand(getHandInputValue(hand)),
+))
 const selectedActionTitle = computed(() => selectedAction.value
   ? `${selectedAction.value.row.label} · ${selectedAction.value.action.label}`
   : '')
-const handLabel = (hand) => normalizeHand(getHandInputValue(hand)) || '핸드 미기록'
-const handResultLabel = (hand) => {
+const resultKind = (hand) => {
   const result = String(hand.resultType || hand.result || '').toUpperCase()
-  if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(result)) return '승리'
-  if (['CHOP', 'DRAW', 'TIE'].includes(result)) return '무승부'
-  if (['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'].includes(result)) return '패배'
-  return '결과 미기록'
+  if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(result)) return 'win'
+  if (['CHOP', 'DRAW', 'TIE'].includes(result)) return 'draw'
+  if (['SHOWDOWN_LOSS', 'PREFLOP_FOLD', 'POSTFLOP_FOLD', 'LOSS', 'FOLD'].includes(result)) return 'loss'
+  return 'unrecorded'
+}
+const formatGroupResult = (group) => {
+  const counts = group.hands.reduce((result, hand) => {
+    result[resultKind(hand)] += 1
+    return result
+  }, { win: 0, loss: 0, draw: 0, unrecorded: 0 })
+  return [
+    `${counts.win}승`,
+    `${counts.loss}패`,
+    counts.draw ? `${counts.draw}무` : '',
+    counts.unrecorded ? `${counts.unrecorded}미기록` : '',
+  ].filter(Boolean).join(' · ')
 }
 const openActionHands = (payload) => {
   selectedAction.value = payload
@@ -189,14 +213,17 @@ onMounted(load)
 
 .action-hand-sheet {
   width: min(100%, 390px);
-  max-height: min(70vh, 620px);
+  max-height: min(70dvh, 620px);
   margin: 0 auto;
   overflow: hidden;
   border-radius: 22px 22px 0 0;
   background: var(--v2-page-bg);
+  display: flex;
+  flex-direction: column;
 }
 
 .action-hand-sheet header {
+  flex: 0 0 auto;
   min-height: 64px;
   padding: 18px 20px 12px;
   display: flex;
@@ -217,9 +244,13 @@ onMounted(load)
 }
 
 .action-hand-sheet__list {
-  max-height: calc(min(70vh, 620px) - 64px);
-  padding: 0 14px 20px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 0 14px max(20px, env(safe-area-inset-bottom));
   overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .action-hand-sheet__list > div {
@@ -227,7 +258,7 @@ onMounted(load)
   min-height: 52px;
   padding: 0 12px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(76px, auto);
   align-items: center;
   gap: 10px;
   border: 0;
@@ -239,4 +270,16 @@ onMounted(load)
 
 .action-hand-sheet__list strong { font-size: 15px; font-weight: 650; }
 .action-hand-sheet__list span { color: var(--v2-text-sub); font-size: 12px; }
+.action-hand-sheet__list small { color: var(--v2-text-sub); font-size: 12px; }
+.action-hand-sheet__list > div > small { text-align: right; }
+
+.action-hand-sheet__hand-count {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.action-hand-sheet__hand-count strong {
+  color: var(--v2-text-main);
+}
 </style>
