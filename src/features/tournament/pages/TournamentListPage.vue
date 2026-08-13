@@ -196,11 +196,15 @@ const openTournament = (tournament) => {
     router.push({
       name: 'tournament-summary',
       params: { tournamentId: `event-${tournament.id}` },
-      query: { legacyEventId: tournament.id },
+      query: { legacyEventId: tournament.id, from: 'tournaments' },
     })
     return
   }
-  router.push(`/app/tournament/${tournament.id}/summary`)
+  router.push({
+    name: 'tournament-summary',
+    params: { tournamentId: tournament.id },
+    query: { from: 'tournaments' },
+  })
 }
 </script>
 

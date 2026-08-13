@@ -331,11 +331,11 @@ const eventId = computed(() => {
   if (loadedEventId.value) return loadedEventId.value
   if (route.query.eventId) return route.query.eventId
 
+  // 과거 대회 요약에서 넘어온 URL의 이벤트가 현재 진행 중 대회보다 우선이다.
+  if (route.query.legacyEventId) return route.query.legacyEventId
+
   // Running 화면에서는 항상 최신 running tournament 우선
   if (storedTournament.eventId) return storedTournament.eventId
-
-  // legacy는 구버전 URL에서만 fallback
-  if (route.query.legacyEventId) return route.query.legacyEventId
 
   return handLogStore.selectedEvent?.id ?? null
 })
@@ -843,7 +843,13 @@ const openHand = (handId) => {
   router.push({
     name: 'tournament-hand-detail',
     params: { levelName: levelId.value, handId },
-    query: { levelName: levelName.value },
+    query: {
+      levelName: levelName.value,
+      ...(eventId.value ? { eventId: eventId.value } : {}),
+      ...(route.query.tournamentId ? { tournamentId: route.query.tournamentId } : {}),
+      ...(route.query.from ? { from: route.query.from } : {}),
+      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+    },
   })
 }
 
@@ -905,6 +911,18 @@ const moveSelectedHands = async (targetLevelId, targetLevelName) => {
 }
 
 const goBack = () => {
+  if (route.query.tournamentId) {
+    router.push({
+      name: 'tournament-summary',
+      params: { tournamentId: route.query.tournamentId },
+      query: {
+        ...(route.query.from ? { from: route.query.from } : {}),
+        ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+      },
+    })
+    return
+  }
+
   router.push({ name: 'tournament-running' })
 }
 </script>

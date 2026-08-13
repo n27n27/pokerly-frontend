@@ -605,7 +605,13 @@ const openHand = (hand) =>
   router.push({
     name: 'tournament-hand-detail',
     params: { levelName: hand.levelId, handId: hand.id },
-    query: { levelName: hand.level, eventId: eventId.value, ...legacyQuery.value },
+    query: {
+      levelName: hand.level,
+      eventId: eventId.value,
+      tournamentId,
+      ...(route.query.from ? { from: route.query.from } : {}),
+      ...legacyQuery.value,
+    },
   })
 const openLevel = (name) => {
   const level = levels.value.find((item) => item.name === name)
@@ -613,7 +619,14 @@ const openLevel = (name) => {
   router.push({
     name: 'tournament-level-detail',
     params: { levelName: level.id },
-    query: { view: 'summary', levelName: level.name, ...legacyQuery.value },
+    query: {
+      view: 'summary',
+      levelName: level.name,
+      eventId: eventId.value,
+      tournamentId,
+      ...(route.query.from ? { from: route.query.from } : {}),
+      ...legacyQuery.value,
+    },
   })
 }
 const legacyQuery = computed(() =>
@@ -623,7 +636,11 @@ const goReviewHands = () =>
   router.push({
     name: 'tournament-review-hands',
     params: { tournamentId },
-    query: { eventId: eventId.value, ...legacyQuery.value },
+    query: {
+      eventId: eventId.value,
+      ...(route.query.from ? { from: route.query.from } : {}),
+      ...legacyQuery.value,
+    },
   })
 const goStats = () =>
   router.push({
@@ -678,6 +695,11 @@ onMounted(async () => {
 })
 
 const goBack = () => {
+  if (route.query.from === 'tournaments') {
+    router.push({ name: 'tournament-list' })
+    return
+  }
+
   router.push({ name: 'home' })
 }
 </script>

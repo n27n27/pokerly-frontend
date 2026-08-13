@@ -385,7 +385,27 @@ const confirmDelete = async () => {
 }
 
 const goBack = () => {
-  router.push({ name: 'tournament-level-detail', params: { levelName: levelId.value } })
+  if (route.query.tournamentId) {
+    router.push({
+      name: 'tournament-summary',
+      params: { tournamentId: route.query.tournamentId },
+      query: {
+        ...(route.query.from ? { from: route.query.from } : {}),
+        ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+      },
+    })
+    return
+  }
+
+  router.push({
+    name: 'tournament-level-detail',
+    params: { levelName: levelId.value },
+    query: {
+      levelName: levelName.value,
+      ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
+      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+    },
+  })
 }
 </script>
 
