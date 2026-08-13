@@ -38,7 +38,7 @@
       <template v-else>
         <header>
           <h2>{{ handSectionTitle }}</h2>
-          <span>{{ selectedHands.length }}회</span>
+          <span>{{ handSectionSummary }}</span>
         </header>
         <div v-if="!handRows.length" class="analysis-state analysis-state--compact">
           {{ emptyStateMessage }}
@@ -63,7 +63,7 @@
                 <i :style="{ width: `${row.participationRate}%` }" />
               </span>
             </span>
-            <span v-else class="hand-distribution__action-count">
+            <span v-if="selectedAction === 'fold'" class="hand-distribution__action-count">
               ×{{ row.total }}
             </span>
             <span
@@ -156,25 +156,36 @@ const handSectionTitle = computed(() => selectedAction.value === 'all'
 const emptyStateMessage = computed(() => selectedAction.value === 'all'
   ? '아직 기록된 핸드가 없습니다.'
   : `아직 ${selectedActionLabel.value} 기록이 없습니다.`)
-const formatActionResult = (row) => {
-  const recorded = row.wins + row.losses + row.draws
+const formatResultCounts = ({ wins, losses, draws }) => {
+  const recorded = wins + losses + draws
   if (recorded === 0) return '결과 미기록'
   if (recorded === 1) {
-    if (row.wins) return '1승'
-    if (row.losses) return '1패'
+    if (wins) return '1승'
+    if (losses) return '1패'
     return '1무'
   }
   return [
-    `${row.wins}승`,
-    `${row.losses}패`,
-    row.draws ? `${row.draws}무` : '',
+    `${wins}승`,
+    `${losses}패`,
+    draws ? `${draws}무` : '',
   ].filter(Boolean).join(' · ')
 }
+const formatActionResult = (row) => formatResultCounts(row)
 const handRows = computed(() => buildAnalysisRows(
   PREFLOP_169_RANKING,
   selectedHands.value,
   (hand) => normalizeHand(getHandInputValue(hand)),
 ).filter((row) => row.total > 0))
+const handSectionSummary = computed(() => {
+  const total = `${selectedHands.value.length}회`
+  if (selectedAction.value === 'all' || selectedAction.value === 'fold') return total
+  const totals = handRows.value.reduce((result, row) => ({
+    wins: result.wins + row.wins,
+    losses: result.losses + row.losses,
+    draws: result.draws + row.draws,
+  }), { wins: 0, losses: 0, draws: 0 })
+  return `${total} · ${formatResultCounts(totals)}`
+})
 const filterByVenue = (sessions) => {
   if (filter.value.venueId === null) return sessions
   if (filter.value.venueId === 'other') return sessions.filter((item) => item.venueId == null)
@@ -247,7 +258,7 @@ onMounted(load)
 .hand-distribution__list > div { min-height: 52px; padding: 7px 13px; border-bottom: 1px solid var(--v2-border); display: grid; align-items: center; gap: 12px; }
 .hand-distribution__list--all > div { grid-template-columns: minmax(0, 1fr) minmax(90px, 42%); }
 .hand-distribution__list--fold > div { grid-template-columns: minmax(0, 1fr) auto; }
-.hand-distribution__list--action-results > div { grid-template-columns: minmax(0, 1fr) auto minmax(76px, auto); }
+.hand-distribution__list--action-results > div { grid-template-columns: minmax(0, 1fr) minmax(76px, auto); }
 .hand-distribution__list > div:last-child { border-bottom: 0; }
 .hand-distribution__list strong { font-size: 13px; font-weight: 650; }
 .hand-distribution__list span { color: var(--v2-text-sub); font-size: 11px; }
@@ -263,7 +274,7 @@ onMounted(load)
 
 @media (max-width: 360px) {
   .hand-distribution__list--all > div { grid-template-columns: minmax(0, 1fr) minmax(84px, 44%); }
-  .hand-distribution__list--action-results > div { grid-template-columns: minmax(0, 1fr) auto minmax(68px, auto); }
+  .hand-distribution__list--action-results > div { grid-template-columns: minmax(0, 1fr) minmax(68px, auto); }
   .hand-distribution__list > div { gap: 5px; padding-inline: 10px; }
   .hand-distribution__participation { font-size: 10px; }
 }
