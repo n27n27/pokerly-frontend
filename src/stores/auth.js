@@ -152,6 +152,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (e) {
       console.warn('fetchMe 실패', e)
       user.value = null
+      throw e
     }
   }
 

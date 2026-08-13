@@ -1,6 +1,7 @@
 // src/boot/axios.js
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
+import { isTerminalRefreshError } from 'src/utils/authError'
 
 // =============================
 //  Axios 인스턴스
@@ -158,11 +159,14 @@ api.interceptors.response.use(
       originalRequest.headers.Authorization = `Bearer ${accessToken}`
       return api(originalRequest)
     } catch (refreshError) {
-      // 🔥 refresh 실패: 토큰 모두 삭제 + 로그인 페이지로 이동
       processQueue(refreshError, null)
-      clearTokens()
       console.error('axios refresh 실패', refreshError)
-      redirectToLogin()
+
+      // 만료/폐기 등 refresh token이 실제로 거부된 경우에만 로그아웃한다.
+      // 오프라인, 타임아웃, 5xx에서는 토큰을 보존해 다음 요청에서 복구한다.
+      if (isTerminalRefreshError(refreshError)) {
+        redirectToLogin()
+      }
 
       // 호출 측에서 필요하면 에러를 캐치해서 따로 처리할 수 있게 그대로 reject
       return Promise.reject(refreshError)
@@ -185,12 +189,7 @@ export const bootstrapAuth = async () => {
 
   // AccessToken 이 없고 RefreshToken 만 있으면 미리 갱신 시도
   if (!at && rt) {
-    try {
-      await requestRefresh()
-    } catch (e) {
-      clearTokens()
-      console.error('bootstrapAuth: 토큰 갱신 실패', e)
-    }
+    await requestRefresh()
   }
 }
 

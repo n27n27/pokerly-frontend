@@ -67,8 +67,6 @@ export default route(function () {
           await bootstrapAuth()
         } catch (e) {
           console.error('bootstrapAuth 실패', e)
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
         }
 
         // 2) 그래도 user가 비어 있고 accessToken 이 남아 있으면 /me 로 복구 시도
@@ -79,8 +77,6 @@ export default route(function () {
               await auth.fetchMe()
             } catch (e) {
               console.error('fetchMe 실패(로그인 라우트)', e)
-              localStorage.removeItem('accessToken')
-              localStorage.removeItem('refreshToken')
             }
           }
         }
@@ -102,8 +98,6 @@ export default route(function () {
         await bootstrapAuth()
       } catch (e) {
         console.error('bootstrapAuth 실패', e)
-        localStorage.removeItem('accessToken')
-        localStorage.removeItem('refreshToken')
       }
     }
 
@@ -115,8 +109,6 @@ export default route(function () {
           await auth.fetchMe()
         } catch (_error) {
           console.error('fetchMe 실패', _error)
-          localStorage.removeItem('accessToken')
-          localStorage.removeItem('refreshToken')
         }
       }
     }
