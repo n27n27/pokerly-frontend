@@ -79,8 +79,8 @@ const googleReady = ref(false)
 const googleLoadFailed = ref(false)
 const isKakaoBrowser = isKakaoInAppBrowser()
 
-const googleFallbackEnabled = isKakaoBrowser || googleLoadFailed
-const googleFallbackLabel = isKakaoBrowser ? '기본 브라우저에서 Google 로그인' : 'Google로 계속하기'
+const googleFallbackEnabled = googleLoadFailed
+const googleFallbackLabel = 'Google로 계속하기'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
@@ -117,8 +117,6 @@ const initGoogleLogin = async () => {
     alert.show('Google 로그인 설정이 누락되었습니다.', 'error')
     return
   }
-
-  if (isKakaoBrowser) return
 
   try {
     await loadGoogleIdentity()
