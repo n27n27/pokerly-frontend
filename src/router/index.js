@@ -1,5 +1,5 @@
 import { route } from 'quasar/wrappers'
-import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router'
+import { createRouter, createWebHistory, createWebHashHistory, START_LOCATION } from 'vue-router'
 import routes from './routes'
 import { useAuthStore } from 'stores/auth'
 import { bootstrapAuth } from 'boot/axios'
@@ -45,6 +45,14 @@ export default route(function () {
 
   Router.beforeEach(async (to, _from, next) => {
     const auth = useAuthStore()
+
+    // iOS 홈 화면 앱은 프로세스를 종료해도 마지막 hash URL을 복원한다.
+    // 콜드 스타트가 과거 레벨 상세 URL이면 홈에서 최신 running 상태를 다시 동기화한다.
+    const isStandaloneApp =
+      window.navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches
+    if (_from === START_LOCATION && isStandaloneApp && to.name === 'tournament-level-detail') {
+      return next({ name: 'home', replace: true })
+    }
 
     const needsAuth = to.matched.some((r) => r.meta?.requiresAuth)
     const requiredRole = to.matched.find((r) => r.meta?.role)?.meta?.role

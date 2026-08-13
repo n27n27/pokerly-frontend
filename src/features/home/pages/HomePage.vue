@@ -430,6 +430,9 @@ const loadRunningTournament = async () => {
       venueId: session.venueId,
       startLevel: session.startLevel,
       currentLevel: session.currentLevel,
+      // GameSession은 현재 레벨의 번호를 canonical 값으로 보관한다.
+      // 레벨 id는 클라이언트 캐시 값이므로 앱 재시작 뒤에는 다시 찾아야 한다.
+      currentBlindLevelId: null,
       startingStack: formatQuickNumber(session.startingStack),
       currentStack: formatQuickNumber(session.currentStack),
       averageStack: formatQuickNumber(session.averageStack),
@@ -896,7 +899,24 @@ const loadRunningTournamentDetail = async () => {
       return
     }
 
-    const currentStack = level.endStack ?? level.displayStartStack ?? level.startStack
+    const levels = [...(event.blindLevels || [])].sort(
+      (a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0),
+    )
+    const currentLevelIndex = levels.findIndex((item) => String(item.id) === String(level.id))
+    let inheritedStack = null
+    for (let index = currentLevelIndex - 1; index >= 0; index -= 1) {
+      inheritedStack =
+        levels[index].endStack ?? levels[index].displayStartStack ?? levels[index].startStack
+      if (inheritedStack != null) break
+    }
+    const currentStack =
+      level.endStack ??
+      level.displayStartStack ??
+      level.startStack ??
+      inheritedStack ??
+      parseQuickNumber(tournament.currentStack) ??
+      event.startingStack ??
+      parseQuickNumber(tournament.startingStack)
     // 새 레벨에는 아직 평균 스택이 기록되지 않았을 수 있다.
     // 레벨 전환 직후에는 진행 중 세션의 마지막 평균 스택을 유지한다.
     const averageStack = level.averageStack ?? parseQuickNumber(tournament.averageStack)

@@ -604,6 +604,9 @@ onMounted(async () => {
         venueId: serverRunning.venueId,
         startLevel: serverRunning.startLevel,
         currentLevel: serverRunning.currentLevel,
+        // 이 값은 서버 필드가 아니므로 이전 기기의 캐시를 신뢰하지 않는다.
+        // 이벤트를 받은 뒤 서버의 currentLevel로 실제 id를 다시 결정한다.
+        currentBlindLevelId: null,
         startingStack: formatInputNumber(serverRunning.startingStack),
         currentStack: formatInputNumber(serverRunning.currentStack),
         averageStack: formatInputNumber(serverRunning.averageStack),
@@ -630,6 +633,13 @@ onMounted(async () => {
           handLogStore.fetchBlindLevelDetail(eventId, level.id),
         ),
       )
+      const restoredCurrentLevel = (event.value?.blindLevels || []).find(
+        (level) => Number(level.levelNo) === currentLevelNumber.value,
+      )
+      if (restoredCurrentLevel) {
+        runningTournament.currentBlindLevelId = restoredCurrentLevel.id
+        localStorage.setItem('pokerly-running-tournament', JSON.stringify(runningTournament))
+      }
     }
   } catch {
     alert.show('토너먼트 데이터를 불러오지 못했습니다.', 'error')

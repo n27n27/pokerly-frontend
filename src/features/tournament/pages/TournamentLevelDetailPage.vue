@@ -669,7 +669,7 @@ const syncRunningTournament = (runningSession) => {
   Object.assign(storedTournament, {
     sessionId: runningSession.id,
     eventId: runningSession.handLogEventId,
-    currentBlindLevelId: runningSession.currentBlindLevelId,
+    currentLevel: runningSession.currentLevel,
     currentStack: runningSession.currentStack,
     averageStack: runningSession.averageStack,
   })
@@ -686,9 +686,9 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
     for (let attempt = 0; attempt <= retries; attempt += 1) {
       const eventIds = [eventId.value]
 
-      // iOS 홈 화면 앱은 종료 후 재실행될 때 네트워크가 화면보다 늦게
-      // 깨어날 수 있다. 첫 조회 실패 시 서버의 진행 중 대회를 다시 기준으로 잡는다.
-      if ((!eventIds[0] || attempt > 0) && !route.query.legacyEventId) {
+      // iOS 홈 화면 앱은 종료 후 재실행될 때 로컬 상태와 마지막 URL만 먼저
+      // 복구될 수 있다. 매 시도마다 서버의 진행 중 대회를 canonical 기준으로 잡는다.
+      if (!route.query.legacyEventId) {
         try {
           const runningSession = await fetchRunningGameSession()
           const syncedEventId = syncRunningTournament(runningSession)
@@ -709,6 +709,19 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
         // 조회만 일시적으로 실패해도 레벨 화면까지 막지 않는다.
         if (levelResult.status === 'fulfilled' && levelResult.value) {
           loadedEventId.value = requestedEventId
+          const currentLevelNo = Number(
+            String(storedTournament.currentLevel || storedTournament.startLevel || '').replace(
+              /\D/g,
+              '',
+            ),
+          )
+          const restoredCurrentLevel = (handLogStore.selectedEvent?.blindLevels || []).find(
+            (level) => Number(level.levelNo) === currentLevelNo,
+          )
+          if (restoredCurrentLevel) {
+            storedTournament.currentBlindLevelId = restoredCurrentLevel.id
+            localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+          }
           return true
         }
 
