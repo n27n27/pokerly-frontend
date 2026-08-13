@@ -19,6 +19,7 @@
     <q-dialog v-model="actionSheetOpen" position="bottom">
       <section
         class="action-hand-sheet"
+        :style="{ '--sheet-content-height': `${84 + selectedActionHandGroups.length * 52}px` }"
         aria-labelledby="action-hand-sheet-title"
         @click.stop
       >
@@ -213,6 +214,7 @@ onMounted(load)
 
 .action-hand-sheet {
   width: min(100%, 390px);
+  height: min(var(--sheet-content-height, 136px), 70dvh, 620px);
   max-height: min(70dvh, 620px);
   margin: 0 auto;
   overflow: hidden;
