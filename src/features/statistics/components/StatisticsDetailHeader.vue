@@ -1,8 +1,11 @@
 <template>
   <header class="detail-header">
-    <button class="detail-header__back" type="button" :aria-label="`${title} 닫기`" @click="router.back()">
-      <q-icon name="chevron_left" size="27px" />
-    </button>
+    <div class="detail-header__identity">
+      <button class="detail-header__back" type="button" :aria-label="`${title} 닫기`" @click="router.back()">
+        <q-icon name="chevron_left" size="27px" />
+      </button>
+      <h1 v-if="showTitle">{{ title }}</h1>
+    </div>
     <div class="detail-header__filters">
       <div class="month-filter" :class="{ 'month-filter--all': showAllPeriod }">
         <button v-if="!showAllPeriod" type="button" aria-label="이전 달" @click="moveMonth(-1)">
@@ -116,20 +119,28 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { fetchVenues } from 'src/api/venue'
 
-defineProps({
+const props = defineProps({
   title: {
     type: String,
     required: true,
+  },
+  initialFilter: {
+    type: Object,
+    default: null,
+  },
+  showTitle: {
+    type: Boolean,
+    default: false,
   },
 })
 
 const emit = defineEmits(['change'])
 const router = useRouter()
 const now = new Date()
-const selectedYear = ref(now.getFullYear())
-const selectedMonth = ref(now.getMonth() + 1)
-const showAllPeriod = ref(false)
-const venueId = ref(null)
+const selectedYear = ref(Number(props.initialFilter?.year) || now.getFullYear())
+const selectedMonth = ref(Number(props.initialFilter?.month) || now.getMonth() + 1)
+const showAllPeriod = ref(Boolean(props.initialFilter?.allPeriod))
+const venueId = ref(props.initialFilter?.venueId ?? null)
 const venues = ref([])
 
 const monthLabel = computed(() => `${selectedYear.value}년 ${selectedMonth.value}월`)
@@ -187,6 +198,29 @@ onMounted(async () => {
   display: grid;
   place-items: center;
   transform: translateY(-8px);
+}
+
+.detail-header__identity {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  transform: translateY(-8px);
+}
+
+.detail-header__identity .detail-header__back {
+  flex: 0 0 auto;
+  transform: none;
+}
+
+.detail-header__identity h1 {
+  overflow: hidden;
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 21px;
+  font-weight: 680;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .detail-header__filters {

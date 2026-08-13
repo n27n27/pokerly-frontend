@@ -6,18 +6,11 @@ const DRAW_RESULTS = new Set(['CHOP', 'DRAW', 'TIE'])
 
 const ACTION_GROUPS = [
   {
-    key: 'fold',
-    label: '폴드',
-    actions: new Set(['FOLD']),
-    showResult: false,
+    key: 'open',
+    label: '오픈',
+    actions: new Set(['OPEN', 'ISO_RAISE', 'OPEN_FOLD_TO_3BET', 'OPEN_CALL_3BET']),
+    showResult: true,
   },
-  {
-    key: 'walk',
-    label: '앞에서 올폴드',
-    actions: new Set(['WALK']),
-    showResult: false,
-  },
-  { key: 'check', label: '체크', actions: new Set(['CHECK']), showResult: true },
   {
     key: 'call',
     label: '림프·콜',
@@ -25,16 +18,29 @@ const ACTION_GROUPS = [
     showResult: true,
   },
   {
-    key: 'open',
-    label: '오픈',
-    actions: new Set(['OPEN', 'ISO_RAISE', 'OPEN_FOLD_TO_3BET', 'OPEN_CALL_3BET']),
+    key: 'threeBet',
+    label: '3벳',
+    actions: new Set(['THREE_BET']),
     showResult: true,
   },
   {
-    key: 'threeBet',
-    label: '3벳+',
-    actions: new Set(['THREE_BET', 'FOUR_BET_PLUS', 'OPEN_4BET_PLUS']),
+    key: 'fourBet',
+    label: '4벳+',
+    actions: new Set(['FOUR_BET_PLUS', 'OPEN_4BET_PLUS']),
     showResult: true,
+  },
+  { key: 'check', label: '체크', actions: new Set(['CHECK']), showResult: true },
+  {
+    key: 'walk',
+    label: '앞에서 올폴드',
+    actions: new Set(['WALK']),
+    showResult: false,
+  },
+  {
+    key: 'fold',
+    label: '폴드',
+    actions: new Set(['FOLD']),
+    showResult: false,
   },
 ]
 
@@ -48,7 +54,14 @@ const normalizePosition = (position) => {
 }
 
 const actionOf = (hand) => String(hand?.actionType || hand?.preflopAction || '').toUpperCase()
+const secondaryActionOf = (hand) => String(hand?.secondaryAction || '').toUpperCase()
 const resultOf = (hand) => String(hand?.resultType || hand?.result || '').toUpperCase()
+const actionGroupKeyOf = (hand) => {
+  if (['FOUR_BET_PLUS', 'FIVE_BET_PLUS'].includes(secondaryActionOf(hand))) return 'fourBet'
+  if (secondaryActionOf(hand) === 'THREE_BET_PLUS') return 'threeBet'
+  const action = actionOf(hand)
+  return ACTION_GROUPS.find((group) => group.actions.has(action))?.key || ''
+}
 
 const countResults = (hands) => hands.reduce((counts, hand) => {
   const result = resultOf(hand)
@@ -60,7 +73,10 @@ const countResults = (hands) => hands.reduce((counts, hand) => {
   return counts
 }, { wins: 0, losses: 0, draws: 0, unrecorded: 0 })
 
-export const formatAnalysisRate = (value) => `${Number(value || 0).toFixed(1)}%`
+export const formatAnalysisRate = (value) => {
+  const rate = Number(value || 0)
+  return `${rate === 0 || rate === 100 ? rate.toFixed(0) : rate.toFixed(1)}%`
+}
 
 export const groupHandsByRanking = (hands, ranking, handOf) => {
   const grouped = new Map()
@@ -104,7 +120,7 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
     + participatedResults.losses
     + participatedResults.draws
   const groupedActions = ACTION_GROUPS.map((group) => {
-    const actionHands = matchedHands.filter((hand) => group.actions.has(actionOf(hand)))
+    const actionHands = matchedHands.filter((hand) => actionGroupKeyOf(hand) === group.key)
     return {
       key: group.key,
       label: group.label,
@@ -118,8 +134,7 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
   const groupedCount = groupedActions.reduce((sum, group) => sum + group.count, 0)
   const unknownActions = matchedHands.length - groupedCount
   if (unknownActions > 0) {
-    const knownActions = new Set(ACTION_GROUPS.flatMap((group) => [...group.actions]))
-    const unknownHands = matchedHands.filter((hand) => !knownActions.has(actionOf(hand)))
+    const unknownHands = matchedHands.filter((hand) => !actionGroupKeyOf(hand))
     groupedActions.push({
       key: 'unknown',
       label: '기타·미기록',
@@ -159,6 +174,7 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
     participatedDraws: participatedResults.draws,
     participatedUnrecorded: participatedResults.unrecorded,
     actions: groupedActions,
+    hands: matchedHands,
     positions,
     ...results,
   }

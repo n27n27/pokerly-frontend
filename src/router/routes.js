@@ -192,6 +192,12 @@ const routes = [
         component: () => import('src/features/statistics/pages/StatisticsPositionPage.vue'),
       },
       {
+        path: 'statistics/position/:position',
+        name: 'statistics-position-detail',
+        meta: { hideHeader: true },
+        component: () => import('src/features/statistics/pages/StatisticsPositionDetailPage.vue'),
+      },
+      {
         path: 'statistics/hands',
         name: 'statistics-hands',
         meta: { hideHeader: true },

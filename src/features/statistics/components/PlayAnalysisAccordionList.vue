@@ -70,18 +70,25 @@
             v-for="action in row.actions"
             :key="action.key"
             class="action-analysis__row"
-            :class="{ 'action-analysis__row--drilldown': actionDrilldown }"
             type="button"
-            :disabled="!actionDrilldown"
-            @click="actionDrilldown && $emit('action-select', { row, action })"
+            disabled
           >
             <span>{{ action.label }}</span>
             <strong>{{ action.count }}회</strong>
             <small v-if="action.showResult">{{ formatResultWithDraws(action) }}</small>
             <small v-else aria-hidden="true"></small>
-            <q-icon v-if="actionDrilldown" name="chevron_right" size="18px" />
           </button>
         </div>
+
+        <button
+          v-if="rowDetail"
+          class="analysis-row__detail"
+          type="button"
+          @click="$emit('row-detail', row)"
+        >
+          상세보기
+          <q-icon name="chevron_right" size="18px" />
+        </button>
 
         <div v-if="showPositions && row.positions?.length" class="action-analysis position-analysis">
           <div class="action-analysis__head">
@@ -118,7 +125,7 @@ defineProps({
     type: String,
     default: 'results',
   },
-  actionDrilldown: {
+  rowDetail: {
     type: Boolean,
     default: false,
   },
@@ -128,7 +135,7 @@ defineProps({
   },
 })
 
-defineEmits(['action-select'])
+defineEmits(['row-detail'])
 
 const expandedKeys = ref(new Set())
 const isOpen = (key) => expandedKeys.value.has(key)
@@ -381,14 +388,6 @@ const formatParticipatedResult = (item) => [
   opacity: 1;
 }
 
-.action-analysis__row--drilldown {
-  cursor: pointer;
-}
-
-.action-analysis__row--drilldown:active {
-  background: color-mix(in srgb, var(--v2-primary) 5%, white);
-}
-
 .action-analysis__row .q-icon {
   color: var(--v2-text-sub);
 }
@@ -404,6 +403,22 @@ const formatParticipatedResult = (item) => [
 
 .action-analysis__row small {
   color: var(--v2-text-sub);
+}
+
+.analysis-row__detail {
+  min-height: 38px;
+  margin-top: 8px;
+  margin-left: auto;
+  padding: 0 4px 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--v2-primary);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 620;
 }
 
 @media (max-width: 370px) {

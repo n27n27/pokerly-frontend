@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { groupHandsByRanking } from '../src/features/statistics/utils/playAnalysis.js'
+import {
+  buildAnalysisRows,
+  formatAnalysisRate,
+  groupHandsByRanking,
+} from '../src/features/statistics/utils/playAnalysis.js'
 
 test('동일 핸드를 집계하고 169핸드 랭킹 순으로 정렬한다', () => {
   const hands = [
@@ -31,4 +35,22 @@ test('핸드 미기록 항목도 누락하지 않고 마지막에 합친다', ()
     { label: 'AA', count: 1 },
     { label: '핸드 미기록', count: 2 },
   ])
+})
+
+test('참여율 양 끝값은 소수점 없이 표시한다', () => {
+  assert.equal(formatAnalysisRate(0), '0%')
+  assert.equal(formatAnalysisRate(100), '100%')
+  assert.equal(formatAnalysisRate(11.111), '11.1%')
+})
+
+test('후속 액션으로 기록된 3벳 이상도 액션 필터에 집계한다', () => {
+  const hands = [
+    { position: 'UTG', actionType: 'CALL', secondaryAction: 'THREE_BET_PLUS' },
+    { position: 'UTG', actionType: 'OPEN', secondaryAction: 'FOUR_BET_PLUS' },
+  ]
+
+  const [row] = buildAnalysisRows(['UTG'], hands, (hand) => hand.position)
+
+  assert.equal(row.actions.find((action) => action.key === 'threeBet')?.count, 1)
+  assert.equal(row.actions.find((action) => action.key === 'fourBet')?.count, 1)
 })
