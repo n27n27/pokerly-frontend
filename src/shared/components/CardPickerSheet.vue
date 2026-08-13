@@ -1,39 +1,41 @@
 <template>
-  <div v-if="modelValue" class="picker-backdrop" @click.self="closeFromBackdrop">
-    <section class="card-picker" @click.stop>
-      <div class="picker-handle"></div>
+  <Teleport to="body">
+    <div v-if="modelValue" class="picker-backdrop" @click.self="closeFromBackdrop">
+      <section class="card-picker" @click.stop>
+        <div class="picker-handle"></div>
 
-      <div class="rank-grid">
-        <button
-          v-for="rank in ranks"
-          :key="rank"
-          type="button"
-          :class="{ red: selectedSuit.red }"
-          :disabled="usedCodes.includes(`${rank}${selectedSuit.symbol}`)"
-          @click="selectRank(rank)"
-        >
-          {{ rank }} {{ selectedSuit.symbol }}
-        </button>
-      </div>
+        <div class="rank-grid">
+          <button
+            v-for="rank in ranks"
+            :key="rank"
+            type="button"
+            :class="{ red: selectedSuit.red }"
+            :disabled="usedCodes.includes(`${rank}${selectedSuit.symbol}`)"
+            @click="selectRank(rank)"
+          >
+            {{ rank }} {{ selectedSuit.symbol }}
+          </button>
+        </div>
 
-      <div class="suit-grid">
-        <button
-          v-for="suit in suits"
-          :key="suit.symbol"
-          type="button"
-          :class="{ selected: selectedSuit.symbol === suit.symbol, red: suit.red }"
-          @click="selectedSuit = suit"
-        >
-          {{ suit.symbol }}
-        </button>
-      </div>
+        <div class="suit-grid">
+          <button
+            v-for="suit in suits"
+            :key="suit.symbol"
+            type="button"
+            :class="{ selected: selectedSuit.symbol === suit.symbol, red: suit.red }"
+            @click="selectedSuit = suit"
+          >
+            {{ suit.symbol }}
+          </button>
+        </div>
 
-      <div class="picker-actions">
-        <button class="danger" type="button" @click="$emit('clear')">{{ clearLabel }}</button>
-        <button type="button" :disabled="doneDisabled" @click="close">완료</button>
-      </div>
-    </section>
-  </div>
+        <div class="picker-actions">
+          <button class="danger" type="button" @click="$emit('clear')">{{ clearLabel }}</button>
+          <button type="button" :disabled="doneDisabled" @click="close">완료</button>
+        </div>
+      </section>
+    </div>
+  </Teleport>
 </template>
 
 <script setup>
