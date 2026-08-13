@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { isTerminalRefreshError } from '../src/utils/authError.js'
 
 test('refresh token이 거부된 경우에만 세션 만료로 판단한다', () => {
+  assert.equal(isTerminalRefreshError({ code: 'AUTH_NO_REFRESH_TOKEN' }), true)
   assert.equal(isTerminalRefreshError({ response: { status: 400 } }), true)
   assert.equal(isTerminalRefreshError({ response: { status: 401 } }), true)
   assert.equal(isTerminalRefreshError({ response: { status: 403 } }), true)

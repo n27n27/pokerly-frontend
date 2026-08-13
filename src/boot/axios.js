@@ -83,7 +83,9 @@ const processQueue = (error, token = null) => {
 const requestRefresh = async () => {
   const rt = getRT()
   if (!rt) {
-    throw new Error('No refresh token')
+    const error = new Error('No refresh token')
+    error.code = 'AUTH_NO_REFRESH_TOKEN'
+    throw error
   }
 
   // VITE_API_BASE_URL 에 이미 /api 가 들어있다고 가정 → 여기서는 /auth/refresh 만 사용
