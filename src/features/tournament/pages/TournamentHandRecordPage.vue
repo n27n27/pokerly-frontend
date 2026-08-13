@@ -48,7 +48,7 @@
             <button
               type="button"
               aria-label="인원 늘리기"
-              :disabled="handedCount >= 10"
+              :disabled="handedCount >= 11"
               @click="changeHandedCount(1)"
             >
               +
@@ -66,6 +66,9 @@
             {{ position }}
           </button>
         </div>
+        <small v-if="handedCount === 11 && form.position === 'UTG+2'" class="position-seat-hint">
+          11핸디드에서는 2번 진행 · {{ selectedDuplicatePositionStep }}/2
+        </small>
       </div>
 
       <div class="divider"></div>
@@ -190,6 +193,30 @@ const positionMap = {
   8: ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
   9: ['UTG', 'UTG+1', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
   10: ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  11: ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+}
+const positionSeatMap = {
+  ...Object.fromEntries(
+    Object.entries(positionMap)
+      .filter(([count]) => Number(count) !== 11)
+      .map(([count, options]) => [
+        count,
+        options.map((position) => ({ key: position, position })),
+      ]),
+  ),
+  11: [
+    { key: 'UTG', position: 'UTG' },
+    { key: 'UTG+1', position: 'UTG+1' },
+    { key: 'UTG+2:2', position: 'UTG+2', step: 2 },
+    { key: 'UTG+2:1', position: 'UTG+2', step: 1 },
+    { key: 'MP', position: 'MP' },
+    { key: 'LJ', position: 'LJ' },
+    { key: 'HJ', position: 'HJ' },
+    { key: 'CO', position: 'CO' },
+    { key: 'BTN', position: 'BTN' },
+    { key: 'SB', position: 'SB' },
+    { key: 'BB', position: 'BB' },
+  ],
 }
 const storedTournament = (() => {
   try {
@@ -199,20 +226,27 @@ const storedTournament = (() => {
   }
 })()
 const handedCount = ref(
-  Math.min(10, Math.max(4, Number(storedTournament.currentHandedCount) || 10)),
+  Math.min(11, Math.max(4, Number(storedTournament.currentHandedCount) || 10)),
 )
 const positions = computed(() => positionMap[handedCount.value])
-const lastSavedPosition = ref(
+const positionSeats = computed(() => positionSeatMap[handedCount.value])
+const lastSavedPosition =
   storedTournament.lastHandPosition ||
-    handLogStore.selectedBlindLevel?.hands?.at(-1)?.position ||
-    '',
-)
-const getSuggestedPosition = () => {
-  const options = positions.value
-  const previousIndex = options.indexOf(lastSavedPosition.value)
-  if (previousIndex < 0) return options[0]
-  return options[(previousIndex - 1 + options.length) % options.length]
+  handLogStore.selectedBlindLevel?.hands?.at(-1)?.position ||
+  ''
+const lastSavedSeatKey = storedTournament.lastHandSeatKey || lastSavedPosition
+const getSuggestedSeat = () => {
+  const seats = positionSeats.value
+  const normalizedLastSeatKey =
+    seats.find((seat) => seat.key === lastSavedSeatKey)?.key ||
+    seats.find((seat) => seat.position === lastSavedPosition)?.key
+  const previousIndex = seats.findIndex((seat) => seat.key === normalizedLastSeatKey)
+  return previousIndex < 0
+    ? seats[0]
+    : seats[(previousIndex - 1 + seats.length) % seats.length]
 }
+const suggestedSeat = getSuggestedSeat()
+const selectedSeatKey = ref(suggestedSeat.key)
 const basePreflopActions = [
   { value: 'FOLD', label: '폴드' },
   { value: 'CALL', label: '콜' },
@@ -256,12 +290,15 @@ const activeCardIndex = ref(0)
 const pickerOpen = ref(false)
 const showSecondaryAction = ref(false)
 const form = reactive({
-  position: getSuggestedPosition(),
+  position: suggestedSeat.position,
   preflopAction: 'FOLD',
   secondaryAction: null,
   result: 'LOSS',
   reviewRequired: false,
 })
+const selectedDuplicatePositionStep = computed(
+  () => positionSeats.value.find((seat) => seat.key === selectedSeatKey.value)?.step || 1,
+)
 const preflopActions = computed(() =>
   form.position === 'BB' ? bbPreflopActions : basePreflopActions,
 )
@@ -300,9 +337,11 @@ const loadHandForEdit = async () => {
         handedCount.value,
     )
     handedCount.value = hand.handedCount
-      ? Math.min(10, Math.max(4, Number(hand.handedCount)))
+      ? Math.min(11, Math.max(4, Number(hand.handedCount)))
       : Math.max(minimumHandedCount, handedCount.value)
     form.position = hand.position || positions.value[0]
+    selectedSeatKey.value =
+      positionSeats.value.find((seat) => seat.position === form.position)?.key || form.position
     form.preflopAction = action
     form.secondaryAction = hand.secondaryAction || null
     showSecondaryAction.value = Boolean(form.secondaryAction)
@@ -326,8 +365,10 @@ const loadHandForEdit = async () => {
 onMounted(loadHandForEdit)
 
 const changeHandedCount = (change) => {
-  handedCount.value = Math.min(10, Math.max(4, handedCount.value + change))
-  form.position = getSuggestedPosition()
+  handedCount.value = Math.min(11, Math.max(4, handedCount.value + change))
+  const nextSuggestedSeat = getSuggestedSeat()
+  selectedSeatKey.value = nextSuggestedSeat.key
+  form.position = nextSuggestedSeat.position
   if (form.position !== 'BB' && ['CHECK', 'WALK'].includes(form.preflopAction)) {
     form.preflopAction = 'FOLD'
     form.result = 'LOSS'
@@ -335,6 +376,12 @@ const changeHandedCount = (change) => {
 }
 
 const selectPosition = (position) => {
+  if (handedCount.value === 11 && position === 'UTG+2' && form.position === position) {
+    selectedSeatKey.value = selectedSeatKey.value === 'UTG+2:1' ? 'UTG+2:2' : 'UTG+2:1'
+  } else {
+    selectedSeatKey.value =
+      positionSeats.value.find((seat) => seat.position === position)?.key || position
+  }
   form.position = position
   if (position !== 'BB' && ['CHECK', 'WALK'].includes(form.preflopAction)) {
     form.preflopAction = 'FOLD'
@@ -449,6 +496,7 @@ const saveHand = async () => {
     }
     storedTournament.currentHandedCount = handedCount.value
     storedTournament.lastHandPosition = form.position
+    storedTournament.lastHandSeatKey = selectedSeatKey.value
     localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
     router.replace(
       isEditMode.value
@@ -659,6 +707,16 @@ const saveHand = async () => {
   border-color: var(--v2-primary);
   background: var(--v2-primary);
   color: #ffffff;
+}
+
+.position-seat-hint {
+  display: block;
+  margin-top: -1px;
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  font-weight: 520;
+  line-height: 1.3;
+  text-align: center;
 }
 
 .action-grid {

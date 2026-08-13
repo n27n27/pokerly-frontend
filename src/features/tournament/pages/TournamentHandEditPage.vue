@@ -328,7 +328,7 @@ const ante = computed(() =>
   parseNumber(storedTournament.startBlinds?.ante),
 )
 const handedCount = ref(
-  Math.min(10, Math.max(4, Number(storedTournament.currentHandedCount) || 10)),
+  Math.min(11, Math.max(4, Number(storedTournament.currentHandedCount) || 10)),
 )
 const positionMap = {
   4: ['CO', 'BTN', 'SB', 'BB'],
@@ -338,6 +338,7 @@ const positionMap = {
   8: ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
   9: ['UTG', 'UTG+1', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
   10: ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  11: ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
 }
 const positionOptions = computed(() => positionMap[handedCount.value])
 const heroPosition = computed(() => handLogStore.selectedHand?.position || '')
@@ -499,7 +500,7 @@ const loadReview = async () => {
       hand.actionTimeline,
     )
     handedCount.value = hand.handedCount
-      ? Math.min(10, Math.max(4, Number(hand.handedCount)))
+      ? Math.min(11, Math.max(4, Number(hand.handedCount)))
       : handedCount.value
     selectedPlayers.value = hand.position ? [hand.position] : []
     memo.value = hand.memo || ''
