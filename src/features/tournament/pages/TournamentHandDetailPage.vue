@@ -54,15 +54,15 @@
       </div>
     </section>
 
-    <section v-if="hand && !hasReview" class="review-empty">
+    <section v-if="hand && !hasHandDetails" class="review-empty">
       <div class="review-empty__icon"><q-icon name="edit_note" size="34px" /></div>
-      <strong>복기 기록이 없습니다.</strong>
-      <button class="review-action" type="button" @click="goReviewEdit">복기 작성</button>
+      <strong>입력된 상세 정보가 없습니다.</strong>
+      <button class="review-action" type="button" @click="goHandDetailsEdit">상세 입력</button>
     </section>
 
     <section v-else-if="hand" class="review-summary">
       <div class="review-summary__heading">
-        <h2>복기 기록</h2>
+        <h2>핸드 상세</h2>
         <span v-if="reviewTimeline.potSize">
           최종 팟 {{ formatChips(reviewTimeline.potSize) }}
         </span>
@@ -156,7 +156,7 @@
         <p>{{ hand.memo }}</p>
       </div>
 
-      <button class="review-action" type="button" @click="goReviewEdit">복기 수정</button>
+      <button class="review-action" type="button" @click="goHandDetailsEdit">상세 수정</button>
     </section>
 
     <q-dialog v-model="deleteDialogOpen">
@@ -255,7 +255,7 @@ const reviewShowdownHands = computed(() =>
     }))
     .filter((item) => item.cards.length),
 )
-const hasReview = computed(
+const hasHandDetails = computed(
   () =>
     Boolean(hand.value?.memo?.trim()) ||
     reviewBoard.value.length > 0 ||
@@ -348,15 +348,11 @@ onMounted(async () => {
   }
 })
 
-const goReviewEdit = () => {
+const goHandDetailsEdit = () => {
   router.push({
     name: 'tournament-hand-review-edit',
     params: { levelName: levelId.value, handId: handId.value },
-    query: {
-      levelName: levelName.value,
-      ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
-      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
-    },
+    query: { ...route.query, levelName: levelName.value },
   })
 }
 const goHandEdit = () => {
@@ -364,11 +360,7 @@ const goHandEdit = () => {
   router.push({
     name: 'tournament-hand-edit',
     params: { levelName: levelId.value, handId: handId.value },
-    query: {
-      levelName: levelName.value,
-      ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
-      ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
-    },
+    query: { ...route.query, levelName: levelName.value },
   })
 }
 const openDeleteDialog = () => {

@@ -185,6 +185,9 @@ const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(() => String(route.query.levelName || '') || '-')
 const handId = computed(() => String(route.params.handId || ''))
 const isEditMode = computed(() => Boolean(handId.value))
+const eventId = computed(
+  () => route.query.eventId || route.query.legacyEventId || storedTournament.eventId || null,
+)
 const positionMap = {
   4: ['CO', 'BTN', 'SB', 'BB'],
   5: ['HJ', 'CO', 'BTN', 'SB', 'BB'],
@@ -313,10 +316,10 @@ const hasAutomaticResult = computed(() =>
 )
 
 const loadHandForEdit = async () => {
-  if (!isEditMode.value || !storedTournament.eventId || !levelId.value) return
+  if (!isEditMode.value || !eventId.value || !levelId.value) return
   try {
     const hand = await handLogStore.fetchHandDetail(
-      storedTournament.eventId,
+      eventId.value,
       levelId.value,
       handId.value,
     )
@@ -445,7 +448,7 @@ const clearSecondaryAction = () => {
 const saveHand = async () => {
   if (!canSave.value) return
 
-  if (!storedTournament.eventId || !levelId.value) {
+  if (!eventId.value || !levelId.value) {
     alert.show('토너먼트 정보를 찾을 수 없습니다.', 'error')
     return
   }
@@ -482,28 +485,30 @@ const saveHand = async () => {
   try {
     if (isEditMode.value) {
       await handLogStore.updateHandInBlindLevel(
-        storedTournament.eventId,
+        eventId.value,
         levelId.value,
         handId.value,
         payload,
       )
     } else {
       await handLogStore.addHandToBlindLevel(
-        storedTournament.eventId,
+        eventId.value,
         levelId.value,
         payload,
       )
     }
-    storedTournament.currentHandedCount = handedCount.value
-    storedTournament.lastHandPosition = form.position
-    storedTournament.lastHandSeatKey = selectedSeatKey.value
-    localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+    if (!route.query.tournamentId) {
+      storedTournament.currentHandedCount = handedCount.value
+      storedTournament.lastHandPosition = form.position
+      storedTournament.lastHandSeatKey = selectedSeatKey.value
+      localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
+    }
     router.replace(
       isEditMode.value
         ? {
             name: 'tournament-hand-detail',
             params: { levelName: levelId.value, handId: handId.value },
-            query: { levelName: levelName.value },
+            query: { ...route.query, levelName: levelName.value },
           }
         : {
             name: 'tournament-level-detail',

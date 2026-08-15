@@ -2,11 +2,11 @@
   <q-page class="review-edit-page">
     <header class="edit-topbar">
       <button v-if="step === 0" class="topbar-text" type="button" @click="router.back()">취소</button>
-      <button v-else class="topbar-back" type="button" aria-label="복기로 돌아가기" @click="step = 0">
+      <button v-else class="topbar-back" type="button" aria-label="상세 입력으로 돌아가기" @click="step = 0">
         <q-icon name="chevron_left" size="28px" />
       </button>
-      <h1>{{ step === 0 ? (isEditMode ? '복기 수정' : '복기 작성') : detailTitle }}</h1>
-      <button v-if="step === 0" class="topbar-text next" type="button" @click="saveReview">저장</button>
+      <h1>{{ step === 0 ? (isEditMode ? '상세 수정' : '상세 입력') : detailTitle }}</h1>
+      <button v-if="step === 0" class="topbar-text next" type="button" @click="saveHandDetails">저장</button>
       <span v-else aria-hidden="true"></span>
     </header>
 
@@ -250,7 +250,7 @@
         <button
           class="primary-action"
           type="button"
-          @click="step === 0 ? saveReview() : (step = 0)"
+          @click="step === 0 ? saveHandDetails() : (step = 0)"
         >
           {{ step === 0 ? '저장하기' : '완료' }}
         </button>
@@ -483,7 +483,7 @@ const nextStreetLabel = computed(() => {
   return streetLabel(streets[streets.indexOf(timeline.street.value) + 1])
 })
 
-const loadReview = async () => {
+const loadHandDetails = async () => {
   if (!eventId.value || !levelId.value || !handId.value) return
   try {
     await handLogStore.fetchBlindLevelDetail(eventId.value, levelId.value)
@@ -514,11 +514,11 @@ const loadReview = async () => {
       showdownCards.value = { ...(savedTimeline.showdownCards || {}) }
     }
   } catch {
-    alert.show('복기 정보를 불러오지 못했습니다.', 'error')
+    alert.show('상세 정보를 불러오지 못했습니다.', 'error')
   }
 }
 
-onMounted(loadReview)
+onMounted(loadHandDetails)
 
 const detailPath = computed(
   () => `/app/tournament/running/level/${levelId.value}/hand/${handId.value}`,
@@ -634,7 +634,7 @@ const clearBoardCards = () => {
   activeCardIndex.value = 0
   replacingCard.value = false
 }
-const saveReview = async () => {
+const saveHandDetails = async () => {
   const hand = handLogStore.selectedHand
   if (!hand || !eventId.value) return
   try {
@@ -644,7 +644,9 @@ const saveReview = async () => {
       handId.value,
       {
         ...hand,
-        reviewRequired: true,
+        // 상세 입력은 복기 필요 여부를 바꾸지 않는다.
+        // 복기 핸드는 핸드 입력/수정 화면에서 사용자가 직접 체크한 경우에만 지정된다.
+        reviewRequired: Boolean(hand.reviewRequired),
         memo: memo.value,
         boardCards: JSON.stringify(boardStreets.value),
         actionTimeline: JSON.stringify({
@@ -655,14 +657,10 @@ const saveReview = async () => {
     )
     router.replace({
       path: detailPath.value,
-      query: {
-        levelName: levelName.value,
-        ...(route.query.eventId ? { eventId: route.query.eventId } : {}),
-        ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
-      },
+      query: { ...route.query, levelName: levelName.value },
     })
   } catch {
-    alert.show('복기를 저장하지 못했습니다.', 'error')
+    alert.show('상세 정보를 저장하지 못했습니다.', 'error')
   }
 }
 
