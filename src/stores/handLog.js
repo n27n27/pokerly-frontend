@@ -20,7 +20,7 @@ import {
 } from 'src/api/handLogApi'
 import { formatLocalDate } from 'src/utils/localDate'
 
-import { getHandStrength } from 'src/utils/handLogHandAnalysis'
+import { getHandStrength, normalizeHand as normalizeStartingHand } from 'src/utils/handLogHandAnalysis'
 
 const normalizeCardRankForApi = (rank) => {
   const value = String(rank || '')
@@ -73,13 +73,14 @@ export const useHandLogStore = defineStore('handLog', () => {
   const normalizeHand = (hand) => {
     if (!hand) return null
 
-    const holeCards = hand.holeCards || hand.hand || ''
+    const rawHand = hand.holeCards || hand.hand || ''
+    const holeCards = normalizeStartingHand(rawHand) || rawHand
     const handStrength = getHandStrength(holeCards)
 
     return {
       ...hand,
       holeCards,
-      hand: hand.hand || holeCards,
+      hand: holeCards,
       reviewRequired: Boolean(hand.reviewRequired),
       important: Boolean(hand.reviewRequired),
       handStrengthTier: hand.handStrengthTier || handStrength.tier,
@@ -573,15 +574,16 @@ export const useHandLogStore = defineStore('handLog', () => {
   const addHandToBlindLevel = async (eventId, levelId, payload) => {
     if (!eventId || !levelId) return null
 
-    const handValue = payload.hand || payload.holeCards?.trim() || ''
+    const rawHandValue = payload.hand || payload.holeCards?.trim() || ''
+    const handValue = normalizeStartingHand(rawHandValue) || rawHandValue
     const handStrength = getHandStrength(handValue)
 
     saving.value = true
 
     try {
       const saved = await createHandLogHand(eventId, levelId, {
-        holeCards: payload.holeCards?.trim() || handValue,
-        hand: payload.hand || handValue,
+        holeCards: handValue,
+        hand: handValue,
         firstRank: normalizeCardRankForApi(payload.firstRank),
         secondRank: normalizeCardRankForApi(payload.secondRank),
         firstSuit: payload.firstSuit || null,
@@ -641,15 +643,16 @@ export const useHandLogStore = defineStore('handLog', () => {
   const updateHandInBlindLevel = async (eventId, levelId, handId, payload) => {
     if (!eventId || !levelId || !handId) return null
 
-    const handValue = payload.hand || payload.holeCards?.trim() || ''
+    const rawHandValue = payload.hand || payload.holeCards?.trim() || ''
+    const handValue = normalizeStartingHand(rawHandValue) || rawHandValue
     const handStrength = getHandStrength(handValue)
 
     saving.value = true
 
     try {
       const saved = await updateHandLogHand(eventId, levelId, handId, {
-        holeCards: payload.holeCards?.trim() || handValue,
-        hand: payload.hand || handValue,
+        holeCards: handValue,
+        hand: handValue,
         firstRank: normalizeCardRankForApi(payload.firstRank),
         secondRank: normalizeCardRankForApi(payload.secondRank),
         firstSuit: payload.firstSuit || null,

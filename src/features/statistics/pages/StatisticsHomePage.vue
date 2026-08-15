@@ -145,7 +145,7 @@
 
       <section v-if="statisticsInsights.length" class="stats-section insight-section">
         <div class="insight-section__heading">
-          <h2>기록 인사이트</h2>
+          <h2>기록에서 확인한 점</h2>
           <span>{{ periodLabel }} · {{ filteredSessions.length }}개 대회</span>
         </div>
         <div class="insight-list">
@@ -160,10 +160,7 @@
               <p>{{ insight.description }}</p>
             </div>
             <div class="insight-card__meta">
-              <span :class="`confidence--${insight.confidence.key}`">
-                신뢰도 {{ insight.confidence.label }}
-              </span>
-              <span>표본 {{ insight.sample }}{{ insight.key.includes('venue') ? '회' : insight.key.includes('hand') || insight.key === 'position' || insight.key === 'recorded-results' ? '핸드' : '개' }}</span>
+              <span>{{ insight.sample }}{{ insight.key.includes('venue') ? '회' : insight.key.includes('hand') ? '핸드' : '개 대회' }} 기준</span>
               <button v-if="insight.action" type="button" @click="openInsightEvidence(insight.action)">
                 {{ insight.action.label }}
                 <q-icon name="chevron_right" size="16px" />
@@ -172,7 +169,7 @@
           </article>
         </div>
         <small class="insight-section__notice">
-          저장된 기록만 분석한 결과이며, 표본이 적으면 참고용으로 표시됩니다.
+          저장된 기록을 바탕으로 계산한 내용입니다.
         </small>
       </section>
 
@@ -1662,9 +1659,6 @@ h2 {
   font-size: 9px;
   font-weight: 650;
 }
-
-.insight-card__meta > span.confidence--high { background: rgba(22, 139, 133, .1); color: #11736e; }
-.insight-card__meta > span.confidence--medium { background: rgba(109, 69, 232, .09); color: var(--v2-primary); }
 
 .insight-card__meta button {
   display: inline-flex;

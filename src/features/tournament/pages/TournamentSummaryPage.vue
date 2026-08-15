@@ -226,6 +226,7 @@ import {
   isPfrAction,
   isThreeBetPlusAction,
   isVpipAction,
+  normalizeHand,
 } from 'src/utils/handLogHandAnalysis'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 import { formatCompactNumber } from 'src/utils/numberFormat'
@@ -363,12 +364,11 @@ const resultMetrics = computed(() => {
 
 const handName = (hand) => {
   const stored = String(hand.holeCards || hand.hand || '').trim()
-  if (stored) return stored
+  if (stored) return normalizeHand(stored) || stored
 
   const ranks = [hand.firstRank, hand.secondRank].filter(Boolean)
   if (ranks.length !== 2) return '-'
-  if (ranks[0] === ranks[1]) return ranks.join('')
-  return `${ranks.join('')}${hand.suited ? 's' : 'o'}`
+  return normalizeHand(`${ranks.join('')}${ranks[0] === ranks[1] ? '' : hand.suited ? 's' : 'o'}`) || '-'
 }
 
 const handResult = (hand) => {

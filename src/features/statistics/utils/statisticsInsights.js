@@ -1,8 +1,16 @@
-import { isPfrAction, isVpipAction } from '../../../utils/handLogHandAnalysis.js'
+import { isVpipAction } from '../../../utils/handLogHandAnalysis.js'
 
 const WIN_RESULTS = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
 
 const numberValue = (value) => Number(value) || 0
+const compactAmount = (value) => {
+  const amount = Math.round(numberValue(value))
+  if (Math.abs(amount) >= 10_000) {
+    const man = amount / 10_000
+    return `${Number.isInteger(man) ? man : man.toFixed(1)}만`
+  }
+  return amount.toLocaleString('ko-KR')
+}
 
 export const totalBuyInOf = (session) => {
   const buyInPerEntry = numberValue(session?.buyInPerEntry)
@@ -14,12 +22,6 @@ export const totalBuyInOf = (session) => {
 
 const profitOf = (session) => numberValue(session?.prize) - totalBuyInOf(session)
 const actionOf = (hand) => hand?.actionType || hand?.preflopAction || ''
-const normalizePosition = (position) => {
-  const value = String(position || '').trim().toUpperCase()
-  if (value === 'UTG+1') return 'UTG'
-  if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
-  return value
-}
 
 export const confidenceForSample = (sample, thresholds = [5, 15]) => {
   if (sample < thresholds[0]) return { key: 'low', label: '참고', description: '표본이 적어 경향만 확인하세요.' }
@@ -41,7 +43,9 @@ export const buildBankInsights = (sessions, venueNameOf = () => '기타') => {
   if (!sessions.length) return []
   const insights = []
   const totalProfit = sessions.reduce((sum, session) => sum + profitOf(session), 0)
-  const profitable = sessions.filter((session) => profitOf(session) > 0)
+  const totalBuyIn = sessions.reduce((sum, session) => sum + totalBuyInOf(session), 0)
+  const totalPrize = sessions.reduce((sum, session) => sum + numberValue(session.prize), 0)
+  const cashed = sessions.filter((session) => numberValue(session.prize) > 0)
   const best = sessions.reduce((current, session) =>
     !current || profitOf(session) > profitOf(current) ? session : current, null)
   const bestProfit = profitOf(best)
@@ -63,14 +67,15 @@ export const buildBankInsights = (sessions, venueNameOf = () => '기타') => {
       { type: 'tournaments', label: '대회 기록 보기' },
       'caution',
     ))
-  } else {
+  } else if (totalProfit < 0 && totalBuyIn > 0) {
+    const recoveryRate = totalPrize * 100 / totalBuyIn
     insights.push(sessionInsight(
-      'profit-frequency',
-      totalProfit >= 0 ? '수익 대회가 고르게 쌓이고 있어요' : '손실 빈도를 먼저 확인해 보세요',
-      `${sessions.length}개 중 ${profitable.length}개가 수익 대회이며, 전체 순수익은 ${totalProfit >= 0 ? '플러스' : '마이너스'}입니다.`,
+      'bankroll-recovery',
+      `바인 ${compactAmount(totalBuyIn)} 중 ${compactAmount(totalPrize)}을 상금으로 회수했어요`,
+      `${sessions.length}개 대회 중 ${cashed.length}개에서 상금을 받았고, 바인 대비 회수율은 ${recoveryRate.toFixed(1)}%입니다.`,
       sessions.length,
       { type: 'tournaments', label: '대회 기록 보기' },
-      totalProfit >= 0 ? 'positive' : 'caution',
+      'caution',
     ))
   }
 
@@ -88,41 +93,22 @@ export const buildBankInsights = (sessions, venueNameOf = () => '기타') => {
       profit: list.reduce((sum, session) => sum + profitOf(session), 0),
       buyIn: list.reduce((sum, session) => sum + totalBuyInOf(session), 0),
     }))
-    .filter((venue) => venue.list.length >= 2 && venue.buyIn > 0)
+    .filter((venue) => venue.list.length >= 5 && venue.buyIn > 0)
     .map((venue) => ({ ...venue, roi: venue.profit * 100 / venue.buyIn }))
     .sort((a, b) => b.roi - a.roi)
-  if (comparableVenues.length >= 2) {
+  if (comparableVenues.length >= 2 && comparableVenues[0].roi - comparableVenues.at(-1).roi >= 20) {
     const bestVenue = comparableVenues[0]
     const worstVenue = comparableVenues.at(-1)
     const bestVenueTitle = bestVenue.roi >= 0
-      ? `${venueNameOf(bestVenue.id)}에서 성과가 가장 좋았어요`
+      ? `${venueNameOf(bestVenue.id)}에서 기록상 ROI가 가장 높아요`
       : `${venueNameOf(bestVenue.id)}에서 손실이 상대적으로 적었어요`
     insights.push(sessionInsight(
       'venue-comparison',
       bestVenueTitle,
-      `각 2회 이상 방문한 매장 중 ROI ${bestVenue.roi.toFixed(1)}%로, ${venueNameOf(worstVenue.id)}보다 ${(bestVenue.roi - worstVenue.roi).toFixed(1)}%p 높습니다.`,
+      `각 5회 이상 방문한 매장 중 ROI ${bestVenue.roi.toFixed(1)}%로, ${venueNameOf(worstVenue.id)}보다 ${(bestVenue.roi - worstVenue.roi).toFixed(1)}%p 높습니다.`,
       bestVenue.list.length,
       { type: 'venue', venueId: bestVenue.id, label: '이 매장 근거 보기' },
       bestVenue.roi >= 0 ? 'positive' : 'caution',
-    ))
-  }
-
-  const reentrySessions = sessions.filter((session) => Math.max(1, numberValue(session.entries)) > 1)
-  const singleEntrySessions = sessions.filter((session) => Math.max(1, numberValue(session.entries)) === 1)
-  if (reentrySessions.length >= 3 && singleEntrySessions.length >= 3) {
-    const roiOf = (list) => {
-      const buyIn = list.reduce((sum, session) => sum + totalBuyInOf(session), 0)
-      return buyIn ? list.reduce((sum, session) => sum + profitOf(session), 0) * 100 / buyIn : 0
-    }
-    const reentryRoi = roiOf(reentrySessions)
-    const singleRoi = roiOf(singleEntrySessions)
-    insights.push(sessionInsight(
-      'reentry',
-      reentryRoi < singleRoi ? '리엔트리 대회의 비용 효율이 낮아요' : '리엔트리 대회 성과가 더 좋아요',
-      `리엔트리 대회 ROI ${reentryRoi.toFixed(1)}%, 단일 엔트리 ROI ${singleRoi.toFixed(1)}%입니다.`,
-      reentrySessions.length,
-      { type: 'tournaments', label: '대회 기록 보기' },
-      reentryRoi < singleRoi ? 'caution' : 'positive',
     ))
   }
 
@@ -146,48 +132,32 @@ export const buildPlayInsights = (hands) => {
     return insights
   }
 
-  const positions = new Map()
-  hands.forEach((hand) => {
-    const position = normalizePosition(hand.position)
-    if (!position) return
-    const group = positions.get(position) || []
-    group.push(hand)
-    positions.set(position, group)
-  })
-  const positionRows = [...positions.entries()]
-    .filter(([, list]) => list.length >= 3)
-    .map(([position, list]) => ({
-      position,
-      sample: list.length,
-      vpip: list.filter((hand) => isVpipAction(actionOf(hand))).length * 100 / list.length,
-      pfr: list.filter((hand) => isPfrAction(actionOf(hand))).length * 100 / list.length,
-    }))
-    .sort((a, b) => b.vpip - a.vpip)
-  if (positionRows.length) {
-    const row = positionRows[0]
-    insights.push({
-      key: 'position',
-      title: `${row.position}에서 가장 자주 참여했어요`,
-      description: `기록된 ${row.sample}핸드에서 VPIP ${row.vpip.toFixed(1)}%, PFR ${row.pfr.toFixed(1)}%입니다. 실제로 기록한 핸드만 비교한 수치입니다.`,
-      sample: row.sample,
-      confidence: confidenceForSample(row.sample, [5, 15]),
-      action: { type: 'position', position: row.position, label: `${row.position} 근거 보기` },
-      tone: 'neutral',
-    })
-  }
-
   const participated = hands.filter((hand) => isVpipAction(actionOf(hand)))
   const decided = participated.filter((hand) => String(hand.resultType || hand.result || '').trim())
+  const missingResults = participated.length - decided.length
   const wins = decided.filter((hand) => WIN_RESULTS.has(String(hand.resultType || hand.result).toUpperCase())).length
-  if (decided.length >= 5) {
+  const winRate = decided.length ? wins / decided.length : 0
+  if (participated.length >= 10 && missingResults / participated.length >= 0.3) {
     insights.push({
-      key: 'recorded-results',
-      title: '참여 핸드 결과를 확인해 보세요',
-      description: `결과가 기록된 참여 핸드 ${decided.length}개 중 ${wins}개가 승리했습니다. 칩 수익률이 아니라 기록된 승패 비율입니다.`,
+      key: 'hand-result-missing',
+      title: '결과가 비어 있는 참여 핸드가 많아요',
+      description: `참여 핸드 ${participated.length}개 중 ${missingResults}개의 결과가 비어 있어 승패 경향을 해석하기 어렵습니다.`,
+      sample: participated.length,
+      confidence: confidenceForSample(participated.length, [15, 30]),
+      action: { type: 'hands', label: '핸드별 근거 보기' },
+      tone: 'caution',
+    })
+  }
+  if (decided.length >= 5 && (winRate >= 0.8 || winRate <= 0.2)) {
+    const resultLabel = winRate >= 0.8 ? '승리' : '패배'
+    insights.push({
+      key: 'hand-result-bias',
+      title: `결과 기록이 ${resultLabel}에 크게 치우쳐 있어요`,
+      description: `결과가 기록된 참여 핸드 ${decided.length}개 중 ${wins}개가 승리했습니다. 선택적으로 기록했다면 실제 플레이 경향과 다를 수 있어요.`,
       sample: decided.length,
       confidence: confidenceForSample(decided.length, [10, 30]),
       action: { type: 'hands', label: '핸드별 근거 보기' },
-      tone: wins * 2 >= decided.length ? 'positive' : 'caution',
+      tone: 'caution',
     })
   }
   return insights.slice(0, 2)
