@@ -1,4 +1,3 @@
-cat > .gitignore <<'EOF'
 # macOS
 .DS_Store
 .thumbs.db
@@ -35,6 +34,6 @@ yarn-error.log*
 # Local environment files
 .env
 .env.*
-EOF
 
+# Local deployment scripts
 deploy_front.sh
