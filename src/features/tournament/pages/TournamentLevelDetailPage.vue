@@ -1080,14 +1080,10 @@ const goBack = () => {
 
 .stack-card__value strong {
   color: var(--v2-text-main);
-  font-size: 19px;
+  font-size: 24px;
   font-weight: 620;
   line-height: 1;
   white-space: nowrap;
-}
-
-.stack-card__item--current .stack-card__value strong {
-  font-size: 24px;
 }
 
 .stack-card__value small {
@@ -1867,14 +1863,14 @@ const goBack = () => {
   line-height: 1;
 }
 
-@media (max-width: 420px) {
+@media (max-width: 480px) {
   .stack-card {
     padding-right: 14px;
     padding-left: 14px;
   }
 
   .stack-card__metrics {
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .stack-card__item {
@@ -1886,17 +1882,16 @@ const goBack = () => {
   }
 
   .stack-card__value {
-    flex-wrap: wrap;
-  }
-
-  .stack-card__item:not(.stack-card__item--current) .stack-card__value {
     align-items: flex-start;
     flex-direction: column;
     gap: 6px;
   }
 
   .stack-card__value strong {
-    font-size: clamp(17px, 4.8vw, 19px);
+    max-width: 100%;
+    font-size: clamp(19px, 6vw, 24px);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
   }
 
   .hand-fab {
