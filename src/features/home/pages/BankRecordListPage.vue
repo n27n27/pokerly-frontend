@@ -29,7 +29,9 @@
       </article>
       <article>
         <span>ROI</span>
-        <strong>{{ Number(summary.roi || 0).toFixed(1) }}%</strong>
+        <strong :class="summary.roi > 0 ? 'win' : summary.roi < 0 ? 'lose' : ''">
+          {{ Number(summary.roi || 0).toFixed(1) }}%
+        </strong>
       </article>
     </section>
 
@@ -420,10 +422,10 @@ const goBack = () => {
   white-space: nowrap;
 }
 .win {
-  color: var(--v2-danger);
+  color: var(--v2-profit);
 }
 .lose {
-  color: #2563eb;
+  color: var(--v2-loss);
 }
 .record-list-section {
   display: grid;
@@ -639,12 +641,12 @@ const goBack = () => {
 .calendar-grid button.win small,
 .calendar-day-heading strong.win,
 .calendar-day-records .win {
-  color: var(--v2-danger);
+  color: var(--v2-profit);
 }
 .calendar-grid button.lose small,
 .calendar-day-heading strong.lose,
 .calendar-day-records .lose {
-  color: #2563eb;
+  color: var(--v2-loss);
 }
 .calendar-grid button.even small,
 .calendar-grid button.pending small,

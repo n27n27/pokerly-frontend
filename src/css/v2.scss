@@ -12,6 +12,13 @@
   --v2-page-padding-x: 22px;
   --v2-success: #16a34a;
   --v2-danger: #ef4444;
+  /* Korean finance convention: gains rise in red, losses fall in blue. */
+  --v2-profit: #e5484d;
+  --v2-profit-soft: #fff1f1;
+  --v2-loss: #2563eb;
+  --v2-loss-soft: #eff6ff;
+  --v2-teal: #168b85;
+  --v2-gold: #b7791f;
   --v2-radius-sm: 8px;
   --v2-radius-md: 10px;
   --v2-radius-lg: 12px;
@@ -211,6 +218,14 @@ input[type='number'] {
 
 .stat-card__value--primary {
   color: var(--v2-primary);
+}
+
+.stat-card__value--profit {
+  color: var(--v2-profit);
+}
+
+.stat-card__value--loss {
+  color: var(--v2-loss);
 }
 
 .stat-card__icon-box {

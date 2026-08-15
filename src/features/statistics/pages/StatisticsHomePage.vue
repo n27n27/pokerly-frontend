@@ -174,8 +174,8 @@
               role="img"
               aria-label="누적 순수익 추이"
             >
-              <path class="trend-fill" :d="trendFillPath" />
-              <path class="trend-line" :d="trendLinePath" />
+              <path class="trend-fill" :class="trendTone" :d="trendFillPath" />
+              <path class="trend-line" :class="trendTone" :d="trendLinePath" />
               <g
                 v-for="point in trendPoints"
                 :key="point.key"
@@ -846,6 +846,11 @@ const trendLinePath = computed(() =>
     .join(' '),
 )
 
+const trendTone = computed(() => {
+  const value = trendPoints.value.at(-1)?.value || 0
+  return value > 0 ? 'profit' : value < 0 ? 'loss' : 'neutral'
+})
+
 const trendFillPath = computed(
   () => `${trendLinePath.value} L ${trendChartWidth.value - 4} 150 L 4 150 Z`,
 )
@@ -1203,15 +1208,15 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 }
 
 .best-records__rank strong.has-value {
-  color: #b7791f;
+  color: var(--v2-gold);
 }
 
 .best-records__roi strong.has-value {
-  color: var(--v2-success);
+  color: var(--v2-profit);
 }
 
 .best-records__streak strong.has-value {
-  color: #168b85;
+  color: var(--v2-teal);
 }
 
 .best-records small {
@@ -1484,11 +1489,11 @@ h2 {
 }
 
 .bank-grid strong.positive {
-  color: var(--v2-success);
+  color: var(--v2-profit);
 }
 
 .bank-grid strong.negative {
-  color: var(--v2-danger);
+  color: var(--v2-loss);
 }
 
 .bank-grid strong {
@@ -1551,7 +1556,7 @@ h2 {
 }
 
 .bank-card--profit::before {
-  background: linear-gradient(135deg, rgba(22, 163, 74, 0.08), transparent 58%);
+  background: linear-gradient(135deg, rgba(229, 72, 77, 0.08), transparent 58%);
 }
 
 .bank-card--itm::before {
@@ -1573,6 +1578,13 @@ h2 {
 .bank-card--average::before {
   background: linear-gradient(135deg, rgba(245, 158, 11, 0.09), transparent 58%);
 }
+
+.bank-card--itm strong { color: var(--v2-teal); }
+.bank-card--totalBuyIn strong { color: #53627a; }
+.bank-card--totalPrize strong { color: var(--v2-primary); }
+.bank-card--count strong { color: #1676a3; }
+.bank-card--average strong { color: var(--v2-gold); }
+.bank-card--averageBuyIn strong { color: #53627a; }
 
 .panel-header {
   display: flex;
@@ -1658,6 +1670,11 @@ h2 {
   fill: rgba(109, 69, 232, 0.08);
 }
 
+.trend-line.profit { stroke: var(--v2-profit); }
+.trend-line.loss { stroke: var(--v2-loss); }
+.trend-fill.profit { fill: rgba(229, 72, 77, 0.09); }
+.trend-fill.loss { fill: rgba(37, 99, 235, 0.09); }
+
 .trend-chart circle {
   fill: var(--v2-primary);
 }
@@ -1677,11 +1694,11 @@ h2 {
 }
 
 .trend-bar--profit {
-  fill: var(--v2-success);
+  fill: var(--v2-profit);
 }
 
 .trend-bar--loss {
-  fill: var(--v2-danger);
+  fill: var(--v2-loss);
 }
 
 .trend-chart--bars rect {
@@ -1723,11 +1740,11 @@ h2 {
 }
 
 .trend-tooltip strong.profit {
-  color: var(--v2-success);
+  color: var(--v2-profit);
 }
 
 .trend-tooltip strong.loss {
-  color: var(--v2-danger);
+  color: var(--v2-loss);
 }
 
 .trend-axis {
@@ -1784,11 +1801,11 @@ h2 {
 }
 
 .positive {
-  color: var(--v2-success);
+  color: var(--v2-profit);
 }
 
 .negative {
-  color: var(--v2-danger);
+  color: var(--v2-loss);
 }
 
 .venue-table {

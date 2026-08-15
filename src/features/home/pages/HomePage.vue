@@ -116,8 +116,8 @@
                 <stop offset="100%" stop-color="#6d45e8" stop-opacity="0" />
               </linearGradient>
             </defs>
-            <path class="chart-area" :d="simpleTrendAreaPath" />
-            <path class="chart-line" :d="simpleTrendPath" />
+            <path class="chart-area" :class="simpleTrendTone" :d="simpleTrendAreaPath" />
+            <path class="chart-line" :class="simpleTrendTone" :d="simpleTrendPath" />
             <text class="chart-date" x="4" y="118">{{ simpleTrendAxisLabels.start }}</text>
             <text class="chart-date" x="316" y="118" text-anchor="end">{{ simpleTrendAxisLabels.end }}</text>
           </svg>
@@ -784,11 +784,11 @@ const monthlyItmCount = computed(() =>
 )
 const monthlyProfitTone = computed(() => {
   const profit = monthlySummary.value?.totalProfit ?? 0
-  return profit > 0 ? 'success' : profit < 0 ? 'danger' : 'default'
+  return profit > 0 ? 'profit' : profit < 0 ? 'loss' : 'default'
 })
 const monthlyRoiTone = computed(() => {
   const roi = monthlySummary.value?.roi ?? 0
-  return roi > 0 ? 'success' : roi < 0 ? 'danger' : 'default'
+  return roi > 0 ? 'profit' : roi < 0 ? 'loss' : 'default'
 })
 
 const loadMonthlySummary = async () => {
@@ -1238,11 +1238,11 @@ const goSimpleRecord = (recordId) => {
 }
 
 .simple-summary strong.positive {
-  color: var(--v2-success);
+  color: var(--v2-profit);
 }
 
 .simple-summary strong.negative {
-  color: var(--v2-danger);
+  color: var(--v2-loss);
 }
 
 .simple-summary--loading article {
@@ -1377,13 +1377,13 @@ const goSimpleRecord = (recordId) => {
 }
 
 .profit-chart__value strong {
-  color: var(--v2-success);
+  color: var(--v2-profit);
   font-size: 19px;
   font-weight: 620;
 }
 
 .profit-chart__value strong.negative {
-  color: var(--v2-danger);
+  color: var(--v2-loss);
 }
 
 .profit-chart__value span {
@@ -1455,6 +1455,9 @@ const goSimpleRecord = (recordId) => {
   fill: url(#simpleProfitFill);
 }
 
+.chart-area.positive { fill: var(--v2-profit-soft); }
+.chart-area.negative { fill: var(--v2-loss-soft); }
+
 .chart-line {
   fill: none;
   stroke: var(--v2-primary);
@@ -1462,6 +1465,9 @@ const goSimpleRecord = (recordId) => {
   stroke-linejoin: round;
   stroke-width: 3;
 }
+
+.chart-line.positive { stroke: var(--v2-profit); }
+.chart-line.negative { stroke: var(--v2-loss); }
 
 .chart-date {
   fill: var(--v2-text-sub);
@@ -1583,8 +1589,8 @@ const goSimpleRecord = (recordId) => {
   white-space: nowrap;
 }
 
-.simple-record__result.profit { color: var(--v2-danger); }
-.simple-record__result.loss { color: #2563eb; }
+.simple-record__result.profit { color: var(--v2-profit); }
+.simple-record__result.loss { color: var(--v2-loss); }
 .simple-record__pending {
   padding: 5px 7px;
   border-radius: 7px;
@@ -1646,11 +1652,11 @@ const goSimpleRecord = (recordId) => {
 }
 
 .venue-profit__amount.positive {
-  color: var(--v2-success);
+  color: var(--v2-profit);
 }
 
 .venue-profit__amount.negative {
-  color: var(--v2-danger);
+  color: var(--v2-loss);
 }
 
 .venue-profit__empty {
@@ -2254,11 +2260,11 @@ const goSimpleRecord = (recordId) => {
 }
 
 .recent-row__result--success {
-  color: var(--v2-danger);
+  color: var(--v2-profit);
 }
 
 .recent-row__result--danger {
-  color: #2563eb;
+  color: var(--v2-loss);
 }
 
 .home-page__stats-grid {

@@ -32,7 +32,8 @@ const props = defineProps({
   tone: {
     type: String,
     default: 'default',
-    validator: (value) => ['default', 'success', 'danger', 'primary'].includes(value),
+    validator: (value) =>
+      ['default', 'success', 'danger', 'primary', 'profit', 'loss'].includes(value),
   },
   icon: {
     type: String,
