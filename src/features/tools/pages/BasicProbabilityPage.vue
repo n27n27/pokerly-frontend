@@ -169,6 +169,7 @@ const ProbabilityRows = defineComponent({
 }
 
 .section-header:focus-visible {
+  background: rgba(109, 69, 232, .05);
   background: color-mix(in srgb, var(--v2-primary) 5%, white);
 }
 
@@ -187,6 +188,7 @@ const ProbabilityRows = defineComponent({
   place-items: center;
   border-radius: 9px;
   color: var(--v2-primary);
+  background: rgba(109, 69, 232, .1);
   background: color-mix(in srgb, var(--v2-primary) 10%, white);
   font-size: 13px;
   font-weight: 700;
@@ -266,6 +268,7 @@ const ProbabilityRows = defineComponent({
   margin: 0;
   padding: 10px 16px;
   color: var(--v2-text-sub);
+  background: rgba(109, 69, 232, .05);
   background: color-mix(in srgb, var(--v2-primary) 5%, white);
   font-size: 11px;
   line-height: 1.5;
@@ -284,6 +287,7 @@ const ProbabilityRows = defineComponent({
   padding: 4px 12px;
   border: 1px solid var(--v2-border);
   border-radius: 12px;
+  background: rgba(109, 69, 232, .02);
   background: color-mix(in srgb, var(--v2-primary) 2%, white);
 }
 
@@ -320,6 +324,7 @@ const ProbabilityRows = defineComponent({
   padding: 11px 12px;
   border-radius: 10px;
   color: var(--v2-text-main);
+  background: rgba(109, 69, 232, .06);
   background: color-mix(in srgb, var(--v2-primary) 6%, white);
   font-size: 12px;
   line-height: 1.45;
@@ -356,6 +361,7 @@ const ProbabilityRows = defineComponent({
 
 .outs-table th {
   color: var(--v2-text-sub);
+  background: rgba(109, 69, 232, .04);
   background: color-mix(in srgb, var(--v2-primary) 4%, white);
   font-weight: 600;
 }

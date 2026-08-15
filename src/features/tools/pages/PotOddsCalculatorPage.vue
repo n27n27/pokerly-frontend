@@ -47,10 +47,7 @@
         <q-icon :name="isProfitable ? 'check_circle' : 'cancel'" size="20px" />
         <div>
           <strong>{{ isProfitable ? '콜이 수익적입니다' : '콜에 필요한 에퀴티가 부족합니다' }}</strong>
-          <span>
-            예상 에퀴티({{ myEquity }}%)가 필요 에퀴티({{ requiredEquity }}%)보다
-            {{ isProfitable ? '높습니다.' : '낮습니다.' }}
-          </span>
+          <span>{{ equityComparisonMessage }}</span>
         </div>
       </div>
     </section>
@@ -124,6 +121,13 @@ const oddsRatio = computed(() => potOdds.value.toFixed(2))
 const requiredEquity = computed(() => (totalPot.value > 0 ? ((form.callAmount / totalPot.value) * 100).toFixed(2) : '0.00'))
 const myEquity = computed(() => Number(form.myEquity || 0).toFixed(2))
 const isProfitable = computed(() => Number(myEquity.value) >= Number(requiredEquity.value))
+const equityComparisonMessage = computed(() => {
+  const difference = Number(myEquity.value) - Number(requiredEquity.value)
+  if (difference === 0) {
+    return `예상 에퀴티(${myEquity.value}%)는 필요 에퀴티(${requiredEquity.value}%)와 같습니다.`
+  }
+  return `예상 에퀴티(${myEquity.value}%)가 필요 에퀴티(${requiredEquity.value}%)보다 ${difference > 0 ? '높습니다.' : '낮습니다.'}`
+})
 
 const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR')
 const sanitizeNumber = (value) => {

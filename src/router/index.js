@@ -154,7 +154,7 @@ export default route(function () {
 
     // 🔸 D-4. 이미 소셜 연결된 사용자는 /link-social 접근 방지
     if (auth.user && auth.user.socialLinked === true && to.path === '/link-social') {
-      return next('/app/dashboard')
+      return next('/app/home')
     }
 
     // 🔸 E. 역할 가드

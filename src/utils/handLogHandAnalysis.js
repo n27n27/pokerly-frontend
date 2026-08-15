@@ -803,7 +803,7 @@ export const STARTING_HAND_GROUPS = [
   {
     key: 'STRONG',
     label: '강한 핸드',
-    description: '99~77, AJs+, AQo+, KQs',
+    description: '99~77, AJs~ATs, AQo~AJo, KQs',
     hands: ['99', '88', '77', 'AJs', 'ATs', 'AQo', 'AJo', 'KQs'],
   },
   {

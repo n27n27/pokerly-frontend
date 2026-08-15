@@ -439,7 +439,6 @@ const clearPendingTimelineAction = () => {
   pendingAction.value = ''
   actionAmount.value = ''
   pendingAllIn.value = false
-  showdownCards.value = {}
 }
 const editParticipants = () => {
   selectedPlayers.value = [...timeline.trackedPlayers.value]

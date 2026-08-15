@@ -7,7 +7,7 @@
     <section class="panel player-panel">
       <div class="panel-header">
         <h2>플레이어</h2>
-        <button type="button" @click="addPlayer">
+        <button type="button" :disabled="players.length >= 6" @click="addPlayer">
           <q-icon name="add" size="18px" />
           플레이어 추가
         </button>
@@ -24,6 +24,7 @@
               class="card-slot"
               :class="{ red: player.cards[cardIndex]?.red, empty: !player.cards[cardIndex] }"
               type="button"
+              :aria-label="`${player.name} ${cardIndex + 1}번 카드${player.cards[cardIndex] ? ` ${player.cards[cardIndex].rank}${player.cards[cardIndex].suit}` : ' 선택'}`"
               @click="openPicker('player', playerIndex, cardIndex)"
             >
               <template v-if="player.cards[cardIndex]">
@@ -37,7 +38,7 @@
             v-if="players.length > 2 && playerIndex > 0"
             class="icon-button"
             type="button"
-            aria-label="삭제"
+            :aria-label="`${player.name} 삭제`"
             @click="removePlayer(playerIndex)"
           >
             <q-icon name="close" size="17px" />
@@ -62,6 +63,7 @@
           class="card-slot"
           :class="{ red: board[cardIndex]?.red, empty: !board[cardIndex] }"
           type="button"
+          :aria-label="`보드 ${cardIndex + 1}번 카드${board[cardIndex] ? ` ${board[cardIndex].rank}${board[cardIndex].suit}` : ' 선택'}`"
           @click="openPicker('board', 0, cardIndex)"
         >
           <template v-if="board[cardIndex]">
@@ -248,8 +250,13 @@ const openPicker = (type, playerIndex, cardIndex) => {
   pickerOpen.value = true
 }
 
+const clearResults = () => {
+  results.value = []
+}
+
 const selectCard = (card) => {
   if (!pickerTarget.value) return
+  clearResults()
   const target = { ...pickerTarget.value }
   const normalizedCard = makeCard(card.rank === '10' ? 'T' : card.rank, card.suit)
   if (target.type === 'player') {
@@ -272,6 +279,7 @@ const selectCard = (card) => {
 }
 const clearActiveCard = () => {
   if (!pickerTarget.value) return
+  clearResults()
   if (pickerTarget.value.type === 'player') {
     players[pickerTarget.value.playerIndex].cards[pickerTarget.value.cardIndex] = null
   } else {
@@ -282,15 +290,18 @@ const clearActiveCard = () => {
 
 const addPlayer = () => {
   if (players.length >= 6) return
+  clearResults()
   players.push({ id: Date.now(), name: `Villain ${players.length}`, cards: [null, null] })
 }
 
 const removePlayer = (index) => {
   if (players.length <= 2 || index === 0) return
+  clearResults()
   players.splice(index, 1)
 }
 
 const clearBoard = () => {
+  clearResults()
   board.splice(0, board.length, null, null, null, null, null)
 }
 

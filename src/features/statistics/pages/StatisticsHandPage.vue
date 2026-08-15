@@ -340,6 +340,7 @@ onMounted(load)
 }
 
 .hand-sort-button.active {
+  background: rgba(109, 69, 232, .1);
   background: color-mix(in srgb, var(--v2-primary) 10%, white);
   color: var(--v2-primary);
 }
@@ -366,6 +367,7 @@ onMounted(load)
 
 .hand-type-filter button.active {
   border-color: rgba(109, 69, 232, 0.24);
+  background: rgba(109, 69, 232, .1);
   background: color-mix(in srgb, var(--v2-primary) 10%, white);
   color: var(--v2-primary);
   font-weight: 700;

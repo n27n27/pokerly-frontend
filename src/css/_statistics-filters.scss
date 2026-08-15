@@ -43,6 +43,7 @@
 
 .stats-filter-menu .stats-filter-menu__active {
   color: var(--v2-primary);
+  background: rgba(109, 69, 232, .08);
   background: color-mix(in srgb, var(--v2-primary) 8%, white);
   font-weight: 700;
 }

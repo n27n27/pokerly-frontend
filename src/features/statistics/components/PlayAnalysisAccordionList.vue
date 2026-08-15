@@ -203,6 +203,7 @@ const formatParticipatedResult = (item) => [
 }
 
 .analysis-row--open .analysis-row__trigger {
+  background: rgba(109, 69, 232, .03);
   background: color-mix(in srgb, var(--v2-primary) 3%, white);
 }
 
@@ -294,6 +295,7 @@ const formatParticipatedResult = (item) => [
 
 .analysis-row__body {
   padding: 6px 12px 12px;
+  background: rgba(109, 69, 232, .03);
   background: color-mix(in srgb, var(--v2-primary) 3%, white);
 }
 

@@ -587,7 +587,7 @@ const handGroups = computed(() => {
     ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AKo', 'AK', 'AQs'].includes(hand),
   )
   const strongHands = groupItems((hand) =>
-    ['99', '88', '77', 'AJs', 'AQs', 'AKs', 'AQo', 'AKo', 'AQ', 'AK', 'KQs'].includes(hand),
+    ['99', '88', '77', 'AJs', 'ATs', 'AQo', 'AJo', 'AQ', 'KQs'].includes(hand),
   )
   return [
     {
@@ -600,7 +600,7 @@ const handGroups = computed(() => {
     {
       key: 'strong',
       label: '강한 핸드',
-      description: '99~77, AJs+, AQo+, KQs',
+      description: '99~77, AJs~ATs, AQo~AJo, KQs',
       count: strongHands.reduce((sum, item) => sum + item.count, 0),
       items: strongHands,
     },

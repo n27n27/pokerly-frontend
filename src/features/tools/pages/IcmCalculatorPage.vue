@@ -83,8 +83,14 @@
       </div>
 
       <div v-if="chopMethod === 'equal'" class="equal-result">
-        <span>1인당 균등 찹 금액</span>
-        <strong>{{ formatNumber(totalPrizes / Math.max(players.length, 1)) }}</strong>
+        <span>플레이어별 균등 찹 금액</span>
+        <strong>{{ equalChopSummary }}</strong>
+        <div class="equal-breakdown">
+          <span v-for="row in results" :key="row.id">
+            {{ row.name || `${row.seat}번 플레이어` }}
+            <b>{{ formatNumber(row.equalChopValue) }}</b>
+          </span>
+        </div>
         <dl>
           <div><dt>플레이어</dt><dd>{{ players.length }}명</dd></div>
           <div><dt>총 포인트</dt><dd>{{ formatNumber(totalPrizes) }}</dd></div>
@@ -125,6 +131,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { allocateRoundedTotal } from 'src/utils/icmCalculator'
 
 let nextId = 5
 
@@ -171,20 +178,6 @@ const calculateFinishProbabilities = (remainingPlayers, remainingPlaces, probabi
     const nextPlayers = remainingPlayers.filter((_, playerIndex) => playerIndex !== index)
     calculateFinishProbabilities(nextPlayers, remainingPlaces.slice(1), nextProbability, probabilities)
   })
-}
-
-const allocateRoundedTotal = (values, total) => {
-  const roundedTotal = Math.round(total)
-  const allocated = values.map((value) => Math.floor(value))
-  let remainder = roundedTotal - allocated.reduce((sum, value) => sum + value, 0)
-  const fractionalOrder = values
-    .map((value, index) => ({ index, fraction: value - Math.floor(value) }))
-    .sort((a, b) => b.fraction - a.fraction)
-
-  for (let index = 0; index < remainder; index += 1) {
-    allocated[fractionalOrder[index % fractionalOrder.length].index] += 1
-  }
-  return allocated
 }
 
 const calculate = () => {
@@ -253,6 +246,12 @@ const selectedChopValue = (row) => ({
   chip: row.chipChopValue,
   equal: row.equalChopValue,
 })[chopMethod.value]
+const equalChopSummary = computed(() => {
+  const values = [...new Set(results.value.map((row) => Number(row.equalChopValue) || 0))]
+    .sort((a, b) => a - b)
+    .map(formatNumber)
+  return values.join('~') || '0'
+})
 const comparisonValues = (row) => {
   if (chopMethod.value === 'equal') return []
   const selectedValue = selectedChopValue(row)
@@ -477,6 +476,27 @@ const selectInputText = (event) => event.currentTarget.select()
   color: var(--v2-primary);
   font-size: 24px;
   font-weight: 650;
+}
+
+.equal-breakdown {
+  display: grid;
+  width: 100%;
+  gap: 5px;
+  margin-top: 3px;
+}
+
+.equal-breakdown span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--v2-text-sub);
+  font-size: 11px;
+}
+
+.equal-breakdown b {
+  color: var(--v2-text-main);
+  font-size: 12px;
 }
 
 .equal-result dl {

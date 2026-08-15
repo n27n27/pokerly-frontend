@@ -307,7 +307,7 @@
       </section>
 
       <section class="stats-section">
-        <h2>매장별 통계</h2>
+        <h2>{{ venueTableTitle }}</h2>
         <div v-if="sortedVenueRows.length" class="venue-table">
           <div class="venue-table__head">
             <span>매장</span>
@@ -722,6 +722,7 @@ const venueRows = computed(() => {
     const profit = prize - buyIn
     const itmCount = list.filter(isItm).length
     return {
+      id,
       name:
         id === 'other'
           ? '기타'
@@ -739,6 +740,14 @@ const venueRows = computed(() => {
     }
   })
 })
+const visibleVenueRows = computed(() => {
+  if (venueId.value === null) return venueRows.value
+  if (venueId.value === 'other') return venueRows.value.filter((row) => row.isOther)
+  return venueRows.value.filter((row) => row.id === Number(venueId.value))
+})
+const venueTableTitle = computed(() =>
+  venueId.value === null ? '매장별 통계' : `${selectedVenueLabel.value} 통계`,
+)
 const sortedVenueRows = computed(() => {
   const valueOf = (row) => {
     if (venueSortKey.value === 'games') return row.rawGames
@@ -746,7 +755,7 @@ const sortedVenueRows = computed(() => {
     if (venueSortKey.value === 'roi') return row.rawRoi
     return row.rawProfit
   }
-  return [...venueRows.value].sort((a, b) => {
+  return [...visibleVenueRows.value].sort((a, b) => {
     if (a.isOther !== b.isOther) return a.isOther ? 1 : -1
     const difference = valueOf(a) - valueOf(b)
     return venueSortDirection.value === 'asc' ? difference : -difference
@@ -1394,6 +1403,7 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 
 :global(.stats-filter-menu .stats-filter-menu__active) {
   color: var(--v2-primary);
+  background: rgba(109, 69, 232, .08);
   background: color-mix(in srgb, var(--v2-primary) 8%, white);
   font-weight: 700;
 }

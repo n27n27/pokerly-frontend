@@ -126,12 +126,12 @@ const collect = (matcher) => {
 const groups = computed(() => {
   const premium = collect((hand) => ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AKo', 'AQs'].includes(hand))
   const strongHands = collect((hand) =>
-    ['99', '88', '77', 'AJs', 'AQs', 'AKs', 'AQo', 'AKo', 'AQ', 'AK', 'KQs'].includes(hand),
+    ['99', '88', '77', 'AJs', 'ATs', 'AQo', 'AJo', 'AQ', 'KQs'].includes(hand),
   )
   const pairs = collect((hand) => hand.length === 2 && hand[0] === hand[1])
   return [
     { key: 'premium', label: '프리미엄', description: 'AA~TT, AK, AQs', items: premium, count: premium.reduce((sum, item) => sum + item.count, 0) },
-    { key: 'strong', label: '강한 핸드', description: '99~77, AJs+, AQo+, KQs', items: strongHands, count: strongHands.reduce((sum, item) => sum + item.count, 0) },
+    { key: 'strong', label: '강한 핸드', description: '99~77, AJs~ATs, AQo~AJo, KQs', items: strongHands, count: strongHands.reduce((sum, item) => sum + item.count, 0) },
     { key: 'pair', label: '포켓 페어', description: 'AA~22', items: pairs, count: pairs.reduce((sum, item) => sum + item.count, 0) },
   ]
 })

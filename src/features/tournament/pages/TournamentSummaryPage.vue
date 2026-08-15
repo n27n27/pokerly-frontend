@@ -148,7 +148,7 @@
       <div class="stats-list">
         <button type="button" @click="goStats">
           <i><q-icon name="style" size="19px" /></i>
-          <span><strong>VPIP 23% · PFR 17% · 3Bet 8%</strong></span>
+          <span><strong>{{ preflopSummary }}</strong></span>
           <b>상세 보기 <q-icon name="chevron_right" size="16px" /></b>
         </button>
       </div>
@@ -221,7 +221,12 @@ import { useRouter, useRoute } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
-import { createStartingHandRunSummary } from 'src/utils/handLogHandAnalysis'
+import {
+  createStartingHandRunSummary,
+  isPfrAction,
+  isThreeBetPlusAction,
+  isVpipAction,
+} from 'src/utils/handLogHandAnalysis'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 import { formatCompactNumber } from 'src/utils/numberFormat'
 import { buildEventReviewText } from 'src/utils/handLogExportText'
@@ -445,6 +450,16 @@ const tournamentHands = computed(() =>
   ),
 )
 const rankDistribution = computed(() => createStartingHandRunSummary(tournamentHands.value))
+const preflopSummary = computed(() => {
+  const hands = tournamentHands.value
+  const percent = (count) => (hands.length ? `${Math.round((count / hands.length) * 100)}%` : '-')
+  const action = (hand) => hand.actionType || hand.preflopAction || ''
+  return [
+    `VPIP ${percent(hands.filter((hand) => isVpipAction(action(hand))).length)}`,
+    `PFR ${percent(hands.filter((hand) => isPfrAction(action(hand))).length)}`,
+    `3Bet+ ${percent(hands.filter((hand) => isThreeBetPlusAction(action(hand))).length)}`,
+  ].join(' · ')
+})
 
 const groupMajorHands = (matcher) => {
   const grouped = new Map()
@@ -464,7 +479,7 @@ const majorHandGroups = computed(() => {
     ['AA', 'KK', 'QQ', 'JJ', 'TT', 'AKs', 'AKo', 'AK', 'AQs'].includes(name),
   )
   const strongHands = groupMajorHands((name) =>
-    ['99', '88', '77', 'AJs', 'AQs', 'AKs', 'AQo', 'AKo', 'AQ', 'AK', 'KQs'].includes(name),
+    ['99', '88', '77', 'AJs', 'ATs', 'AQo', 'AJo', 'AQ', 'KQs'].includes(name),
   )
   const pocketPairs = groupMajorHands((name) => name.length === 2 && name[0] === name[1])
   return [
@@ -478,7 +493,7 @@ const majorHandGroups = computed(() => {
     {
       key: 'strong',
       label: '강한 핸드',
-      description: '99~77, AJs+, AQo+, KQs',
+      description: '99~77, AJs~ATs, AQo~AJo, KQs',
       items: strongHands,
       count: strongHands.reduce((sum, item) => sum + item.hands.length, 0),
     },

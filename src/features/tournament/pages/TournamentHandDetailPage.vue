@@ -187,7 +187,13 @@ const handLogStore = useHandLogStore()
 const menuOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const levelId = computed(() => String(route.params.levelName || ''))
-const levelName = computed(() => String(route.query.levelName || '') || '-')
+const levelName = computed(
+  () =>
+    String(route.query.levelName || '') ||
+    (handLogStore.selectedBlindLevel?.levelNo
+      ? `L${handLogStore.selectedBlindLevel.levelNo}`
+      : '-')
+)
 const handId = computed(() => String(route.params.handId || ''))
 const eventId = computed(
   () => route.query.eventId || route.query.legacyEventId || storedTournament.eventId || null,
