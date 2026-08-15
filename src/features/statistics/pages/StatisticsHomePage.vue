@@ -143,6 +143,39 @@
         </div>
       </section>
 
+      <section v-if="statisticsInsights.length" class="stats-section insight-section">
+        <div class="insight-section__heading">
+          <h2>기록 인사이트</h2>
+          <span>{{ periodLabel }} · {{ filteredSessions.length }}개 대회</span>
+        </div>
+        <div class="insight-list">
+          <article
+            v-for="insight in statisticsInsights"
+            :key="insight.key"
+            class="insight-card"
+            :class="`insight-card--${insight.tone}`"
+          >
+            <div class="insight-card__body">
+              <strong>{{ insight.title }}</strong>
+              <p>{{ insight.description }}</p>
+            </div>
+            <div class="insight-card__meta">
+              <span :class="`confidence--${insight.confidence.key}`">
+                신뢰도 {{ insight.confidence.label }}
+              </span>
+              <span>표본 {{ insight.sample }}{{ insight.key.includes('venue') ? '회' : insight.key.includes('hand') || insight.key === 'position' || insight.key === 'recorded-results' ? '핸드' : '개' }}</span>
+              <button v-if="insight.action" type="button" @click="openInsightEvidence(insight.action)">
+                {{ insight.action.label }}
+                <q-icon name="chevron_right" size="16px" />
+              </button>
+            </div>
+          </article>
+        </div>
+        <small class="insight-section__notice">
+          저장된 기록만 분석한 결과이며, 표본이 적으면 참고용으로 표시됩니다.
+        </small>
+      </section>
+
       <section class="stats-section">
         <h2>손익 추세</h2>
         <div ref="trendPanelRef" class="summary-panel trend-panel">
@@ -383,6 +416,10 @@ import { fetchVenues } from 'src/api/venue'
 import { useAuthStore } from 'src/stores/auth'
 import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
 import { formatCompactNumber } from 'src/utils/numberFormat'
+import {
+  buildBankInsights,
+  buildPlayInsights,
+} from '../utils/statisticsInsights'
 
 const route = useRoute()
 const router = useRouter()
@@ -437,6 +474,28 @@ const analysisFilterQuery = computed(() => ({
   venueName: selectedVenueLabel.value,
 }))
 const openAnalysisPage = (name) => router.push({ name, query: analysisFilterQuery.value })
+const openInsightEvidence = (action) => {
+  if (action.type === 'venue') {
+    venueId.value = action.venueId === 'other' ? 'other' : action.venueId
+    return
+  }
+  if (action.type === 'hands') {
+    openAnalysisPage('statistics-hands')
+    return
+  }
+  if (action.type === 'position') {
+    router.push({
+      name: 'statistics-position-detail',
+      params: { position: action.position },
+      query: { ...analysisFilterQuery.value, fromInsight: '1' },
+    })
+    return
+  }
+  router.push({
+    name: 'tournament-list',
+    query: { ...analysisFilterQuery.value, from: 'statistics' },
+  })
+}
 const emptyStatsTitle = computed(() => {
   if (venueId.value !== null) return '선택한 매장에 기록이 없어요'
   if (!showAllPeriod.value && allSessionCount.value > 0) return '선택한 달에 기록이 없어요'
@@ -708,6 +767,15 @@ const bankCards = computed(() => [
     tone: 'averageBuyIn',
   },
 ])
+
+const venueNameOf = (id) => {
+  if (id === 'other') return '기타'
+  return venues.value.find((venue) => String(venue.id) === String(id))?.name || '기타'
+}
+const statisticsInsights = computed(() => [
+  ...buildBankInsights(filteredSessions.value, venueNameOf),
+  ...(isDetailedMode.value ? buildPlayInsights(filteredHands.value) : []),
+].slice(0, 4))
 
 const venueRows = computed(() => {
   const grouped = new Map()
@@ -1513,6 +1581,108 @@ h2 {
 .stats-section {
   display: grid;
   gap: 6px;
+}
+
+.insight-section__heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.insight-section__heading h2 {
+  margin-bottom: 4px;
+}
+
+.insight-section__heading > span,
+.insight-section__notice {
+  color: var(--v2-text-sub);
+  font-size: 10px;
+}
+
+.insight-list {
+  display: grid;
+  gap: 7px;
+}
+
+.insight-card {
+  position: relative;
+  display: grid;
+  gap: 11px;
+  padding: 15px;
+  overflow: hidden;
+  border: 1px solid rgba(109, 69, 232, 0.11);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(28, 18, 60, 0.03);
+}
+
+.insight-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #9a92aa;
+  content: '';
+}
+
+.insight-card--positive::before { background: var(--v2-profit); }
+.insight-card--caution::before { background: var(--v2-gold); }
+
+.insight-card__body {
+  display: grid;
+  gap: 5px;
+}
+
+.insight-card__body strong {
+  color: var(--v2-text-main);
+  font-size: 13px;
+  font-weight: 680;
+}
+
+.insight-card__body p {
+  margin: 0;
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+.insight-card__meta {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
+  gap: 6px;
+}
+
+.insight-card__meta > span {
+  padding: 4px 7px;
+  border-radius: 999px;
+  background: #f4f2f7;
+  color: var(--v2-text-sub);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.insight-card__meta > span.confidence--high { background: rgba(22, 139, 133, .1); color: #11736e; }
+.insight-card__meta > span.confidence--medium { background: rgba(109, 69, 232, .09); color: var(--v2-primary); }
+
+.insight-card__meta button {
+  display: inline-flex;
+  min-height: 28px;
+  margin-left: auto;
+  padding: 0 2px 0 8px;
+  align-items: center;
+  border: 0;
+  background: transparent;
+  color: var(--v2-primary);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.insight-section__notice {
+  padding: 1px 3px 0;
+  line-height: 1.45;
 }
 
 .bank-grid {

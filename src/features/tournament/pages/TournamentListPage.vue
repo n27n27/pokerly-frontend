@@ -1,7 +1,7 @@
 <template>
   <q-page class="tournament-list-page" @click="venueMenuOpen = false">
     <header class="list-topbar">
-      <button class="list-topbar__back" type="button" aria-label="뒤로 가기" @click="router.back()">
+      <button class="list-topbar__back" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>전체 토너먼트</h1>
@@ -75,16 +75,21 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
 import { fetchHandLogEvents } from 'src/api/handLogApi'
 import { fetchVenues } from 'src/api/venue'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
+const route = useRoute()
 const search = ref('')
 const venues = ref([])
-const selectedVenue = ref('all')
+const isStatisticsEvidence = route.query.from === 'statistics'
+const statisticsVenueId = String(route.query.venueId || '').trim()
+const selectedVenue = ref(
+  isStatisticsEvidence && statisticsVenueId ? statisticsVenueId : 'all',
+)
 const venueMenuOpen = ref(false)
 const sortOrder = ref('desc')
 
@@ -167,8 +172,15 @@ const selectedVenueLabel = computed(() => {
 
 const filteredTournaments = computed(() => {
   const keyword = search.value.trim().toLowerCase()
+  const statisticsMonth = `${route.query.year}-${String(route.query.month || '').padStart(2, '0')}`
+  const shouldFilterStatisticsMonth =
+    isStatisticsEvidence
+    && route.query.allPeriod !== '1'
+    && /^\d{4}-\d{2}$/.test(statisticsMonth)
+
   return tournaments.value
     .filter((item) => !keyword || item.title.toLowerCase().includes(keyword))
+    .filter((item) => !shouldFilterStatisticsMonth || item.rawDate.startsWith(statisticsMonth))
     .filter((item) => {
       if (selectedVenue.value === 'all') return true
       if (selectedVenue.value === 'other') return item.venueId == null
@@ -191,19 +203,47 @@ const toggleSort = () => {
   sortOrder.value = sortOrder.value === 'desc' ? 'asc' : 'desc'
 }
 
+const statisticsRoute = () => ({
+  name: 'statistics',
+  query: {
+    year: route.query.year,
+    month: route.query.month,
+    allPeriod: route.query.allPeriod,
+    venueId: route.query.venueId,
+    venueName: route.query.venueName,
+  },
+})
+const goBack = () => {
+  if (route.query.from === 'statistics') {
+    void router.replace(statisticsRoute())
+    return
+  }
+  router.back()
+}
+
 const openTournament = (tournament) => {
+  const returnQuery = route.query.from === 'statistics'
+    ? {
+        from: 'statistics',
+        year: route.query.year,
+        month: route.query.month,
+        allPeriod: route.query.allPeriod,
+        venueId: route.query.venueId,
+        venueName: route.query.venueName,
+      }
+    : { from: 'tournaments' }
   if (tournament.source === 'event') {
     router.push({
       name: 'tournament-summary',
       params: { tournamentId: `event-${tournament.id}` },
-      query: { legacyEventId: tournament.id, from: 'tournaments' },
+      query: { legacyEventId: tournament.id, ...returnQuery },
     })
     return
   }
   router.push({
     name: 'tournament-summary',
     params: { tournamentId: tournament.id },
-    query: { from: 'tournaments' },
+    query: returnQuery,
   })
 }
 </script>

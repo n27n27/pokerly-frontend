@@ -106,7 +106,7 @@ const loading = ref(false)
 const loadError = ref('')
 const selectedAction = ref('all')
 const positionListRoute = computed(() => ({
-  name: 'statistics-position',
+  name: route.query.fromInsight === '1' ? 'statistics' : 'statistics-position',
   query: {
     year: filter.value.year,
     month: filter.value.month,

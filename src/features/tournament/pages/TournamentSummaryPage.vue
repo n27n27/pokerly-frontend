@@ -732,8 +732,21 @@ onMounted(async () => {
 })
 
 const goBack = () => {
+  if (route.query.from === 'statistics') {
+    router.replace({
+      name: 'statistics',
+      query: {
+        year: route.query.year,
+        month: route.query.month,
+        allPeriod: route.query.allPeriod,
+        venueId: route.query.venueId,
+        venueName: route.query.venueName,
+      },
+    })
+    return
+  }
   if (route.query.from === 'tournaments') {
-    router.push({ name: 'tournament-list' })
+    router.replace({ name: 'tournament-list' })
     return
   }
 
