@@ -2117,14 +2117,14 @@ const goSimpleRecord = (recordId) => {
 
 .recent-row {
   width: 100%;
-  min-height: 80px;
-  padding: 14px 14px 14px 24px;
+  min-height: 72px;
+  padding: 12px 16px 12px 20px;
   border: 0;
   border-bottom: 1px solid var(--v2-border);
   background: transparent;
   color: var(--v2-text-main);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 148px;
+  grid-template-columns: minmax(0, 1fr) minmax(112px, 132px);
   align-items: center;
   gap: 10px;
   text-align: left;
@@ -2190,15 +2190,15 @@ const goSimpleRecord = (recordId) => {
 
 .recent-row__main {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   min-width: 0;
 }
 
 .recent-row__outcome {
   display: grid;
-  grid-template-columns: 48px 92px;
+  grid-template-columns: max-content minmax(56px, 1fr);
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-width: 0;
 }
 
@@ -2216,9 +2216,9 @@ const goSimpleRecord = (recordId) => {
 
 .recent-row__main strong {
   overflow: hidden;
-  font-size: 16px;
-  font-weight: 560;
-  line-height: 1.2;
+  font-size: 14px;
+  font-weight: 570;
+  line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2226,7 +2226,7 @@ const goSimpleRecord = (recordId) => {
 .recent-row__main span {
   overflow: hidden;
   color: var(--v2-text-sub);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 450;
   line-height: 1.2;
   text-overflow: ellipsis;
@@ -2234,54 +2234,50 @@ const goSimpleRecord = (recordId) => {
 }
 
 .recent-row__badge {
-  min-width: 42px;
-  padding: 6px 8px;
-  border-radius: var(--v2-radius-sm);
-  background: #f0eff5;
-  color: #302c3d;
-  font-size: 13px;
-  font-weight: 520;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #f6f5f8;
+  color: #5f5969;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
   text-align: center;
-  border: 1px solid transparent;
+  border: 0;
 }
 
 .recent-row__badge--bust,
 .recent-row__badge--default {
   color: #6b6475;
-  background: #f2f0f5;
-  border-color: #e7e3eb;
+  background: #f5f4f6;
 }
 
 .recent-row__badge--bubble {
-  color: #b45309;
-  background: #fff7e6;
-  border-color: #fde3ad;
+  color: #a16207;
+  background: #fbf8ef;
 }
 
 .recent-row__badge--itm {
-  color: #5b45c7;
-  background: #f0edff;
-  border-color: #ddd6fe;
+  color: #6552b8;
+  background: #f4f2fb;
 }
 
 .recent-row__badge--chop {
-  color: #0369a1;
-  background: #eaf7ff;
-  border-color: #c7eaff;
+  color: #287b91;
+  background: #f0f7f8;
 }
 
 .recent-row__badge--win {
-  color: #a16207;
-  background: linear-gradient(135deg, #fff9dc 0%, #ffedaa 100%);
-  border-color: #f3d56b;
-  box-shadow: 0 2px 7px rgba(202, 138, 4, 0.13);
+  color: #9a6a10;
+  background: #faf6e9;
 }
 
 .recent-row__result {
   min-width: 0;
-  font-size: 16px;
-  font-weight: 560;
+  font-size: 14px;
+  font-weight: 600;
   line-height: 1;
   text-align: right;
   white-space: nowrap;

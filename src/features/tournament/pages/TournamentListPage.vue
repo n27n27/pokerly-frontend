@@ -418,7 +418,7 @@ const openTournament = (tournament) => {
 
 .tournament-row {
   width: 100%;
-  min-height: 74px;
+  min-height: 68px;
   padding: 0 17px 0 18px;
   border: 0;
   border-bottom: 1px solid var(--v2-border);
@@ -427,7 +427,7 @@ const openTournament = (tournament) => {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto 24px;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   font: inherit;
   text-align: left;
 }
@@ -439,69 +439,65 @@ const openTournament = (tournament) => {
 .tournament-row__main {
   min-width: 0;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .tournament-row__main strong {
   overflow: hidden;
   color: var(--v2-text-main);
-  font-size: 16px;
-  font-weight: 560;
-  line-height: 1.15;
+  font-size: 14px;
+  font-weight: 570;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .tournament-row__main span {
   color: var(--v2-text-sub);
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 430;
   line-height: 1;
 }
 
 .tournament-row__badge {
   grid-column: 2;
-  padding: 7px 10px;
-  border-radius: var(--v2-radius-sm);
-  color: #383241;
-  background: #f2f0f7;
-  font-size: 12px;
-  font-weight: 520;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: #5f5969;
+  background: #f6f5f8;
+  font-size: 11px;
+  font-weight: 600;
   line-height: 1;
   white-space: nowrap;
-  border: 1px solid transparent;
+  border: 0;
 }
 
 .tournament-row__badge--bust,
 .tournament-row__badge--default {
   color: #6b6475;
-  background: #f2f0f5;
-  border-color: #e7e3eb;
+  background: #f5f4f6;
 }
 
 .tournament-row__badge--bubble {
-  color: #b45309;
-  background: #fff7e6;
-  border-color: #fde3ad;
+  color: #a16207;
+  background: #fbf8ef;
 }
 
 .tournament-row__badge--itm {
-  color: #5b45c7;
-  background: #f0edff;
-  border-color: #ddd6fe;
+  color: #6552b8;
+  background: #f4f2fb;
 }
 
 .tournament-row__badge--chop {
-  color: #0369a1;
-  background: #eaf7ff;
-  border-color: #c7eaff;
+  color: #287b91;
+  background: #f0f7f8;
 }
 
 .tournament-row__badge--win {
-  color: #a16207;
-  background: linear-gradient(135deg, #fff9dc 0%, #ffedaa 100%);
-  border-color: #f3d56b;
-  box-shadow: 0 2px 7px rgba(202, 138, 4, 0.13);
+  color: #9a6a10;
+  background: #faf6e9;
 }
 
 .tournament-row__arrow {
