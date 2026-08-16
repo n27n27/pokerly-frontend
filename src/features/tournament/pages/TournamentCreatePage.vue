@@ -357,6 +357,7 @@ const submitTournament = async () => {
   try {
     const eventId = await handLogStore.createEvent({
       name: runningTournament.name,
+      venueId: runningTournament.venueId,
       startingStack: parseNumber(form.startingStack),
       date: playDate,
     })
