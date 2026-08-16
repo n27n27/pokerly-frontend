@@ -1,0 +1,21 @@
+{
+  "appId": "kr.pokerly.app",
+  "appName": "Pokerly",
+  "webDir": "www",
+  "plugins": {
+    "Keyboard": {
+      "resize": "native",
+      "resizeOnFullScreen": true
+    },
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "launchShowDuration": 3000,
+      "backgroundColor": "#050410"
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "light",
+      "backgroundColor": "#f7f7fb"
+    }
+  }
+}

@@ -3,7 +3,7 @@
 
 import { defineConfig } from '#q-app/wrappers'
 
-export default defineConfig((/* ctx */) => {
+export default defineConfig((ctx) => {
   // 🔹 빌드할 때마다 값이 바뀌는 버전 해시 (밀리초 타임스탬프)
   const versionHash = Date.now().toString()
 
@@ -19,7 +19,13 @@ export default defineConfig((/* ctx */) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['axios', 'apexcharts', 'version-guard', 'formatters'],
+    boot: [
+      'axios',
+      'apexcharts',
+      'version-guard',
+      'formatters',
+      ...(ctx.mode.capacitor ? ['capacitor'] : []),
+    ],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -92,6 +98,7 @@ export default defineConfig((/* ctx */) => {
 
     capacitor: {
       hideSplashscreen: true,
+      backButtonExit: false,
     },
 
     electron: {

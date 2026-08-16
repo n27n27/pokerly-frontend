@@ -2,12 +2,17 @@
 import { boot } from 'quasar/wrappers'
 import axios from 'axios'
 import { isTerminalRefreshError } from 'src/utils/authError'
+import { resolveApiBaseUrl } from 'src/utils/apiBaseUrl'
 
 // =============================
 //  Axios 인스턴스
 // =============================
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: resolveApiBaseUrl({
+    configuredBaseUrl: import.meta.env.VITE_API_BASE_URL,
+    nativeBaseUrl: import.meta.env.VITE_NATIVE_API_BASE_URL,
+    location: typeof window === 'undefined' ? {} : window.location,
+  }),
   timeout: Number(import.meta.env.VITE_API_TIMEOUT || 30000),
 })
 

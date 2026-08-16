@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="38%" r="78%">
+      <stop offset="0" stop-color="#24104d"/>
+      <stop offset="0.55" stop-color="#0b071a"/>
+      <stop offset="1" stop-color="#050410"/>
+    </radialGradient>
+    <linearGradient id="spade" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f2c1ff"/>
+      <stop offset="0.44" stop-color="#bd50f5"/>
+      <stop offset="1" stop-color="#6521da"/>
+    </linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="28" result="blur"/>
+      <feColorMatrix in="blur" values="0.6 0 0 0 0.35  0 0.2 0 0 0  0 0 1 0 0.3  0 0 0 0.62 0"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <circle cx="512" cy="485" r="335" fill="#842eff" opacity="0.08"/>
+  <g transform="translate(224 167) scale(4.8)" filter="url(#glow)">
+    <path d="M60 4C49 22 20 45 20 72C20 91 40 101 56 89C55 103 50 113 44 122H76C70 113 65 103 64 89C80 101 100 91 100 72C100 45 71 22 60 4Z" fill="url(#spade)" stroke="#f7d9ff" stroke-opacity=".58" stroke-width="1.2"/>
+    <g fill="#df9cff" fill-opacity=".35" stroke="#321062" stroke-width="3">
+      <rect x="43" y="58" width="8" height="25" rx="4"/>
+      <rect x="56" y="43" width="8" height="40" rx="4"/>
+      <rect x="69" y="52" width="8" height="31" rx="4"/>
+    </g>
+  </g>
+</svg>
