@@ -110,17 +110,17 @@ const fetchAllLegacyEvents = async () => {
 }
 
 onMounted(async () => {
-  const [sessions, venueItems, legacyEvents] = await Promise.all([
+  const [sessions, venueItems] = await Promise.all([
     fetchAllGameSessions(),
     fetchVenues(),
-    fetchAllLegacyEvents(),
   ])
   venues.value = venueItems || []
   const venueById = new Map(venues.value.map((venue) => [String(venue.id), venue.name]))
-  const eventById = new Map((legacyEvents || []).map((event) => [String(event.id), event]))
-  const sessionItems = (sessions || [])
+  const completedSessions = (sessions || [])
     .filter((session) => session.tournamentStatus !== 'RUNNING')
-    .map((session) => {
+
+  const buildSessionItems = (eventById = new Map()) =>
+    completedSessions.map((session) => {
       const venueName =
         venueById.get(String(session.venueId)) ||
         session.collabLabel ||
@@ -146,6 +146,16 @@ onMounted(async () => {
       }
     })
 
+  // 신규 데이터는 세션에 표시 정보가 모두 있으므로 느린 레거시 이벤트 조회를 생략한다.
+  tournaments.value = buildSessionItems()
+  const needsLegacyEvents = completedSessions.some((session) =>
+    (!session.handLogEventId && !session.tournamentName && !session.tournamentResult)
+    || (session.handLogEventId && !session.tournamentName),
+  )
+  if (!needsLegacyEvents) return
+
+  const legacyEvents = await fetchAllLegacyEvents()
+  const eventById = new Map((legacyEvents || []).map((event) => [String(event.id), event]))
   const linkedEventIds = new Set(
     (sessions || []).map((session) => session.handLogEventId).filter(Boolean).map(String),
   )
@@ -167,7 +177,7 @@ onMounted(async () => {
       }
     })
 
-  tournaments.value = [...sessionItems, ...legacyItems]
+  tournaments.value = [...buildSessionItems(eventById), ...legacyItems]
 })
 
 const selectedVenueLabel = computed(() => {
