@@ -821,7 +821,7 @@ const loadRecentTournaments = async () => {
       title: tournamentDisplayName(session),
       meta: formatDate(session.playDate),
       badge: resultBadges[session.tournamentResult] || '',
-      tone: session.tournamentResult === 'WIN' ? 'success' : 'default',
+      tone: String(session.tournamentResult || 'default').toLowerCase(),
       totalBuyIn: totalBuyInOf(session).toLocaleString('ko-KR'),
       entries: session.entries || 1,
       netProfit: Number(session.netProfit || 0),
@@ -2243,11 +2243,39 @@ const goSimpleRecord = (recordId) => {
   font-weight: 520;
   line-height: 1;
   text-align: center;
+  border: 1px solid transparent;
 }
 
-.recent-row__badge--success {
-  background: rgba(22, 163, 74, 0.16);
-  color: #15803d;
+.recent-row__badge--bust,
+.recent-row__badge--default {
+  color: #6b6475;
+  background: #f2f0f5;
+  border-color: #e7e3eb;
+}
+
+.recent-row__badge--bubble {
+  color: #b45309;
+  background: #fff7e6;
+  border-color: #fde3ad;
+}
+
+.recent-row__badge--itm {
+  color: #5b45c7;
+  background: #f0edff;
+  border-color: #ddd6fe;
+}
+
+.recent-row__badge--chop {
+  color: #0369a1;
+  background: #eaf7ff;
+  border-color: #c7eaff;
+}
+
+.recent-row__badge--win {
+  color: #a16207;
+  background: linear-gradient(135deg, #fff9dc 0%, #ffedaa 100%);
+  border-color: #f3d56b;
+  box-shadow: 0 2px 7px rgba(202, 138, 4, 0.13);
 }
 
 .recent-row__result {
@@ -2259,8 +2287,15 @@ const goSimpleRecord = (recordId) => {
   white-space: nowrap;
 }
 
-.recent-row__result--success {
+.recent-row__result--win,
+.recent-row__result--itm,
+.recent-row__result--chop {
   color: var(--v2-profit);
+}
+
+.recent-row__result--bust,
+.recent-row__result--bubble {
+  color: var(--v2-loss);
 }
 
 .recent-row__result--danger {

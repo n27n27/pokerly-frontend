@@ -137,7 +137,7 @@ onMounted(async () => {
         session.collabLabel ||
         '기타',
       badge: labels[session.tournamentResult] || '완료',
-      tone: session.tournamentResult === 'WIN' ? 'success' : 'default',
+      tone: String(session.tournamentResult || 'default').toLowerCase(),
     }))
 
   const linkedEventIds = new Set(
@@ -469,11 +469,39 @@ const openTournament = (tournament) => {
   font-weight: 520;
   line-height: 1;
   white-space: nowrap;
+  border: 1px solid transparent;
 }
 
-.tournament-row__badge--success {
-  color: #15803d;
-  background: rgba(22, 163, 74, 0.14);
+.tournament-row__badge--bust,
+.tournament-row__badge--default {
+  color: #6b6475;
+  background: #f2f0f5;
+  border-color: #e7e3eb;
+}
+
+.tournament-row__badge--bubble {
+  color: #b45309;
+  background: #fff7e6;
+  border-color: #fde3ad;
+}
+
+.tournament-row__badge--itm {
+  color: #5b45c7;
+  background: #f0edff;
+  border-color: #ddd6fe;
+}
+
+.tournament-row__badge--chop {
+  color: #0369a1;
+  background: #eaf7ff;
+  border-color: #c7eaff;
+}
+
+.tournament-row__badge--win {
+  color: #a16207;
+  background: linear-gradient(135deg, #fff9dc 0%, #ffedaa 100%);
+  border-color: #f3d56b;
+  box-shadow: 0 2px 7px rgba(202, 138, 4, 0.13);
 }
 
 .tournament-row__arrow {
