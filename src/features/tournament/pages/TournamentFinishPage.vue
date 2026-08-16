@@ -46,21 +46,23 @@
           <em>위</em>
         </label>
 
-        <label class="field-row">
+        <label class="field-row" :class="{ disabled: !canReceiveAward }">
           <span>포인트</span>
           <input
             :value="form.prize"
+            :disabled="!canReceiveAward"
             inputmode="numeric"
-            placeholder="예) 450,000"
+            :placeholder="canReceiveAward ? '예) 450,000' : '획득 불가'"
             @input="updateMoneyField('prize', $event)"
           />
         </label>
 
-        <div class="field-row satellite-toggle-row">
+        <div class="field-row satellite-toggle-row" :class="{ disabled: !canReceiveAward }">
           <span>새틀 획득</span>
           <button
             type="button"
             role="switch"
+            :disabled="!canReceiveAward"
             :aria-checked="form.satelliteAwarded"
             :class="{ active: form.satelliteAwarded }"
             @click="toggleSatellite"
@@ -171,6 +173,7 @@ const results = [
   { value: 'CHOP', label: '찹', icon: 'handshake' },
   { value: 'WIN', label: '우승', icon: 'emoji_events' },
 ]
+const canReceiveAward = computed(() => ['ITM', 'CHOP', 'WIN'].includes(form.result))
 
 const form = reactive({
   result: isEdit.value ? 'ITM' : '',
@@ -207,18 +210,17 @@ onMounted(async () => {
 })
 
 const selectResult = (result) => {
-  if (form.satelliteAwarded && ['BUST', 'BUBBLE'].includes(result)) {
-    alert.show('새틀 획득은 ITM 이상에서만 가능합니다.', 'warning')
-    return
-  }
   form.result = result
+  if (!canReceiveAward.value) {
+    form.prize = ''
+    form.satelliteAwarded = false
+    form.satelliteName = ''
+  }
 }
 
 const toggleSatellite = () => {
+  if (!canReceiveAward.value) return
   form.satelliteAwarded = !form.satelliteAwarded
-  if (form.satelliteAwarded && !['ITM', 'CHOP', 'WIN'].includes(form.result)) {
-    form.result = 'ITM'
-  }
   if (!form.satelliteAwarded) form.satelliteName = ''
 }
 
@@ -239,19 +241,20 @@ const confirmResult = async () => {
   if (!tournamentId) return
   const source = sourceSession.value || runningTournament
   const hasSourceSession = Boolean(sourceSession.value)
+  const awardEligible = canReceiveAward.value
   const result = {
     id: tournamentId,
     tournamentName: tournamentName.value,
     playDate: tournamentDate.value,
     tournamentResult: form.result,
     finalRank: Number(form.rank) || null,
-    prize: Number(String(form.prize).replaceAll(',', '')) || 0,
+    prize: awardEligible ? Number(String(form.prize).replaceAll(',', '')) || 0 : 0,
     fieldEntries: Number(form.entries) || null,
     entries: Number(form.buyIns) || 1,
     discount: Number(String(form.discount).replaceAll(',', '')) || 0,
     notes: form.memo,
-    satelliteAwarded: form.satelliteAwarded,
-    satelliteName: form.satelliteAwarded ? form.satelliteName : '',
+    satelliteAwarded: awardEligible && form.satelliteAwarded,
+    satelliteName: awardEligible && form.satelliteAwarded ? form.satelliteName : '',
   }
   const savedResults = (() => {
     try {
@@ -501,6 +504,10 @@ const goBack = () => {
 .field-row textarea::placeholder {
   color: #b5afc3;
 }
+.field-row.disabled > span,
+.field-row.disabled input {
+  color: #b5afc3;
+}
 
 .field-row em {
   justify-self: end;
@@ -551,6 +558,10 @@ const goBack = () => {
 }
 .satellite-toggle-row > button.active b {
   order: 1;
+}
+.satellite-toggle-row > button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
 }
 
 .buy-in-row {

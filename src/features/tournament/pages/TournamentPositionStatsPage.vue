@@ -25,7 +25,7 @@
     </div>
 
     <section class="hand-section">
-      <header><h2>핸드별 기록</h2><span>{{ selectedHands.length }}회</span></header>
+      <header><h2>핸드별 기록</h2><span>{{ handSectionSummary }}</span></header>
       <div v-if="!handRows.length" class="empty-state">해당하는 핸드 기록이 없습니다.</div>
       <div v-else class="hand-list">
         <div v-for="row in handRows" :key="row.key || 'unknown'">
@@ -72,6 +72,20 @@ const actionOptions = computed(() => [
 ])
 const selectedHands = computed(() => actionOptions.value.find((option) => option.key === selectedAction.value)?.hands || [])
 const handRows = computed(() => buildAnalysisRows(PREFLOP_169_RANKING, selectedHands.value, (hand) => normalizeHand(getHandInputValue(hand))).filter((row) => row.total))
+const selectedResult = computed(() => buildAnalysisRows(
+  ['all'],
+  selectedHands.value,
+  () => 'all',
+)[0])
+const handSectionSummary = computed(() => {
+  const total = `${selectedHands.value.length}회`
+  if (selectedAction.value === 'all' || selectedAction.value === 'fold') return total
+  const { wins, losses, draws } = selectedResult.value
+  if (wins + losses + draws === 0) return `${total} · 결과 미기록`
+  return [total, `${wins}승`, `${losses}패`, draws ? `${draws}무` : '']
+    .filter(Boolean)
+    .join(' · ')
+})
 const rate = formatAnalysisRate
 const resultText = (row) => {
   const recorded = row.wins + row.losses + row.draws
