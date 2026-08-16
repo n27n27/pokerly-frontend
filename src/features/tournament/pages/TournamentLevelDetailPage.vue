@@ -30,14 +30,14 @@
         <div class="stack-card__item stack-card__item--current">
           <span>현재 스택</span>
           <div class="stack-card__value">
-            <strong>{{ currentStackDisplay }}</strong>
+            <strong :title="currentStackDisplay">{{ currentStackCompactDisplay }}</strong>
             <small v-if="currentStackBb">{{ currentStackBb }}</small>
           </div>
         </div>
         <div class="stack-card__item">
           <span>평균 스택</span>
           <div class="stack-card__value">
-            <strong>{{ averageStackDisplay }}</strong>
+            <strong :title="averageStackDisplay">{{ averageStackCompactDisplay }}</strong>
             <small v-if="averageStackBb">{{ averageStackBb }}</small>
           </div>
         </div>
@@ -290,6 +290,7 @@ import { buildLevelReviewText } from 'src/utils/handLogExportText'
 import { copyToClipboard } from 'src/utils/copyToClipboard'
 import {
   createStartingHandRunSummary,
+  getHandActionLabel,
   isPfrAction,
   isThreeBetPlusAction,
   isVpipAction,
@@ -364,6 +365,19 @@ const formatNumber = (value) =>
   value === null || value === undefined || value === ''
     ? '-'
     : Number(value).toLocaleString('ko-KR')
+const formatCompactNumber = (value) => {
+  const number = Number(value)
+  if (!Number.isFinite(number)) return '-'
+  if (number >= 1000000) {
+    const millions = number / 1000000
+    return `${millions >= 10 ? millions.toFixed(1) : millions.toFixed(2)}M`.replace(/\.0+(?=M$)/, '')
+  }
+  if (number >= 1000) {
+    const thousands = number / 1000
+    return `${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}K`
+  }
+  return number.toLocaleString('ko-KR')
+}
 const parseStoredNumber = (value) => {
   const normalized = String(value ?? '')
     .replaceAll(',', '')
@@ -400,6 +414,7 @@ const currentStack = computed(() => {
   )
 })
 const currentStackDisplay = computed(() => formatNumber(currentStack.value))
+const currentStackCompactDisplay = computed(() => formatCompactNumber(currentStack.value))
 const currentStackBb = computed(() => {
   if (currentStack.value == null) return ''
   const bigBlind = Number(blindLevel.value?.bigBlind || 0)
@@ -415,6 +430,7 @@ const averageStack = computed(() => {
   return parseStoredNumber(blindLevel.value?.averageStack)
 })
 const averageStackDisplay = computed(() => formatNumber(averageStack.value))
+const averageStackCompactDisplay = computed(() => formatCompactNumber(averageStack.value))
 const averageStackBb = computed(() => {
   if (averageStack.value == null) return ''
   const bigBlind = Number(blindLevel.value?.bigBlind || 0)
@@ -633,22 +649,7 @@ const handLevelLabel = (hand) =>
   levelName.value
 
 const handActionLabel = (hand) => {
-  const action = hand.actionType || hand.preflopAction || ''
-  return (
-    hand.actionLabel ||
-    {
-      FOLD: '폴드',
-      CHECK: '체크',
-      CALL: '콜',
-      WALK: '앞에서 올폴드',
-      OPEN: '오픈',
-      THREE_BET: '3벳',
-      THREE_BET_PLUS: '3벳+',
-      FOUR_BET_PLUS: '4벳+',
-    }[action] ||
-    action ||
-    '-'
-  )
+  return getHandActionLabel(hand)
 }
 
 const movableLevels = computed(() =>
@@ -970,7 +971,7 @@ const goBack = () => {
 .level-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 650;
   line-height: 1.2;
   text-align: center;
@@ -1080,10 +1081,11 @@ const goBack = () => {
 
 .stack-card__value strong {
   color: var(--v2-text-main);
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 620;
   line-height: 1;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .stack-card__value small {
@@ -1889,7 +1891,7 @@ const goBack = () => {
 
   .stack-card__value strong {
     max-width: 100%;
-    font-size: clamp(19px, 6vw, 24px);
+    font-size: clamp(17px, 5vw, 20px);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.025em;
   }

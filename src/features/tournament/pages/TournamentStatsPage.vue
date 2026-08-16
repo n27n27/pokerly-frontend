@@ -1,6 +1,6 @@
 <template>
-  <q-page class="preflop-page">
-    <header class="detail-topbar">
+  <q-page class="preflop-page tournament-analysis-page">
+    <header class="detail-topbar tournament-analysis-topbar">
       <button type="button" aria-label="뒤로 가기" @click="router.back()">
         <q-icon name="chevron_left" size="28px" />
       </button>
@@ -39,14 +39,12 @@
 
     <section class="stats-section">
       <h2>포지션별 참여율</h2>
-      <div class="data-table position-table">
-        <div class="table-head">
-          <span>포지션</span><span>VPIP</span><span>PFR</span><span>승률</span>
-        </div>
-        <div v-for="row in positions" :key="row.position">
-          <strong>{{ row.position }}</strong><span>{{ row.vpip }}</span><span>{{ row.pfr }}</span><span>{{ row.winRate }}</span>
-        </div>
-      </div>
+      <PlayAnalysisAccordionList
+        :rows="positionRows"
+        summary-mode="rates"
+        row-detail
+        @row-detail="openPositionDetail"
+      />
     </section>
 
   </q-page>
@@ -59,6 +57,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchGameSession } from 'src/api/gameSession'
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
+import PlayAnalysisAccordionList from 'src/features/statistics/components/PlayAnalysisAccordionList.vue'
+import { buildAnalysisRows } from 'src/features/statistics/utils/playAnalysis'
 import {
   THREE_BET_PLUS_ACTIONS,
   isPfrAction,
@@ -104,7 +104,6 @@ const metrics = computed(() => {
 })
 
 const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
-const winningResults = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
 const formatRate = (count, total) => (total > 0 ? `${Math.round((count / total) * 100)}%` : '-')
 const actionType = (hand) => hand.actionType || hand.preflopAction || ''
 const actionGroups = [
@@ -183,41 +182,24 @@ const tournamentFeatures = computed(() => {
   return features.slice(0, 4)
 })
 
-const positions = computed(() => {
-  const hands = allHands.value.filter((hand) => hand.position)
-
-  const grouped = new Map()
-  hands.forEach((hand) => {
-    const position = hand.position
-    if (!grouped.has(position)) grouped.set(position, [])
-    grouped.get(position).push(hand)
-  })
-
-  return [...grouped.entries()]
-    .sort(([a], [b]) => {
-      const aIndex = positionOrder.indexOf(a)
-      const bIndex = positionOrder.indexOf(b)
-      return (aIndex < 0 ? positionOrder.length : aIndex) -
-        (bIndex < 0 ? positionOrder.length : bIndex)
-    })
-    .map(([position, positionHands]) => {
-      const vpipHands = positionHands.filter((hand) =>
-        isVpipAction(hand.actionType || hand.preflopAction || ''),
-      )
-      const pfrCount = positionHands.filter((hand) =>
-        isPfrAction(hand.actionType || hand.preflopAction || ''),
-      ).length
-      const winCount = vpipHands.filter((hand) =>
-        winningResults.has(hand.resultType || hand.result),
-      ).length
-
-      return {
-        position,
-        vpip: formatRate(vpipHands.length, positionHands.length),
-        pfr: formatRate(pfrCount, positionHands.length),
-        winRate: formatRate(winCount, vpipHands.length),
-      }
-    })
+const normalizePosition = (position) => {
+  const value = String(position || '').trim().toUpperCase()
+  if (value === 'UTG+1') return 'UTG'
+  if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
+  return value
+}
+const positionRows = computed(() => buildAnalysisRows(
+  ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  allHands.value,
+  (hand) => normalizePosition(hand.position),
+))
+const openPositionDetail = (row) => router.push({
+  name: 'tournament-position-stats',
+  params: { tournamentId: tournamentId.value, position: row.key },
+  query: {
+    ...(eventId.value ? { eventId: eventId.value } : {}),
+    ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
+  },
 })
 
 onMounted(async () => {

@@ -486,6 +486,29 @@ export const getActionLabel = (actionType) => {
   return ACTION_LABEL_MAP[actionType] || actionType || ''
 }
 
+const STORED_ACTION_LABELS = {
+  FOLD: '폴드',
+  CHECK: '체크',
+  CALL: '콜',
+  WALK: '앞에서 올폴드',
+  OPEN: '오픈',
+  THREE_BET: '3벳',
+  THREE_BET_PLUS: '3벳+',
+  FOUR_BET_PLUS: '4벳+',
+  FIVE_BET_PLUS: '5벳+',
+}
+
+export const getHandActionLabel = (hand) => {
+  const primary = String(hand?.primaryAction || '').trim()
+  const secondary = String(hand?.secondaryAction || '').trim()
+  if (primary && secondary) {
+    return `${STORED_ACTION_LABELS[primary] || primary} → ${STORED_ACTION_LABELS[secondary] || secondary}`
+  }
+  if (hand?.actionLabel) return hand.actionLabel
+  const action = primary || hand?.actionType || hand?.preflopAction || ''
+  return STORED_ACTION_LABELS[action] || getActionLabel(action) || '-'
+}
+
 export const getResultLabel = (resultType) => {
   return RESULT_LABEL_MAP[resultType] || resultType || ''
 }

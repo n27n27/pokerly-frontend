@@ -177,7 +177,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
-import { getActionLabel, getPreflopRankStat, getResultLabel } from 'src/utils/handLogHandAnalysis'
+import { getHandActionLabel, getPreflopRankStat, getResultLabel } from 'src/utils/handLogHandAnalysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -279,9 +279,7 @@ const heroCards = computed(() => {
     }
   })
 })
-const actionText = computed(
-  () => hand.value?.actionLabel || getActionLabel(hand.value?.actionType) || '-',
-)
+const actionText = computed(() => getHandActionLabel(hand.value))
 const resultMeta = computed(() => {
   const value = hand.value?.resultType
   if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(value))
@@ -383,6 +381,11 @@ const confirmDelete = async () => {
 }
 
 const goBack = () => {
+  if (route.query.handOrigin === 'review-list' && route.query.tournamentId) {
+    router.back()
+    return
+  }
+
   if (route.query.tournamentId) {
     router.push({
       name: 'tournament-summary',

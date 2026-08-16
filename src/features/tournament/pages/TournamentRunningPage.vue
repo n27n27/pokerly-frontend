@@ -73,12 +73,12 @@
           <div class="current-level-card__body">
             <div>
               <span>현재 스택</span>
-              <strong>{{ currentLevel.endStack }}</strong>
+              <strong :title="currentLevel.endStack">{{ formatCompactStack(currentLevel.endStack) }}</strong>
               <em>{{ currentLevel.bb }}</em>
             </div>
             <div>
               <span>평균 스택</span>
-              <strong>{{ currentLevel.averageStack }}</strong>
+              <strong :title="currentLevel.averageStack">{{ formatCompactStack(currentLevel.averageStack) }}</strong>
               <em>{{ currentLevel.averageBb }}</em>
             </div>
             <div>
@@ -336,6 +336,11 @@ const formatCompactStack = (value) => {
 
   const number = Number(String(value).replaceAll(',', ''))
   if (!Number.isFinite(number) || number < 1000) return value
+
+  if (number >= 1000000) {
+    const millions = number / 1000000
+    return `${millions >= 10 ? millions.toFixed(1) : millions.toFixed(2)}M`.replace(/\.0+(?=M$)/, '')
+  }
 
   const thousands = number / 1000
   return `${Number.isInteger(thousands) ? thousands : thousands.toFixed(1)}K`
@@ -722,7 +727,7 @@ const goBack = () => {
 .running-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 21px;
+  font-size: 19px;
   font-weight: 650;
   line-height: 1.2;
   text-align: center;
@@ -746,7 +751,7 @@ const goBack = () => {
 
 .running-summary strong {
   color: var(--v2-text-main);
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 560;
   line-height: 1.2;
 }
@@ -757,7 +762,7 @@ const goBack = () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 430;
   line-height: 1.2;
 }
@@ -778,7 +783,7 @@ const goBack = () => {
   justify-content: center;
   gap: 7px;
   font: inherit;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 520;
   white-space: nowrap;
 }
@@ -798,7 +803,7 @@ const goBack = () => {
 .level-section__header h2 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 17px;
+  font-size: 16px;
   font-weight: 560;
   line-height: 1.2;
 }
@@ -813,7 +818,7 @@ const goBack = () => {
   align-items: center;
   gap: 4px;
   font: inherit;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 520;
 }
 
@@ -922,27 +927,31 @@ const goBack = () => {
 
 .current-level-card__head strong {
   color: var(--v2-primary);
-  font-size: 44px;
+  font-size: 34px;
   font-weight: 620;
   line-height: 1;
 }
 
 .current-level-card__head span {
+  min-width: 0;
+  overflow: hidden;
   color: var(--v2-primary);
-  font-size: 20px;
+  font-size: 16px;
   font-weight: 560;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .current-level-card__body {
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.25fr) minmax(56px, 0.5fr);
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 52px;
+  gap: 8px;
   padding-top: 18px;
 }
 
 .current-level-card__body div + div {
-  padding-left: 14px;
+  padding-left: 10px;
   border-left: 1px solid var(--v2-border);
 }
 
@@ -958,27 +967,36 @@ const goBack = () => {
   display: block;
 }
 
+.current-level-card__body > div {
+  min-width: 0;
+}
+
 .current-level-card__body strong {
-  display: inline-block;
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
   margin-top: 9px;
   color: var(--v2-text-main);
-  font-size: 28px;
+  font-size: 20px;
   font-weight: 620;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .current-level-card__body em {
   display: block;
   margin-top: 8px;
   color: var(--v2-primary);
-  font-size: 15px;
+  font-size: 13px;
   font-style: normal;
   font-weight: 520;
 }
 
 .current-level-card__body div:last-child strong {
   color: var(--v2-primary);
-  font-size: 28px;
+  font-size: 22px;
 }
 
 .level-row {
@@ -1239,16 +1257,16 @@ const goBack = () => {
   }
 
   .current-level-card__head strong {
-    font-size: 39px;
+    font-size: 31px;
   }
 
   .current-level-card__head span {
     min-width: 0;
-    font-size: 17px;
+    font-size: 14px;
   }
 
   .current-level-card__body strong {
-    font-size: clamp(22px, 6.35vw, 25px);
+    font-size: clamp(17px, 5vw, 20px);
     white-space: nowrap;
   }
 

@@ -119,26 +119,32 @@ onMounted(async () => {
   const venueById = new Map(venues.value.map((venue) => [String(venue.id), venue.name]))
   const eventById = new Map((legacyEvents || []).map((event) => [String(event.id), event]))
   const sessionItems = (sessions || [])
-    .filter((session) => session.tournamentStatus !== 'RUNNING' && session.handLogEventId)
-    .map((session) => ({
-      key: `session-${session.id}`,
-      id: session.id,
-      source: 'session',
-      title: tournamentDisplayName({
-        ...session,
-        tournamentName:
-          session.tournamentName || eventById.get(String(session.handLogEventId))?.name,
-      }),
-      date: session.playDate?.replaceAll('-', '.') || '-',
-      rawDate: session.playDate || '',
-      venueId: session.venueId == null ? null : String(session.venueId),
-      venueName:
+    .filter((session) => session.tournamentStatus !== 'RUNNING')
+    .map((session) => {
+      const venueName =
         venueById.get(String(session.venueId)) ||
         session.collabLabel ||
-        '기타',
-      badge: labels[session.tournamentResult] || '완료',
-      tone: String(session.tournamentResult || 'default').toLowerCase(),
-    }))
+        '기타'
+      const isSimpleRecord = !session.handLogEventId
+      const result = session.tournamentResult || (Number(session.prize || 0) > 0 ? 'ITM' : 'BUST')
+      const linkedEventName = eventById.get(String(session.handLogEventId))?.name
+      const tournamentName = session.tournamentName || linkedEventName
+
+      return {
+        key: `session-${session.id}`,
+        id: session.id,
+        source: isSimpleRecord ? 'simple-record' : 'session',
+        title: tournamentName
+          ? tournamentDisplayName(tournamentName)
+          : `${venueName} 간편 기록`,
+        date: session.playDate?.replaceAll('-', '.') || '-',
+        rawDate: session.playDate || '',
+        venueId: session.venueId == null ? null : String(session.venueId),
+        venueName,
+        badge: labels[result] || '완료',
+        tone: String(result || 'default').toLowerCase(),
+      }
+    })
 
   const linkedEventIds = new Set(
     (sessions || []).map((session) => session.handLogEventId).filter(Boolean).map(String),
@@ -237,6 +243,13 @@ const openTournament = (tournament) => {
       name: 'tournament-summary',
       params: { tournamentId: `event-${tournament.id}` },
       query: { legacyEventId: tournament.id, ...returnQuery },
+    })
+    return
+  }
+  if (tournament.source === 'simple-record') {
+    router.push({
+      name: 'simple-record',
+      query: { recordId: tournament.id },
     })
     return
   }

@@ -79,6 +79,7 @@
 import { computed, ref } from 'vue'
 import {
   createStartingHandRunSummary,
+  getHandActionLabel,
   isPfrAction,
   isThreeBetPlusAction,
   isVpipAction,
@@ -144,10 +145,7 @@ const selectedHands = (group) => {
   const value = selectedKey.value.split(':')[1]
   return group.items.find((item) => item.hand === value)?.hands || []
 }
-const actionLabel = (hand) => ({
-  FOLD: '폴드', CHECK: '체크', CALL: '콜', WALK: '앞에서 올폴드',
-  OPEN: '오픈', THREE_BET: '3벳', THREE_BET_PLUS: '3벳+', FOUR_BET_PLUS: '4벳+',
-})[action(hand)] || action(hand) || '-'
+const actionLabel = (hand) => getHandActionLabel(hand)
 const resultLabel = (hand) => {
   const value = hand.resultType || hand.result
   if (['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'].includes(value)) return '승리'

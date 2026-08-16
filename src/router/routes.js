@@ -126,6 +126,12 @@ const routes = [
         component: () => import('src/features/tournament/pages/TournamentReviewHandsPage.vue'),
       },
       {
+        path: 'tournament/:tournamentId/stats/position/:position',
+        name: 'tournament-position-stats',
+        meta: { hideHeader: true },
+        component: () => import('src/features/tournament/pages/TournamentPositionStatsPage.vue'),
+      },
+      {
         path: 'tournament/:tournamentId/stats/:statType',
         name: 'tournament-stats',
         meta: { hideHeader: true },

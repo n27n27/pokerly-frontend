@@ -558,8 +558,11 @@ const formatSignedCompact = (value) =>
   formatCompactNumber(numberValue(value), { signDisplay: 'exceptZero' })
 const formatCompact = (value) => formatCompactNumber(numberValue(value))
 const formatPercent = (value) => `${numberValue(value).toFixed(1)}%`
-const isItm = (session) =>
-  ['ITM', 'CHOP', 'WIN'].includes(String(session.tournamentResult || '').toUpperCase())
+const isItm = (session) => {
+  const result = String(session.tournamentResult || '').trim().toUpperCase()
+  if (result) return ['ITM', 'CHOP', 'WIN'].includes(result)
+  return numberValue(session.prize) > 0
+}
 const formatHandRate = (count, total) => (total ? `${Math.round((count * 100) / total)}%` : '-')
 const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
 const winningResults = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])

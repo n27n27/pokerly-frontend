@@ -223,6 +223,7 @@ import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
 import {
   createStartingHandRunSummary,
+  getHandActionLabel,
   isPfrAction,
   isThreeBetPlusAction,
   isVpipAction,
@@ -421,20 +422,7 @@ const normalizeHandName = (hand) => {
   return `${normalized.join('')}${suffix}`
 }
 
-const actionLabel = (hand) =>
-  hand.actionLabel ||
-  ({
-    FOLD: '폴드',
-    CHECK: '체크',
-    CALL: '콜',
-    WALK: '앞에서 올폴드',
-    LIMP: '림프',
-    OPEN: '오픈',
-    THREE_BET: '3벳',
-    THREE_BET_PLUS: '3벳+',
-    FOUR_BET_PLUS: '4벳+',
-  })[hand.actionType || hand.preflopAction] ||
-  '-'
+const actionLabel = (hand) => getHandActionLabel(hand)
 
 const tournamentHands = computed(() =>
   (event.value?.blindLevels || []).flatMap((level) =>

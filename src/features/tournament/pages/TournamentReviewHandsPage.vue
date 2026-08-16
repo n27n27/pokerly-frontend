@@ -112,6 +112,7 @@ const openHand = (hand) => {
       levelName: hand.level,
       eventId: loadedEventId.value,
       tournamentId: tournamentId.value,
+      handOrigin: 'review-list',
       ...(route.query.from ? { from: route.query.from } : {}),
       ...(route.query.legacyEventId ? { legacyEventId: route.query.legacyEventId } : {}),
     },
