@@ -364,17 +364,22 @@ const remove = async () => {
 <style scoped>
 .management-page {
   min-height: 100%;
-  padding: 0 var(--v2-page-padding-x) 92px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 92px;
   color: var(--v2-text-main);
 }
 .management-page * {
   box-sizing: border-box;
 }
-.page-header {
+.management-page > .page-header {
+  position: sticky;
+  z-index: 20;
+  top: var(--v2-page-padding-top);
   display: grid;
-  height: var(--v2-header-height);
+  height: 42px;
+  min-height: 42px;
   grid-template-columns: 42px 1fr 42px;
   align-items: center;
+  background: var(--v2-page-bg);
 }
 .page-header button {
   display: grid;
@@ -393,11 +398,13 @@ const remove = async () => {
   margin: 0;
   font-size: 20px;
   font-weight: 700;
+  line-height: 1.2;
   text-align: center;
 }
 .data-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  margin-top: 12px;
   padding: 4px;
   border-radius: 14px;
   background: #efedf5;

@@ -377,6 +377,7 @@ import { updateHandLogEvent } from 'src/api/handLogApi'
 import { fetchMonthlyStatistics } from 'src/api/statistics'
 import { fetchVenues } from 'src/api/venue'
 import { useAlert } from 'src/composables/useAlert'
+import { useAuthStore } from 'src/stores/auth'
 import { useHandLogStore } from 'src/stores/handLog'
 import { formatLocalDate } from 'src/utils/localDate'
 import { formatCompactNumber } from 'src/utils/numberFormat'
@@ -384,9 +385,12 @@ import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
 const alert = useAlert()
+const auth = useAuthStore()
 const handLogStore = useHandLogStore()
 // 첫 렌더 전에 저장된 모드를 확정해 간편/상세 화면이 서로 번쩍이는 것을 막는다.
-const recordMode = ref(localStorage.getItem('pokerly-record-mode') || 'simple')
+const recordMode = ref(
+  auth.user?.recordMode || localStorage.getItem('pokerly-record-mode') || 'simple',
+)
 const homeInitializing = ref(true)
 const selectedPeriod = ref('month')
 const manageSheetOpen = ref(false)
@@ -1120,8 +1124,16 @@ const goSimpleRecord = (recordId) => {
 <style scoped>
 .home-page {
   display: grid;
-  gap: 26px;
+  align-content: start;
+  width: 100%;
+  min-width: 0;
+  grid-auto-rows: max-content;
+  gap: 20px;
   padding: 10px var(--v2-page-padding-x) 24px;
+}
+
+.home-page > * {
+  min-width: 0;
 }
 
 .home-page--initializing {
@@ -1178,13 +1190,16 @@ const goSimpleRecord = (recordId) => {
 }
 
 .simple-month-navigation button {
+  display: grid;
   width: 32px;
   height: 36px;
+  place-items: center;
   padding: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
   color: var(--v2-text-main);
+  line-height: 1;
 }
 
 .simple-month-navigation button:disabled {
@@ -1671,6 +1686,7 @@ const goSimpleRecord = (recordId) => {
 
 .running-section {
   display: grid;
+  min-width: 0;
   gap: 12px;
 }
 
@@ -1684,6 +1700,9 @@ const goSimpleRecord = (recordId) => {
 
 .running-card {
   position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 16px;
   border-radius: var(--v2-radius-lg);
   background: linear-gradient(135deg, #6d45e8 0%, #5317f4 100%);

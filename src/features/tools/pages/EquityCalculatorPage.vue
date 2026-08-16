@@ -371,14 +371,15 @@ const calculateEquity = async () => {
 .equity-page {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
 }
 
 .equity-topbar {
-  margin: 0 0 20px;
   display: grid;
   justify-items: start;
+  margin: 0;
+  padding-bottom: 20px;
 }
 
 .equity-topbar h1 {

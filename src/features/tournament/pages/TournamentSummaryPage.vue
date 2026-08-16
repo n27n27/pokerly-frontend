@@ -752,8 +752,9 @@ const goBack = () => {
 .summary-page * {
   box-sizing: border-box;
 }
-.topbar {
-  position: relative;
+.summary-page > .topbar {
+  position: sticky;
+  top: 0;
   display: grid;
   width: 100%;
   height: 36px;
@@ -762,6 +763,7 @@ const goBack = () => {
   flex: 0 0 36px;
   grid-template-columns: 40px 1fr 40px;
   align-items: center;
+  box-shadow: 0 16px 0 var(--v2-page-bg);
 }
 .topbar > button {
   display: grid;
@@ -855,16 +857,24 @@ const goBack = () => {
   flex: 0 0 auto;
   align-items: center;
   justify-content: space-between;
-  margin-top: 24px;
+  gap: 12px;
+  margin-top: 32px;
 }
 .title-row h2 {
+  overflow: hidden;
+  min-width: 0;
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 620;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .title-row time {
+  flex: 0 0 auto;
   color: var(--v2-text-sub);
   font-size: 13px;
+  line-height: 1.2;
 }
 .level-table,
 .stat-card,

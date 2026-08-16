@@ -749,11 +749,20 @@ const goBack = () => {
   gap: 16px;
 }
 
+.running-summary__main > div {
+  min-width: 0;
+}
+
 .running-summary strong {
+  display: block;
+  overflow: hidden;
+  min-width: 0;
   color: var(--v2-text-main);
   font-size: 17px;
   font-weight: 560;
   line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .running-summary p {
@@ -1246,6 +1255,11 @@ const goBack = () => {
 
   .manage-link {
     margin-top: 0;
+    padding: 0 10px;
+  }
+
+  .running-summary__main {
+    gap: 12px;
   }
 
   .current-level-card {

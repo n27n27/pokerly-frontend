@@ -78,6 +78,35 @@ input[type='number'] {
   -moz-appearance: textfield;
 }
 
+/*
+ * Detail pages render their own title bar as the first page element. Keep that
+ * bar at its designed top inset while the page content scrolls underneath it.
+ * Using the existing inset avoids the short "scroll first, then stick" jump.
+ */
+.q-page > header:first-child {
+  position: sticky;
+  top: var(--v2-page-padding-top);
+  z-index: 20;
+  background: var(--v2-page-bg);
+}
+
+/*
+ * The sticky bar keeps the page's top inset, so content would otherwise remain
+ * visible while it scrolls through that inset. Extend the bar's opaque surface
+ * upward so scrolling content disappears behind it instead of crossing over it.
+ */
+.q-page > header:first-child::before {
+  position: absolute;
+  z-index: -1;
+  top: calc(-1 * var(--v2-page-padding-top));
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  background: var(--v2-page-bg);
+  content: '';
+  pointer-events: none;
+}
+
 /* Shared frame for tournament analysis list/detail pages. */
 .tournament-analysis-page {
   display: flex;
