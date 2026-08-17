@@ -189,8 +189,8 @@ const openDocument = (type) => router.push(`/app/my/document/${type}`)
 .my-page * { box-sizing: border-box; }
 .my-header, .settings-section { flex: 0 0 auto; }
 .my-header h1 { margin: 0; font-size: 22px; font-weight: 650; line-height: 1; }
-.settings-section { display: grid; gap: 8px; margin-top: 18px; }
-.my-header + .settings-section { margin-top: 20px; }
+.settings-section { display: grid; gap: 6px; margin-top: 8px; }
+.my-header + .settings-section { margin-top: 12px; }
 .settings-section h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .settings-card { overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28,18,60,.025); }
 .profile-row { display: grid; min-height: 74px; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 11px; padding: 12px 14px; }

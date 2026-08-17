@@ -1,7 +1,9 @@
 <template>
   <q-page class="account-page">
     <header class="detail-topbar">
-      <button type="button" aria-label="뒤로 가기" @click="router.back()"><q-icon name="chevron_left" size="28px" /></button>
+      <button type="button" aria-label="뒤로 가기" @click="router.back()">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
       <h1>계정</h1>
       <span aria-hidden="true"></span>
     </header>
@@ -13,8 +15,12 @@
     </section>
 
     <section class="account-list">
-      <div><span>닉네임</span><strong>{{ nickname }}</strong></div>
-      <div><span>이메일</span><strong>{{ email }}</strong></div>
+      <div>
+        <span>닉네임</span><strong>{{ nickname }}</strong>
+      </div>
+      <div>
+        <span>이메일</span><strong>{{ email }}</strong>
+      </div>
     </section>
 
     <button class="logout-button" type="button" @click="logout">로그아웃</button>
@@ -38,15 +44,110 @@ const logout = async () => {
 </script>
 
 <style scoped>
-.account-page { display: grid; align-content: start; gap: 12px; min-height: 100%; padding: 0 var(--v2-page-padding-x) 100px; }
-.detail-topbar { display: grid; min-height: 36px; grid-template-columns: 40px minmax(0,1fr) 40px; align-items: center; }
-.detail-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.detail-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
-.profile-card { display: grid; justify-items: center; gap: 7px; padding: 24px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
-.avatar { display: grid; width: 56px; height: 56px; place-items: center; border-radius: 50%; background: var(--v2-primary-soft); color: var(--v2-primary); }
-.profile-card strong { font-size: 17px; }.profile-card small { color: var(--v2-text-sub); font-size: 12px; }
-.account-list { overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
-.account-list div { display: grid; min-height: 50px; grid-template-columns: 80px 1fr; align-items: center; padding: 0 14px; border-bottom: 1px solid var(--v2-border); font-size: 13px; }
-.account-list div:last-child { border-bottom: 0; }.account-list span { color: var(--v2-text-sub); }.account-list strong { overflow: hidden; font-weight: 520; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
-.logout-button { min-height: 46px; border: 1px solid rgba(239,68,68,.2); border-radius: var(--v2-radius-md); background: #fff; color: var(--v2-danger); font: inherit; font-size: 14px; font-weight: 600; }
+.account-page {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-height: 100%;
+  margin-top: -12px;
+  padding: 0 var(--v2-page-padding-x) 100px;
+}
+.account-page * {
+  box-sizing: border-box;
+}
+.detail-topbar {
+  top: 0 !important;
+  display: grid;
+  min-height: 36px;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  align-items: center;
+}
+.account-page > .detail-topbar::before {
+  display: none;
+}
+.detail-topbar button {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-main);
+}
+.detail-topbar h1 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 650;
+  text-align: center;
+}
+.profile-card {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  justify-items: center;
+  gap: 7px;
+  margin-top: 4px;
+  padding: 24px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-xl);
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(28, 18, 60, 0.025);
+}
+.avatar {
+  display: grid;
+  width: 56px;
+  height: 56px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+}
+.profile-card strong {
+  font-size: 17px;
+}
+.profile-card small {
+  color: var(--v2-text-sub);
+  font-size: 12px;
+}
+.account-list {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+}
+.account-list div {
+  display: grid;
+  min-height: 50px;
+  grid-template-columns: 80px 1fr;
+  align-items: center;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--v2-border);
+  font-size: 13px;
+}
+.account-list div:last-child {
+  border-bottom: 0;
+}
+.account-list span {
+  color: var(--v2-text-sub);
+}
+.account-list strong {
+  overflow: hidden;
+  font-weight: 520;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.logout-button {
+  min-height: 46px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--v2-radius-md);
+  background: #fff;
+  color: var(--v2-danger);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
 </style>
