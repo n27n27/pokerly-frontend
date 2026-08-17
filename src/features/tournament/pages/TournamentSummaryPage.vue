@@ -56,9 +56,9 @@
       }"
       :style="resultMetrics.length < 4 ? { '--metric-count': resultMetrics.length } : undefined"
     >
-      <div v-for="metric in resultMetrics" :key="metric.label">
+      <div v-for="metric in resultMetrics" :key="metric.label" :class="metric.tone">
         <span>{{ metric.label }}</span>
-        <strong :class="{ primary: metric.primary }" :title="metric.title || metric.value">
+        <strong :class="[metric.tone, { primary: metric.primary }]" :title="metric.title || metric.value">
           <i v-if="metric.icon"><q-icon :name="metric.icon" size="16px" /></i>
           {{ metric.value }}
         </strong>
@@ -329,10 +329,11 @@ const resultMetrics = computed(() => {
       value: resultLabel.value,
       icon: resultIcon.value,
       primary: true,
+      tone: 'result',
     })
   }
   if (Number(current.finalRank) > 0) {
-    metrics.push({ label: '최종 순위', value: `${current.finalRank}위` })
+    metrics.push({ label: '최종 순위', value: `${current.finalRank}위`, tone: 'rank' })
   }
   if (current.prize != null) {
     const prize = Number(current.prize || 0)
@@ -340,6 +341,7 @@ const resultMetrics = computed(() => {
       label: '총 상금',
       value: formatCompactNumber(prize),
       title: prize.toLocaleString('ko-KR'),
+      tone: 'prize',
     })
   }
   if (totalBuyIn.value > 0) {
@@ -347,10 +349,11 @@ const resultMetrics = computed(() => {
       label: '총 바인',
       value: formatCompactNumber(totalBuyIn.value),
       title: totalBuyIn.value.toLocaleString('ko-KR'),
+      tone: 'buy-in',
     })
   }
   if (Number(current.entries) > 0) {
-    metrics.push({ label: '참가', value: `${current.entries}회` })
+    metrics.push({ label: '참가', value: `${current.entries}회`, tone: 'entries' })
   }
   if (current.satelliteAwarded) {
     metrics.push({
@@ -754,15 +757,17 @@ const goBack = () => {
 }
 .summary-page > .topbar {
   position: sticky;
+  z-index: 20;
   top: 0;
   display: grid;
   width: 100%;
-  height: 36px;
-  min-height: 36px;
-  max-height: 36px;
-  flex: 0 0 36px;
+  height: var(--v2-detail-topbar-height);
+  min-height: var(--v2-detail-topbar-height);
+  max-height: var(--v2-detail-topbar-height);
+  flex: 0 0 var(--v2-detail-topbar-height);
   grid-template-columns: 40px 1fr 40px;
   align-items: center;
+  background: var(--v2-page-bg);
   box-shadow: 0 16px 0 var(--v2-page-bg);
 }
 .topbar > button {
@@ -858,7 +863,7 @@ const goBack = () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 32px;
+  margin-top: 40px;
 }
 .title-row h2 {
   overflow: hidden;
@@ -888,7 +893,7 @@ const goBack = () => {
 .result-card {
   display: grid;
   gap: 8px;
-  margin-top: 5px;
+  margin-top: 13px;
 }
 .result-card--compact {
   grid-template-columns: repeat(var(--metric-count), minmax(0, 1fr));
@@ -912,6 +917,19 @@ const goBack = () => {
   background: #fff;
   box-shadow: 0 5px 14px rgba(28, 18, 60, 0.025);
   text-align: center;
+}
+.result-card > div.result,
+.result-card > div.prize {
+  background: linear-gradient(145deg, #fff 55%, #f7f2ff 100%);
+}
+.result-card > div.rank {
+  background: linear-gradient(145deg, #fff 55%, #f0fbf9 100%);
+}
+.result-card > div.buy-in {
+  background: linear-gradient(145deg, #fff 55%, #f3f6fa 100%);
+}
+.result-card > div.entries {
+  background: linear-gradient(145deg, #fff 55%, #f0f8fc 100%);
 }
 .result-card > div > span {
   color: #706a7f;
@@ -940,6 +958,19 @@ const goBack = () => {
 .result-card .primary,
 .result-card p b {
   color: var(--v2-primary);
+}
+.result-card strong.result,
+.result-card strong.prize {
+  color: #7041e8;
+}
+.result-card strong.rank {
+  color: #168c84;
+}
+.result-card strong.buy-in {
+  color: #53647f;
+}
+.result-card strong.entries {
+  color: #187cab;
 }
 .legacy-summary-note {
   display: flex;
@@ -977,7 +1008,7 @@ const goBack = () => {
 }
 .content-section {
   display: grid;
-  gap: 4px;
+  gap: 0;
   margin-top: 13px;
 }
 .section-empty {

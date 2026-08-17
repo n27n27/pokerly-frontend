@@ -14,7 +14,7 @@
 }
 
 .app-toolbar {
-  min-height: 72px;
+  min-height: var(--v2-app-header-height);
   padding: 12px var(--v2-page-padding-x) 8px;
 }
 

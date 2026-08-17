@@ -51,7 +51,7 @@
         <button type="button" @click="goSimpleRecord()">기록 추가</button>
       </div>
       <div v-else class="simple-summary">
-        <article v-for="metric in simpleMetrics" :key="metric.label">
+        <article v-for="metric in simpleMetrics" :key="metric.label" :class="metric.tone">
           <span>{{ metric.label }}</span>
           <strong :class="metric.tone">{{ metric.value }}</strong>
         </article>
@@ -541,11 +541,15 @@ const simpleMetrics = computed(() => {
       value: compactMoney(profit, true),
       tone: profit > 0 ? 'positive' : profit < 0 ? 'negative' : '',
     },
-    { label: '총 바인', value: compactMoney(summary.totalBuyIn) },
-    { label: '총 상금', value: compactMoney(summary.totalPrize) },
-    { label: 'ROI', value: `${Number(summary.roi || 0).toFixed(1)}%` },
-    { label: '참가', value: `${summary.totalSessions || 0}회` },
-    { label: 'ITM', value: `${summary.itmCount || 0}회` },
+    { label: '총 바인', value: compactMoney(summary.totalBuyIn), tone: 'buy-in' },
+    { label: '총 상금', value: compactMoney(summary.totalPrize), tone: 'prize' },
+    {
+      label: 'ROI',
+      value: `${Number(summary.roi || 0).toFixed(1)}%`,
+      tone: Number(summary.roi || 0) > 0 ? 'positive' : Number(summary.roi || 0) < 0 ? 'negative' : 'roi',
+    },
+    { label: '참가', value: `${summary.totalSessions || 0}회`, tone: 'entries' },
+    { label: 'ITM', value: `${summary.itmCount || 0}회`, tone: 'itm' },
   ]
 })
 const simpleRecords = computed(() => recentSection.items.map((item) => ({
@@ -1234,9 +1238,13 @@ const goSimpleRecord = (recordId) => {
   text-align: center;
 }
 
-.simple-summary article:nth-child(-n + 3) {
-  background: linear-gradient(145deg, #fff 55%, #faf8ff 100%);
-}
+.simple-summary article.positive { background: linear-gradient(145deg, #fff 55%, #fff3f3 100%); }
+.simple-summary article.negative { background: linear-gradient(145deg, #fff 55%, #f1f6ff 100%); }
+.simple-summary article.buy-in { background: linear-gradient(145deg, #fff 55%, #f3f6fa 100%); }
+.simple-summary article.prize { background: linear-gradient(145deg, #fff 55%, #f7f2ff 100%); }
+.simple-summary article.roi { background: linear-gradient(145deg, #fff 55%, #fff8ec 100%); }
+.simple-summary article.entries { background: linear-gradient(145deg, #fff 55%, #f0f8fc 100%); }
+.simple-summary article.itm { background: linear-gradient(145deg, #fff 55%, #f0fbf9 100%); }
 
 .simple-summary span {
   color: var(--v2-text-sub);
@@ -1258,6 +1266,26 @@ const goSimpleRecord = (recordId) => {
 
 .simple-summary strong.negative {
   color: var(--v2-loss);
+}
+
+.simple-summary strong.buy-in {
+  color: #53647f;
+}
+
+.simple-summary strong.prize {
+  color: #7041e8;
+}
+
+.simple-summary strong.roi {
+  color: #bd7a18;
+}
+
+.simple-summary strong.entries {
+  color: #187cab;
+}
+
+.simple-summary strong.itm {
+  color: #168c84;
 }
 
 .simple-summary--loading article {

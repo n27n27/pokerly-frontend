@@ -2,7 +2,10 @@
   <q-layout view="lHh Lpr lFf" class="app-layout">
     <AppHeader v-if="!route.meta.hideHeader" />
 
-    <q-page-container class="app-page-container">
+    <q-page-container
+      class="app-page-container"
+      :class="{ 'app-page-container--header-hidden': route.meta.hideHeader }"
+    >
       <router-view />
     </q-page-container>
 
@@ -27,5 +30,9 @@ const route = useRoute()
 .app-page-container {
   padding-bottom: 76px;
   isolation: isolate;
+}
+
+.app-page-container--header-hidden {
+  padding-top: 0 !important;
 }
 </style>

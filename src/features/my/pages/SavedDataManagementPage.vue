@@ -375,16 +375,16 @@ const remove = async () => {
   z-index: 20;
   top: var(--v2-page-padding-top);
   display: grid;
-  height: 42px;
-  min-height: 42px;
-  grid-template-columns: 42px 1fr 42px;
+  height: 36px;
+  min-height: 36px;
+  grid-template-columns: 40px minmax(0, 1fr) 40px;
   align-items: center;
   background: var(--v2-page-bg);
 }
 .page-header button {
   display: grid;
-  width: 42px;
-  height: 42px;
+  width: 36px;
+  height: 36px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -392,12 +392,12 @@ const remove = async () => {
   color: inherit;
 }
 .page-header .q-icon {
-  font-size: 32px;
+  font-size: 28px;
 }
 .page-header h1 {
   margin: 0;
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   text-align: center;
 }
