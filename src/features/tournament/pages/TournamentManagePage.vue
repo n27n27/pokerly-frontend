@@ -442,18 +442,14 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="confirmSheetOpen">
-      <q-card class="confirm-dialog">
-        <h2>{{ confirmState.title }}</h2>
-        <p>{{ confirmState.message }}</p>
-        <div>
-          <button type="button" @click="confirmSheetOpen = false">취소</button>
-          <button class="danger" type="button" @click="runConfirmedAction">
-            {{ confirmState.confirmLabel }}
-          </button>
-        </div>
-      </q-card>
-    </q-dialog>
+    <ConfirmDialog
+      v-model="confirmSheetOpen"
+      :title="confirmState.title"
+      :description="confirmState.message"
+      :confirm-label="confirmState.confirmLabel"
+      danger
+      @confirm="runConfirmedAction"
+    />
   </q-page>
 </template>
 
@@ -462,6 +458,7 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { deleteGameSession, fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
 import { useAlert } from 'src/composables/useAlert'
+import ConfirmDialog from 'src/shared/components/ConfirmDialog.vue'
 import { formatLocalDate } from 'src/utils/localDate'
 import {
   createTournamentPlayer,

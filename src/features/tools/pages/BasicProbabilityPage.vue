@@ -1,7 +1,11 @@
 <template>
   <q-page class="probability-page">
     <header class="probability-topbar">
+      <button type="button" aria-label="도구로 돌아가기" @click="router.push('/app/tools')">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
       <h1>기본 확률표</h1>
+      <span aria-hidden="true"></span>
     </header>
 
     <section
@@ -83,7 +87,10 @@
 
 <script setup>
 import { defineComponent, h, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { basicProbabilitySections } from '../data/basicProbabilityData'
+
+const router = useRouter()
 
 const sections = [...basicProbabilitySections].sort((a, b) => a.order - b.order)
 const activeSectionId = ref(null)

@@ -22,10 +22,111 @@ html.is-native #q-app {
 }
 
 html.is-native body {
-  padding-top: var(--app-safe-top);
+  padding-top: 0;
   padding-right: var(--app-safe-right);
   padding-left: var(--app-safe-left);
   -webkit-touch-callout: none;
+}
+
+/*
+ * All first-party pages use the same fixed app-bar contract. Page components
+ * still provide their own title/actions, while positioning, safe area and
+ * scroll separation are owned here so native and web routes behave alike.
+ */
+.app-layout .q-page > header:first-child {
+  position: sticky;
+  z-index: var(--v2-app-bar-z);
+  top: 0;
+  box-sizing: content-box;
+  min-height: var(--v2-detail-topbar-height);
+  margin-top: calc(var(--v2-page-padding-top) * -1);
+  margin-right: calc(var(--v2-page-padding-x) * -1);
+  margin-left: calc(var(--v2-page-padding-x) * -1);
+  padding-top: var(--app-safe-top);
+  padding-right: var(--v2-page-padding-x);
+  padding-left: var(--v2-page-padding-x);
+  border-bottom: 1px solid transparent;
+  background: var(--v2-app-bar-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+/* Account is the only app page whose own frame intentionally has no top inset. */
+.app-layout .account-page > header:first-child {
+  margin-top: 0;
+}
+
+.app-layout .q-page > header:first-child::after {
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 1px;
+  background: var(--v2-app-bar-border);
+  content: '';
+}
+
+.equity-topbar,
+.calc-topbar,
+.probability-topbar {
+  display: grid !important;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  justify-items: stretch !important;
+  margin-bottom: 12px !important;
+  padding-bottom: 0 !important;
+}
+
+.equity-topbar > button,
+.calc-topbar > button,
+.probability-topbar > button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-main);
+}
+
+.equity-topbar > h1,
+.calc-topbar > h1,
+.probability-topbar > h1 {
+  text-align: center !important;
+}
+
+/* Root-tab titles are compact app bars; descriptive copy remains scrollable. */
+.tools-header p {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: var(--v2-page-padding-x);
+  left: var(--v2-page-padding-x);
+}
+
+.tools-header + .tools-intro {
+  margin-top: 36px;
+}
+
+/* Long, filterable lists keep their controls available below the primary row. */
+.tournament-list-page > .control-row,
+.preset-page > .preset-control-row {
+  position: sticky;
+  z-index: calc(var(--v2-app-bar-z) - 1);
+  top: calc(var(--v2-detail-topbar-height) + var(--app-safe-top));
+  margin-right: calc(var(--v2-page-padding-x) * -1);
+  margin-left: calc(var(--v2-page-padding-x) * -1);
+  padding: 8px var(--v2-page-padding-x);
+  background: var(--v2-app-bar-bg);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+@media (max-width: 360px) {
+  .stats-header,
+  .detail-header {
+    min-height: auto !important;
+  }
 }
 
 html.keyboard-visible .q-footer,

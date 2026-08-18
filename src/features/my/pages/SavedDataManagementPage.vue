@@ -153,16 +153,14 @@
       </q-card>
     </q-dialog>
 
-    <q-dialog v-model="deleteDialog">
-      <div class="delete-confirm" @click.stop>
-        <h2>{{ activeLabel }} 정보 삭제</h2>
-        <p>{{ deleteMessage }}</p>
-        <div>
-          <button type="button" v-close-popup>취소</button>
-          <button class="danger" type="button" @click="remove">삭제</button>
-        </div>
-      </div>
-    </q-dialog>
+    <ConfirmDialog
+      v-model="deleteDialog"
+      :title="`${activeLabel} 정보 삭제`"
+      :description="deleteMessage"
+      confirm-label="삭제"
+      danger
+      @confirm="remove"
+    />
   </q-page>
 </template>
 
@@ -177,6 +175,7 @@ import {
 } from 'src/api/tournamentParticipant'
 import { deleteVenue, fetchVenues, updateVenue } from 'src/api/venue'
 import { useAlert } from 'src/composables/useAlert'
+import ConfirmDialog from 'src/shared/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const alert = useAlert()

@@ -1,7 +1,11 @@
 <template>
   <q-page class="icm-page">
     <header class="calc-topbar">
+      <button type="button" aria-label="도구로 돌아가기" @click="router.push('/app/tools')">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
       <h1>찹 계산기</h1>
+      <span aria-hidden="true"></span>
     </header>
 
     <section class="player-count-card">
@@ -129,9 +133,12 @@
 
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { allocateRoundedTotal } from 'src/utils/icmCalculator'
+
+const router = useRouter()
 
 let nextId = 5
 

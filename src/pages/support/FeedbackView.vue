@@ -1,8 +1,13 @@
 <template>
-  <q-page class="q-pa-md">
+  <q-page class="feedback-page">
+    <header class="detail-topbar">
+      <button type="button" aria-label="뒤로 가기" @click="router.back()">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
+      <h1>문의 / 피드백</h1>
+      <span aria-hidden="true"></span>
+    </header>
     <div class="column q-gutter-y-md" style="max-width: 640px; margin: 0 auto">
-      <div class="text-h5 text-weight-bold">문의 / 피드백</div>
-
       <div class="text-body1 text-grey-8">
         Pokerly를 더 좋게 만들고 싶어요. 사용 중 불편한 점, 버그 제보, 계산기가 이상하게 느껴졌던
         순간 등 편하게 알려주세요 🙂
@@ -26,7 +31,45 @@
 </template>
 
 <script setup>
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
+
 const goKakao = () => {
   window.open('https://open.kakao.com/o/spDdBMXh', '_blank')
 }
 </script>
+
+<style scoped>
+.feedback-page {
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 100px;
+}
+
+.detail-topbar {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+}
+
+.detail-topbar button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-main);
+}
+
+.detail-topbar h1 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 650;
+  text-align: center;
+}
+
+.detail-topbar + div {
+  margin-top: 16px !important;
+}
+</style>

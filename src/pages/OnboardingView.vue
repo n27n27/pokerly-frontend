@@ -1,12 +1,12 @@
 <template>
   <q-page class="onboarding-page">
-    <main class="onboarding-shell">
-      <header class="onboarding-topbar">
+    <main class="onboarding-shell" :class="{ 'onboarding-shell--agreements': !policyView && step === 'agreements' }">
+      <header v-if="policyView || step !== 'agreements'" class="onboarding-topbar">
         <button type="button" aria-label="뒤로 가기" @click="goBack">
           <q-icon name="chevron_left" size="29px" />
         </button>
-        <strong v-if="policyView">{{ currentPolicy.title }}</strong>
-        <span v-if="policyView" aria-hidden="true"></span>
+        <strong>{{ topbarTitle }}</strong>
+        <span aria-hidden="true"></span>
       </header>
 
       <template v-if="policyView">
@@ -26,7 +26,12 @@
 
       <template v-else-if="step === 'agreements'">
         <section class="page-intro agreements-intro">
-          <h1><strong>Pokerly</strong> 시작하기</h1>
+          <div class="agreements-intro__heading">
+            <h1><strong>Pokerly</strong> 시작하기</h1>
+            <button class="onboarding-exit" type="button" aria-label="가입 중단" @click="requestExit">
+              <q-icon name="close" size="28px" />
+            </button>
+          </div>
           <p>서비스 이용을 위해<br />아래 약관에 동의해주세요.</p>
         </section>
 
@@ -111,7 +116,6 @@
 
       <template v-else>
         <section class="page-intro profile-intro">
-          <h1>프로필 설정</h1>
           <p>사용할 닉네임을 설정해주세요.</p>
         </section>
 
@@ -139,13 +143,25 @@
       </template>
     </main>
 
+    <ConfirmDialog
+      v-model="exitDialogOpen"
+      title="가입을 중단할까요?"
+      description="지금 나가면 선택한 내용이 저장되지 않아요."
+      cancel-label="계속 진행"
+      confirm-label="나가기"
+      preferred-action="cancel"
+      danger
+      @confirm="confirmExit"
+    />
+
   </q-page>
 </template>
 
 <script setup>
 import { computed, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
+import ConfirmDialog from 'src/shared/components/ConfirmDialog.vue'
 import { useAlert } from 'src/composables/useAlert'
 import { useAuthStore } from 'stores/auth'
 
@@ -171,6 +187,8 @@ const nicknameChecked = ref(false)
 const nicknameAvailable = ref(false)
 const nicknameMessage = ref('')
 const policyView = ref('')
+const exitDialogOpen = ref(false)
+const allowRouteLeave = ref(false)
 
 const policies = {
   terms: {
@@ -200,6 +218,12 @@ const policies = {
   },
 }
 const currentPolicy = computed(() => policies[policyView.value] || policies.terms)
+const topbarTitle = computed(() => {
+  if (policyView.value) return currentPolicy.value.title
+  if (step.value === 'agreements') return '시작하기'
+  if (step.value === 'profile') return '프로필 설정'
+  return '사용 방식 선택'
+})
 
 const agreements = [
   {
@@ -274,13 +298,28 @@ const goBack = async () => {
       step.value = 'profile'
       return
     }
-    await auth.logout()
-    router.replace('/login')
+    requestExit()
     return
   }
-  await auth.logout()
-  router.replace('/login')
+  requestExit()
 }
+
+const requestExit = () => {
+  exitDialogOpen.value = true
+}
+
+const confirmExit = async () => {
+  allowRouteLeave.value = true
+  exitDialogOpen.value = false
+  await auth.logout()
+  await router.replace('/login')
+}
+
+onBeforeRouteLeave(() => {
+  if (allowRouteLeave.value) return true
+  requestExit()
+  return false
+})
 
 const toggleAll = () => {
   const next = !allAgreed.value
@@ -311,6 +350,7 @@ const confirmMode = async () => {
     } else {
       await auth.updateRecordMode(recordMode.value)
     }
+    allowRouteLeave.value = true
     router.replace('/app/home')
   } catch (error) {
     const message = error?.response?.data?.error?.message || '설정을 완료하지 못했습니다.'
@@ -348,9 +388,10 @@ const checkNickname = async () => {
 
 <style scoped>
 .onboarding-page {
+  box-sizing: border-box;
   min-height: 100vh;
   min-height: 100dvh;
-  padding: 28px 22px 34px;
+  padding: 0 22px 34px;
   background:
     radial-gradient(circle at 92% 8%, rgba(109, 69, 232, .07), transparent 26%),
     #faf9fd;
@@ -358,16 +399,22 @@ const checkNickname = async () => {
 }
 
 .onboarding-page * { box-sizing: border-box; }
-.onboarding-shell { display: flex; width: 100%; max-width: 420px; min-height: calc(100dvh - 62px); margin: 0 auto; flex-direction: column; }
-.onboarding-topbar { display: grid; min-height: 36px; grid-template-columns: 40px minmax(0, 1fr) 40px; align-items: center; }
-.onboarding-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
+.onboarding-shell { position: relative; display: flex; width: 100%; max-width: 420px; min-height: calc(100dvh - 34px); margin: 0 auto; flex-direction: column; }
+.agreements-intro__heading { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 12px; }
+.onboarding-exit { display: grid; width: 44px; height: 44px; place-items: center; justify-self: end; padding: 0; border: 0; border-radius: 50%; outline: 0; background: transparent; color: var(--v2-text-sub); }
+.onboarding-exit:focus-visible { box-shadow: 0 0 0 3px rgba(109, 69, 232, .18); }
+.onboarding-topbar { position: sticky; z-index: var(--v2-app-bar-z); top: 0; display: grid; min-height: 48px; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: end; margin: 0 -22px; padding: var(--app-safe-top) 22px 0; border-bottom: 1px solid var(--v2-app-bar-border); background: var(--v2-app-bar-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.onboarding-topbar button { display: grid; width: 44px; height: 48px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .onboarding-topbar > strong { font-size: 21px; font-weight: 650; text-align: center; }
-.page-intro { margin-top: -18px; }
-.page-intro h1 { margin: 0; font-size: 27px; font-weight: 650; letter-spacing: -.04em; }
+.onboarding-topbar > strong, .onboarding-topbar > span { display: grid; min-height: 48px; align-items: center; }
+.page-intro { margin-top: 24px; }
+.page-intro h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.03em; }
 .page-intro h1 strong { color: var(--v2-primary); font-weight: 680; }
 .page-intro p { margin: 12px 0 0; color: var(--v2-text-sub); font-size: 13px; line-height: 1.6; }
+.onboarding-shell--agreements .agreements-intro { margin-top: calc(36px + var(--app-safe-top)); }
 .agreements-intro p { color: #756f86; }
-.profile-intro p { color: #756f86; }
+.profile-intro { margin-top: 24px; }
+.profile-intro p { margin-top: 0; color: #756f86; }
 .agreement-card { margin-top: 22px; overflow: hidden; padding: 0 14px; border: 1px solid var(--v2-border); border-radius: 16px; background: #fff; box-shadow: var(--v2-shadow-card); }
 .agreement-all-row { display: grid; width: 100%; min-height: 62px; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 8px; padding: 0; border: 0; border-bottom: 1px solid var(--v2-border); background: transparent; color: var(--v2-text-main); font: inherit; text-align: left; }
 .agreement-all-row > span { display: grid; width: 24px; height: 24px; place-items: center; border: 1.5px solid #aaa4b5; border-radius: 6px; background: #fff; color: #fff; }
@@ -422,7 +469,7 @@ const checkNickname = async () => {
 .policy-view article p + p { margin-top: 8px; }
 
 @media (max-height: 720px) {
-  .page-intro { margin-top: -18px; }
+  .page-intro { margin-top: 18px; }
   .agreement-card { margin-top: 15px; }
   .agreement-card article { min-height: 74px; }
   .agreement-actions { margin-top: 24px; }

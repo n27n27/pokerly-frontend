@@ -248,6 +248,7 @@ const routes = [
       {
         path: 'my/feedback',
         name: 'my-feedback',
+        meta: { hideHeader: true },
         component: () => import('src/pages/support/FeedbackView.vue'),
       },
       {

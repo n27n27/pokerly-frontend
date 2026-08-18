@@ -1,7 +1,11 @@
 <template>
   <q-page class="equity-page">
     <header class="equity-topbar">
+      <button type="button" aria-label="도구로 돌아가기" @click="router.push('/app/tools')">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
       <h1>에퀴티 계산기</h1>
+      <span aria-hidden="true"></span>
     </header>
 
     <section class="panel player-panel">
@@ -160,9 +164,12 @@
 
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 import CardPickerSheet from 'src/shared/components/CardPickerSheet.vue'
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+
+const router = useRouter()
 
 const rankValue = { A: 14, K: 13, Q: 12, J: 11, T: 10, 9: 9, 8: 8, 7: 7, 6: 6, 5: 5, 4: 4, 3: 3, 2: 2 }
 const handRanks = [

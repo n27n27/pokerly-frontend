@@ -1,7 +1,11 @@
 <template>
   <q-page class="calc-page">
     <header class="calc-topbar">
+      <button type="button" aria-label="도구로 돌아가기" @click="router.push('/app/tools')">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
       <h1>팟 오즈 계산기</h1>
+      <span aria-hidden="true"></span>
     </header>
 
     <section class="panel">
@@ -88,6 +92,9 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+
+const router = useRouter()
 
 const form = reactive({
   potSize: null,
