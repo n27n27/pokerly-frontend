@@ -371,12 +371,9 @@ const remove = async () => {
   box-sizing: border-box;
 }
 .management-page > .page-header {
-  position: sticky;
-  z-index: 20;
-  top: var(--v2-page-padding-top);
   display: grid;
-  height: 36px;
-  min-height: 36px;
+  height: var(--v2-detail-topbar-height);
+  min-height: var(--v2-detail-topbar-height);
   grid-template-columns: 40px minmax(0, 1fr) 40px;
   align-items: center;
   background: var(--v2-page-bg);

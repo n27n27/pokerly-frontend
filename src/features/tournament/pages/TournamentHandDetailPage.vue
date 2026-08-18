@@ -1,5 +1,5 @@
 <template>
-  <q-page class="hand-detail-page">
+  <q-page class="hand-detail-page" @click="menuOpen = false">
     <header class="hand-detail-topbar">
       <button class="icon-button" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="30px" />
@@ -10,13 +10,13 @@
         class="icon-button"
         type="button"
         aria-label="핸드 메뉴"
-        @click="menuOpen = !menuOpen"
+        @click.stop="menuOpen = !menuOpen"
       >
         <q-icon name="more_vert" size="22px" />
       </button>
       <span v-else></span>
 
-      <div v-if="menuOpen" class="overflow-menu">
+      <div v-if="menuOpen" class="overflow-menu" @click.stop>
         <button type="button" @click="goHandEdit">핸드 수정</button>
         <button class="danger" type="button" @click="openDeleteDialog">삭제</button>
       </div>

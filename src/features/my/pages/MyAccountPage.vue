@@ -49,7 +49,6 @@ const logout = async () => {
   align-content: start;
   gap: 12px;
   min-height: 100%;
-  margin-top: -12px;
   padding: 0 var(--v2-page-padding-x) 100px;
 }
 .account-page * {

@@ -11,10 +11,6 @@
     </header>
 
       <section v-if="step === 0" class="review-start">
-        <div class="review-start__intro">
-          <h2>이 핸드에서 무엇을 기억하고 싶나요?</h2>
-        </div>
-
         <div class="memo-field memo-field--primary">
           <textarea v-model="memo" maxlength="500" placeholder="고민했던 지점, 상대의 플레이, 다시 보고 싶은 판단 등을 자유롭게 남겨보세요." />
           <span>{{ memo.length }}/500</span>
@@ -221,7 +217,7 @@
         <div class="showdown-editor">
           <p>쇼다운에서 공개된 상대 카드가 있다면 입력해주세요. 공개되지 않은 카드는 비워둘 수 있습니다.</p>
           <p v-if="!opponentShowdownPlayers.length" class="showdown-empty">
-            액션에서 참여 플레이어를 선택하면 상대 카드를 입력할 수 있습니다.
+            쇼다운까지 남은 상대가 있으면 카드를 입력할 수 있습니다.
           </p>
           <div
             v-for="position in opponentShowdownPlayers"
@@ -356,12 +352,14 @@ const actionStreetOptions = [
   { label: '리버', value: 'RIVER' },
 ]
 const timeline = useHandActionTimeline({ bigBlind, ante })
-const opponentShowdownPlayers = computed(() =>
-  [...new Set([
-    ...selectedPlayers.value,
-    ...timeline.trackedPlayers.value,
-  ])].filter((position) => position !== heroPosition.value),
-)
+const opponentShowdownPlayers = computed(() => {
+  const eligiblePlayers = timeline.started.value
+    ? timeline.alivePlayers.value
+    : selectedPlayers.value
+
+  return [...new Set(eligiblePlayers)]
+    .filter((position) => position !== heroPosition.value)
+})
 const pendingAction = ref('')
 const actionAmount = ref('')
 const pendingAllIn = ref(false)
@@ -667,20 +665,17 @@ const saveHandDetails = async () => {
 </script>
 
 <style scoped>
-.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 14px; padding: 0 var(--v2-page-padding-x) 96px; }
+.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 52px; padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 96px; }
 .edit-topbar { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; min-height: 36px; }
-.edit-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; text-align: center; }
+.edit-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
 .topbar-text { min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 13px; text-align: left; }
 .topbar-text.next { color: #806bd2; font-weight: 480; text-align: right; }
 .topbar-back { display: grid; width: 38px; height: 38px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
-.step-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: -28px; padding: 0 2px; }
+.step-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 2px; }
 .step-progress i { height: 3px; border-radius: 3px; background: #e6e2f0; }
 .step-progress i.active { background: var(--v2-primary); }
 .edit-card { padding: 16px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28, 18, 60, .025); }
-.review-start { display: grid; gap: 14px; margin-top: -26px; }
-.review-start__intro { display: grid; gap: 5px; padding: 4px 2px 0; }
-.review-start__intro h2 { margin: 0; color: var(--v2-text-main); font-size: 18px; font-weight: 650; line-height: 1.4; }
-.review-start__intro p { margin: 0; color: var(--v2-text-sub); font-size: 12px; }
+.review-start { display: grid; gap: 14px; }
 .memo-field--primary textarea { min-height: 180px; border-color: var(--v2-border); background: #fff; }
 .memo-field--primary textarea:focus { border-color: var(--v2-primary); box-shadow: 0 0 0 3px rgba(109, 69, 232, .08); }
 .detail-section { display: grid; gap: 10px; }
@@ -693,7 +688,7 @@ const saveHandDetails = async () => {
 .detail-options > button > small { color: var(--v2-text-sub); font-size: 11px; }
 .detail-options > button > .q-icon { color: var(--v2-text-sub); }
 .step-heading { display: flex; align-items: center; gap: 7px; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #f0edf6; color: var(--v2-primary); }
-.step-heading h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.step-heading h2 { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.2; }
 .step-heading > button { min-height: 30px; margin-left: auto; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 11px; font-weight: 600; }
 .board-editor { display: grid; grid-template-columns: minmax(0, 3fr) 1px minmax(0, 1fr) 1px minmax(0, 1fr); align-items: end; gap: 7px; }
 .street-group { display: grid; min-width: 0; gap: 8px; }

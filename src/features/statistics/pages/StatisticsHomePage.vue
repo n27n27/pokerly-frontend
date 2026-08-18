@@ -15,6 +15,7 @@
           <button class="month-filter__label" type="button">
             <span>{{ periodLabel }}</span>
             <q-menu
+              v-model="periodMenuOpen"
               class="stats-filter-menu stats-filter-menu--period"
               anchor="bottom middle"
               self="top middle"
@@ -65,6 +66,7 @@
           <span :title="selectedVenueLabel">{{ selectedVenueLabel }}</span>
           <q-icon name="expand_more" size="18px" />
           <q-menu
+            v-model="venueMenuOpen"
             class="stats-filter-menu stats-filter-menu--venue"
             anchor="bottom right"
             self="top right"
@@ -413,6 +415,7 @@ import { fetchVenues } from 'src/api/venue'
 import { useAuthStore } from 'src/stores/auth'
 import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
 import { formatCompactNumber } from 'src/utils/numberFormat'
+import { useBodyScrollLock } from 'src/composables/useBodyScrollLock'
 import {
   buildBankInsights,
   buildPlayInsights,
@@ -440,9 +443,13 @@ const loadError = ref('')
 const trendPanelRef = ref(null)
 const trendChartWidth = ref(340)
 const trendTooltip = ref(null)
+const periodMenuOpen = ref(false)
+const venueMenuOpen = ref(false)
 const handEventCache = ref(new Map())
 let loadSequence = 0
 let trendResizeObserver = null
+
+useBodyScrollLock(computed(() => periodMenuOpen.value || venueMenuOpen.value))
 
 const monthLabel = computed(() => `${selectedYear.value}년 ${selectedMonth.value}월`)
 const periodLabel = computed(() => (showAllPeriod.value ? '전체 기간' : monthLabel.value))

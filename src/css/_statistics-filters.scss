@@ -22,6 +22,7 @@
 .stats-filter-menu--venue .q-list {
   max-height: min(408px, 65vh);
   overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .stats-filter-menu .q-item {

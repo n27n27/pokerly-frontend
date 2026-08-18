@@ -750,15 +750,12 @@ const goBack = () => {
   display: flex;
   min-height: 100%;
   flex-direction: column;
-  padding: 0 var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
 }
 .summary-page * {
   box-sizing: border-box;
 }
 .summary-page > .topbar {
-  position: sticky;
-  z-index: 20;
-  top: 0;
   display: grid;
   width: 100%;
   height: var(--v2-detail-topbar-height);
@@ -768,7 +765,6 @@ const goBack = () => {
   grid-template-columns: 40px 1fr 40px;
   align-items: center;
   background: var(--v2-page-bg);
-  box-shadow: 0 16px 0 var(--v2-page-bg);
 }
 .topbar > button {
   display: grid;
@@ -863,7 +859,7 @@ const goBack = () => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-top: 40px;
+  margin-top: 20px;
 }
 .title-row h2 {
   overflow: hidden;
@@ -1008,7 +1004,7 @@ const goBack = () => {
 }
 .content-section {
   display: grid;
-  gap: 0;
+  gap: 12px;
   margin-top: 13px;
 }
 .section-empty {

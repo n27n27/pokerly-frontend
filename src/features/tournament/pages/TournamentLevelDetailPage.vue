@@ -1,10 +1,17 @@
 <template>
-  <q-page class="level-detail-page" :class="{ 'level-detail-page--summary': isSummaryView }">
+  <q-page
+    class="level-detail-page"
+    :class="{ 'level-detail-page--summary': isSummaryView }"
+    @click="showHandListMenu = false"
+  >
     <header class="level-topbar">
       <button class="level-topbar__back" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="28px" />
       </button>
-      <h1>{{ levelName }}</h1>
+      <div class="level-topbar__title">
+        <h1>{{ levelName }}</h1>
+        <span v-if="blindDisplay">{{ blindDisplay }}</span>
+      </div>
       <button
         class="level-topbar__copy"
         type="button"
@@ -62,11 +69,11 @@
             type="button"
             aria-label="핸드 목록 작업"
             :aria-expanded="showHandListMenu"
-            @click="showHandListMenu = !showHandListMenu"
+            @click.stop="showHandListMenu = !showHandListMenu"
           >
             <q-icon name="more_vert" size="23px" />
           </button>
-          <div v-if="showHandListMenu" class="hand-list-menu">
+          <div v-if="showHandListMenu" class="hand-list-menu" @click.stop>
             <button type="button" @click="startHandSelection">
               <q-icon name="drive_file_move_outline" size="18px" />
               선택해서 이동
@@ -365,6 +372,13 @@ const formatNumber = (value) =>
   value === null || value === undefined || value === ''
     ? '-'
     : Number(value).toLocaleString('ko-KR')
+const blindDisplay = computed(() => {
+  if (!blindLevel.value) return ''
+
+  return [blindLevel.value.smallBlind, blindLevel.value.bigBlind, blindLevel.value.ante ?? 0]
+    .map(formatNumber)
+    .join(' / ')
+})
 const formatCompactNumber = (value) => {
   const number = Number(value)
   if (!Number.isFinite(number)) return '-'
@@ -968,6 +982,11 @@ const goBack = () => {
   min-height: 36px;
 }
 
+.level-topbar__title {
+  min-width: 0;
+  text-align: center;
+}
+
 .level-topbar h1 {
   margin: 0;
   color: var(--v2-text-main);
@@ -975,6 +994,17 @@ const goBack = () => {
   font-weight: 650;
   line-height: 1.2;
   text-align: center;
+}
+
+.level-topbar__title span {
+  display: block;
+  margin-top: 3px;
+  color: var(--v2-primary);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
 }
 
 .level-topbar__back {

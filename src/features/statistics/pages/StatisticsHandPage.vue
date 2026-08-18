@@ -9,7 +9,8 @@
 
     <PlayAnalysisSummary title="핸드 요약" :items="summaryItems" />
 
-    <div class="hand-search-field" role="search">
+    <div class="hand-list-controls">
+      <div class="hand-search-field" role="search">
       <q-icon name="search" size="18px" />
       <input
         v-model="handQuery"
@@ -32,9 +33,9 @@
         <q-icon name="swap_vert" size="18px" />
         <em>{{ sortButtonLabel }}</em>
       </button>
-    </div>
+      </div>
 
-    <div class="hand-type-filter" role="radiogroup" aria-label="핸드 유형">
+      <div class="hand-type-filter" role="radiogroup" aria-label="핸드 유형">
       <button
         v-for="option in handTypeOptions"
         :key="option.value"
@@ -46,9 +47,9 @@
       >
         {{ option.label }}
       </button>
-    </div>
+      </div>
 
-    <div class="recorded-only-filter">
+      <div class="recorded-only-filter">
       <span>기록 있는 핸드만</span>
       <button
         type="button"
@@ -60,6 +61,7 @@
       >
         <span></span>
       </button>
+      </div>
     </div>
 
     <section class="analysis-section">
@@ -285,6 +287,11 @@ onMounted(load)
 <style scoped>
 @import './statistics-detail.css';
 @import './play-analysis-page.css';
+
+.hand-list-controls {
+  display: grid;
+  gap: 8px;
+}
 
 .hand-search-field {
   width: 100%;

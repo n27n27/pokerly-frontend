@@ -14,6 +14,7 @@
         <button class="month-filter__label" type="button">
           <span>{{ periodLabel }}</span>
           <q-menu
+            v-model="periodMenuOpen"
             class="stats-filter-menu stats-filter-menu--period"
             anchor="bottom middle"
             self="top middle"
@@ -65,6 +66,7 @@
         <span :title="selectedVenueLabel">{{ selectedVenueLabel }}</span>
         <q-icon name="expand_more" size="18px" />
         <q-menu
+          v-model="venueMenuOpen"
           class="stats-filter-menu stats-filter-menu--venue"
           anchor="bottom right"
           self="top right"
@@ -117,6 +119,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { useBodyScrollLock } from 'src/composables/useBodyScrollLock'
 import { fetchVenues } from 'src/api/venue'
 
 const props = defineProps({
@@ -146,6 +149,10 @@ const selectedMonth = ref(Number(props.initialFilter?.month) || now.getMonth() +
 const showAllPeriod = ref(Boolean(props.initialFilter?.allPeriod))
 const venueId = ref(props.initialFilter?.venueId ?? null)
 const venues = ref([])
+const periodMenuOpen = ref(false)
+const venueMenuOpen = ref(false)
+
+useBodyScrollLock(computed(() => periodMenuOpen.value || venueMenuOpen.value))
 
 const monthLabel = computed(() => `${selectedYear.value}년 ${selectedMonth.value}월`)
 const periodLabel = computed(() => showAllPeriod.value ? '전체 기간' : monthLabel.value)

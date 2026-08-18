@@ -52,7 +52,7 @@
             :value="form.prize"
             :disabled="!canReceiveAward"
             inputmode="numeric"
-            :placeholder="canReceiveAward ? '예) 450,000' : '획득 불가'"
+            :placeholder="canReceiveAward ? '예) 450,000' : ''"
             @input="updateMoneyField('prize', $event)"
           />
         </label>

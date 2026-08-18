@@ -32,3 +32,11 @@ html.keyboard-visible .q-footer,
 html.keyboard-visible .bottom-navigation {
   display: none !important;
 }
+
+// Prevent browsers from placing profile/password-manager controls inside app inputs.
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  pointer-events: none;
+  visibility: hidden;
+}

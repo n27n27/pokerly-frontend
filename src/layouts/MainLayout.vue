@@ -27,11 +27,6 @@ const route = useRoute()
   background: #f7f7fb;
 }
 
-.app-page-container {
-  padding-bottom: 76px;
-  isolation: isolate;
-}
-
 .app-page-container--header-hidden {
   padding-top: 0 !important;
 }

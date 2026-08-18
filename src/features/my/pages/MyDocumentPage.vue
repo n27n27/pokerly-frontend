@@ -115,7 +115,15 @@ const document = computed(() => documents[route.params.documentType] || document
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 100px;
 }
 .document-page > * { flex: 0 0 auto; }
-.document-page > .detail-topbar { position: sticky; top: var(--v2-page-padding-top); z-index: 20; display: grid; height: 36px; min-height: 36px; max-height: 36px; grid-template-columns: 40px minmax(0,1fr) 40px; align-items: center; background: var(--v2-page-bg); }
+.document-page > .detail-topbar {
+  display: grid;
+  height: var(--v2-detail-topbar-height);
+  min-height: var(--v2-detail-topbar-height);
+  max-height: var(--v2-detail-topbar-height);
+  grid-template-columns: 40px minmax(0,1fr) 40px;
+  align-items: center;
+  background: var(--v2-page-bg);
+}
 .detail-topbar button { display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .detail-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
 .document { padding: 18px; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; }
