@@ -52,23 +52,17 @@ defineEmits(['update:modelValue', 'confirm'])
 
 <style scoped>
 :deep(.q-dialog__backdrop) {
-  background: rgba(23, 21, 31, 0.48);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: rgba(23, 21, 31, 0.42);
 }
 
 .confirm-dialog {
   width: min(calc(100vw - 48px), 332px);
   overflow: hidden;
-  padding: 22px;
-  border: 1px solid rgba(109, 69, 232, 0.08);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 14% 0%, rgba(109, 69, 232, 0.07), transparent 42%),
-    #fff;
-  box-shadow:
-    0 24px 70px rgba(28, 18, 60, 0.2),
-    0 3px 10px rgba(28, 18, 60, 0.08);
+  padding: 20px;
+  border: 1px solid var(--v2-border);
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 16px 42px rgba(28, 18, 60, 0.16);
 }
 
 .confirm-dialog h2 {
@@ -113,19 +107,15 @@ defineEmits(['update:modelValue', 'confirm'])
 }
 
 .confirm-dialog__actions button.preferred {
-  background: linear-gradient(135deg, #7850ec 0%, #6335df 100%);
+  background: var(--v2-primary);
   color: #fff;
-  box-shadow:
-    0 8px 20px rgba(109, 69, 232, 0.24),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 15px rgba(109, 69, 232, 0.18);
 }
 
 .confirm-dialog__actions button.danger.preferred {
-  background: linear-gradient(135deg, #f45b60, #e23f45);
+  background: var(--v2-danger);
   color: #fff;
-  box-shadow:
-    0 8px 20px rgba(239, 68, 68, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  box-shadow: 0 6px 15px rgba(239, 68, 68, 0.16);
 }
 
 .confirm-dialog__actions button:active:not(:disabled) {
