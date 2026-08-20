@@ -264,10 +264,16 @@ const routes = [
         component: () => import('src/features/my/pages/SavedDataManagementPage.vue'),
       },
       {
-        path: 'my/document/:documentType',
-        name: 'my-document',
+        path: 'my/document/opensource',
+        name: 'my-open-source-licenses',
         meta: { hideHeader: true },
         component: () => import('src/features/my/pages/MyDocumentPage.vue'),
+      },
+      {
+        path: 'my/document/:documentType',
+        name: 'my-policy-document',
+        meta: { hideHeader: true },
+        component: () => import('src/features/my/pages/PolicyDocumentPage.vue'),
       },
     ],
   },

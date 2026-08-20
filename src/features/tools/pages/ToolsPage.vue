@@ -94,7 +94,7 @@ const openTool = (to) => {
   display: inline-flex;
   width: fit-content;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
 .tools-brand__mark {
@@ -152,9 +152,9 @@ const openTool = (to) => {
 .tools-intro h2 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 560;
-  line-height: 1.3;
+  line-height: 1.25;
   letter-spacing: 0;
 }
 

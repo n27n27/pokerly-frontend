@@ -197,7 +197,7 @@ const openDocument = (type) => router.push(`/app/my/document/${type}`)
 .my-page * { box-sizing: border-box; }
 .my-header, .settings-section { flex: 0 0 auto; }
 .my-header { display: grid; align-items: center; }
-.my-settings-brand { display: inline-flex; width: fit-content; align-items: center; gap: 10px; }
+.my-settings-brand { display: inline-flex; width: fit-content; align-items: center; gap: 14px; }
 .my-settings-brand__mark { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(109,69,232,.15); border-radius: 13px; background: var(--v2-primary-soft); color: var(--v2-primary); box-shadow: 0 5px 14px rgba(109,69,232,.08); }
 .my-settings-brand__copy { display: grid; gap: 2px; }
 .my-settings-brand__copy small { color: var(--v2-primary); font-size: 8px; font-weight: 750; line-height: 1; letter-spacing: .13em; }

@@ -1133,7 +1133,7 @@ const goSimpleRecord = (recordId) => {
   min-width: 0;
   grid-auto-rows: max-content;
   gap: 20px;
-  padding: 10px var(--v2-page-padding-x) calc(88px + var(--app-safe-bottom));
+  padding: 16px var(--v2-page-padding-x) calc(88px + var(--app-safe-bottom));
 }
 
 .home-page > * {
@@ -1721,9 +1721,9 @@ const goSimpleRecord = (recordId) => {
 .running-section h2 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 560;
-  line-height: 1.2;
+  line-height: 1.25;
 }
 
 .running-card {

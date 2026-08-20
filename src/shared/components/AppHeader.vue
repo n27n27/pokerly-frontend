@@ -30,7 +30,7 @@
   display: inline-flex;
   width: fit-content;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
 .app-brand__mark {
