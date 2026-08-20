@@ -9,6 +9,7 @@
       >
         <q-icon name="chevron_left" size="28px" />
       </button>
+      <h1>대회 정보 확인</h1>
       <span aria-hidden="true"></span>
     </header>
 
@@ -54,16 +55,62 @@
 
       <div class="setup-card">
         <label class="setup-label" for="startLevel">시작 레벨</label>
-        <button id="startLevel" class="select-field" type="button" @click="levelOpen = !levelOpen">
-          <span>{{ form.level }}</span>
-          <q-icon name="expand_more" size="24px" />
-        </button>
+        <div class="text-field" :class="{ 'text-field--error': startLevelError }">
+          <input
+            id="startLevel"
+            :value="form.level"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            placeholder="예: 1"
+            aria-describedby="startLevelHelp"
+            @input="updateStartLevel"
+          />
+        </div>
+        <p
+          v-if="startLevelError"
+          id="startLevelHelp"
+          class="field-help field-help--error"
+        >
+          {{ startLevelError }}
+        </p>
 
-        <div v-if="levelOpen" class="level-list">
-          <button v-for="level in levels" :key="level" type="button" @click="selectLevel(level)">
-            <span>{{ level }}</span>
-            <q-icon v-if="form.level === level" name="check" size="20px" />
-          </button>
+        <div v-else-if="needsCustomStartLevel" class="custom-level">
+          <p>
+            L{{ Number(form.level) }} 블라인드 정보가 없습니다.<br />이번 대회에서 사용할
+            블라인드를 입력해 주세요.
+          </p>
+          <div class="custom-level__fields">
+            <label>
+              <span>SB</span>
+              <input
+                :value="customLevel.smallBlind"
+                inputmode="numeric"
+                placeholder="예: 500"
+                @input="setCustomLevelNumber('smallBlind', $event)"
+              />
+            </label>
+            <label>
+              <span>BB</span>
+              <input
+                :value="customLevel.bigBlind"
+                inputmode="numeric"
+                placeholder="예: 1,000"
+                @input="updateCustomLevelBigBlind"
+              />
+            </label>
+            <label>
+              <span>앤티</span>
+              <input
+                :value="customLevel.ante"
+                inputmode="numeric"
+                placeholder="없으면 0"
+                @input="updateCustomLevelAnte"
+              />
+            </label>
+          </div>
+          <p v-if="customLevelError" class="field-help field-help--error">
+            {{ customLevelError }}
+          </p>
         </div>
       </div>
 
@@ -125,7 +172,7 @@
 
 <script setup>
 import { storeToRefs } from 'pinia'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { createGameSession, fetchGameSession } from 'src/api/gameSession'
@@ -147,18 +194,20 @@ const venueStore = useVenueStore()
 const { venues } = storeToRefs(venueStore)
 
 const venueOpen = ref(false)
-const levelOpen = ref(false)
 const submitting = ref(false)
 const showVenueSheet = ref(false)
 const venueSaving = ref(false)
 const sourceSession = ref(null)
+const sourceLevelsLoaded = ref(false)
 const levels = ref([])
+const customLevelError = ref('')
+const customAnteManuallyEdited = ref(false)
 
 const form = reactive({
   name: '',
   venueId: null,
   venueName: '',
-  level: 'L1',
+  level: '1',
   stack: '',
   buyIn: '',
 })
@@ -166,6 +215,12 @@ const form = reactive({
 const venueForm = reactive({
   name: '',
   area: '',
+})
+
+const customLevel = reactive({
+  smallBlind: '',
+  bigBlind: '',
+  ante: '',
 })
 
 const parseNumber = (value) => {
@@ -184,6 +239,48 @@ const formatNumber = (value) => {
 }
 
 const levelNumber = (level) => Number(String(level).replace(/\D/g, '')) || 1
+
+const startLevelError = computed(() => {
+  if (!form.level) return '시작 레벨을 입력해 주세요.'
+
+  const value = Number(form.level)
+  if (!Number.isInteger(value) || value < 1) return '1 이상의 숫자를 입력해 주세요.'
+  return ''
+})
+
+const needsCustomStartLevel = computed(
+  () =>
+    sourceLevelsLoaded.value &&
+    !startLevelError.value &&
+    !levels.value.includes(`L${Number(form.level)}`),
+)
+
+const updateStartLevel = (event) => {
+  const nextLevel = event.target.value.replace(/\D/g, '')
+  if (nextLevel !== form.level) {
+    Object.assign(customLevel, { smallBlind: '', bigBlind: '', ante: '' })
+    customAnteManuallyEdited.value = false
+  }
+  form.level = nextLevel
+  customLevelError.value = ''
+}
+
+const setCustomLevelNumber = (field, event) => {
+  customLevel[field] = formatNumber(event.target.value)
+  customLevelError.value = ''
+}
+
+const updateCustomLevelBigBlind = (event) => {
+  customLevel.bigBlind = formatNumber(event.target.value)
+  if (!customAnteManuallyEdited.value) customLevel.ante = customLevel.bigBlind
+  customLevelError.value = ''
+}
+
+const updateCustomLevelAnte = (event) => {
+  customLevel.ante = formatNumber(event.target.value)
+  customAnteManuallyEdited.value = true
+  customLevelError.value = ''
+}
 
 const resetVenueForm = () => {
   venueForm.name = ''
@@ -235,8 +332,8 @@ const loadPreset = async () => {
   levels.value = [...(sourceEvent?.blindLevels || [])]
     .sort((a, b) => Number(a.levelNo || 0) - Number(b.levelNo || 0))
     .map((level) => `L${level.levelNo}`)
+  sourceLevelsLoaded.value = true
 
-  const sourceStartLevel = session.startLevel || ''
   Object.assign(form, {
     name: tournamentDisplayName(session),
     venueId: session.venueId || null,
@@ -244,7 +341,7 @@ const loadPreset = async () => {
       venue?.name ||
       session.collabLabel ||
       (session.sessionType === 'VENUE' ? '등록 매장' : '기타'),
-    level: levels.value.includes(sourceStartLevel) ? sourceStartLevel : levels.value[0] || '',
+    level: levels.value.length ? '1' : '',
     stack: formatNumber(session.startingStack),
     buyIn: formatNumber(session.buyInPerEntry),
   })
@@ -270,11 +367,6 @@ const selectVenue = (venue) => {
   venueOpen.value = false
 }
 
-const selectLevel = (level) => {
-  form.level = level
-  levelOpen.value = false
-}
-
 const startTournament = async () => {
   if (submitting.value) return
 
@@ -282,11 +374,19 @@ const startTournament = async () => {
     alert.show('대회명을 입력해 주세요.', 'warning')
     return
   }
-  if (!form.level) {
-    alert.show('선택할 수 있는 블라인드 레벨이 없습니다.', 'warning')
+  if (startLevelError.value) {
     return
   }
-  const startLevel = form.level
+  customLevelError.value = ''
+  if (needsCustomStartLevel.value) {
+    const smallBlind = parseNumber(customLevel.smallBlind)
+    const bigBlind = parseNumber(customLevel.bigBlind)
+    if (smallBlind === null || smallBlind < 0 || bigBlind === null || bigBlind <= 0) {
+      customLevelError.value = 'SB와 BB를 올바르게 입력해 주세요.'
+      return
+    }
+  }
+  const startLevel = `L${Number(form.level)}`
   const playDate = formatLocalDate()
   const runningTournament = {
     name: form.name.trim(),
@@ -322,9 +422,17 @@ const startTournament = async () => {
       await handLogStore.copyBlindLevelsFromEvent(eventId, sourceSession.value.handLogEventId)
       const copiedEvent = await handLogStore.fetchEventDetail(eventId)
       firstLevel =
-        copiedEvent?.blindLevels?.find(
-          (level) => level.levelNo === levelNumber(startLevel),
-        ) || copiedEvent?.blindLevels?.[0]
+        copiedEvent?.blindLevels?.find((level) => level.levelNo === levelNumber(startLevel))
+      if (!firstLevel) {
+        firstLevel = await handLogStore.addBlindLevel(eventId, {
+          levelNo: levelNumber(startLevel),
+          smallBlind: parseNumber(customLevel.smallBlind),
+          bigBlind: parseNumber(customLevel.bigBlind),
+          ante: parseNumber(customLevel.ante) || 0,
+          startStack: parseNumber(form.stack),
+          endStack: parseNumber(form.stack),
+        })
+      }
     } else {
       firstLevel = await handLogStore.addBlindLevel(eventId, {
         levelNo: levelNumber(startLevel),
@@ -390,18 +498,29 @@ const startTournament = async () => {
 
 .setup-topbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
-  align-items: start;
-  min-height: 30px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .setup-topbar__back {
-  width: 32px;
-  height: 32px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--v2-text-main);
+}
+
+.setup-topbar h1 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .setup-form {
@@ -459,6 +578,10 @@ const startTournament = async () => {
   outline: none;
 }
 
+.text-field--error {
+  border-color: var(--v2-danger);
+}
+
 .text-field input {
   min-width: 0;
   flex: 1;
@@ -472,6 +595,67 @@ const startTournament = async () => {
 
 .text-field input::placeholder {
   color: #aaa5b8;
+}
+
+.field-help {
+  margin: -2px 2px 0;
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  font-weight: 430;
+  line-height: 1.35;
+}
+
+.field-help--error {
+  color: var(--v2-danger);
+}
+
+.custom-level {
+  display: grid;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.custom-level > p:first-child {
+  margin: 0;
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 430;
+  line-height: 1.45;
+}
+
+.custom-level__fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.custom-level__fields label {
+  display: grid;
+  gap: 6px;
+}
+
+.custom-level__fields label > span {
+  color: var(--v2-text-sub);
+  font-size: 11px;
+  font-weight: 520;
+}
+
+.custom-level__fields input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-sm);
+  outline: 0;
+  background: #fff;
+  color: var(--v2-text-main);
+  font: inherit;
+  font-size: 13px;
+}
+
+.custom-level__fields input:focus {
+  border-color: rgba(109, 69, 232, 0.45);
 }
 
 .text-field span,
@@ -554,36 +738,6 @@ const startTournament = async () => {
   margin-top: 4px;
 }
 
-.level-list {
-  overflow: hidden;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-md);
-  background: #ffffff;
-}
-
-.level-list button {
-  width: 100%;
-  min-height: 42px;
-  padding: 0 12px;
-  border: 0;
-  border-bottom: 1px solid var(--v2-border);
-  background: transparent;
-  color: var(--v2-text-main);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 430;
-}
-
-.level-list button:last-child {
-  border-bottom: 0;
-}
-
-.level-list .q-icon {
-  color: var(--v2-primary);
-}
 @media (max-width: 420px) {
   .start-setup-page {
     padding-top: var(--v2-page-padding-top);

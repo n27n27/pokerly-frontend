@@ -128,12 +128,22 @@
                 maxlength="20"
                 :disabled="loading"
                 placeholder="닉네임을 입력해주세요"
+                @input="syncNicknameInput"
                 @keyup.enter="checkNickname"
               />
-              <button type="button" :disabled="loading || !canCheckNickname" @click="checkNickname">
+              <button type="button" :disabled="loading || checkingNickname || !canCheckNickname" @click="checkNickname">
                 {{ checkingNickname ? '확인 중' : '중복 확인' }}
               </button>
             </span>
+            <small
+              class="nickname-help"
+              :class="{
+                'nickname-help--success': nicknameChecked && nicknameAvailable,
+                'nickname-help--error': nicknameChecked && !nicknameAvailable,
+              }"
+            >
+              {{ nicknameMessage || '2~20자로 입력한 뒤 중복 확인을 해주세요.' }}
+            </small>
           </label>
         </section>
 
@@ -272,7 +282,10 @@ const usageModes = [
 ]
 
 const trimmedNickname = computed(() => nickname.value.trim())
-const canCheckNickname = computed(() => trimmedNickname.value.length >= 2)
+const canCheckNickname = computed(() => {
+  const length = trimmedNickname.value.length
+  return length >= 2 && length <= 20
+})
 const requiredAgreed = computed(() => termsAgreed.value && privacyAgreed.value)
 const allAgreed = computed(() => termsAgreed.value && privacyAgreed.value && marketingAgreed.value)
 const hasSelectedMode = computed(() => usageModes.some((mode) => mode.value === recordMode.value))
@@ -283,6 +296,10 @@ watch(nickname, () => {
   nicknameAvailable.value = false
   nicknameMessage.value = ''
 })
+
+const syncNicknameInput = (event) => {
+  nickname.value = event.target.value
+}
 
 const goBack = async () => {
   if (policyView.value) {
@@ -363,7 +380,7 @@ const confirmMode = async () => {
 const checkNickname = async () => {
   const name = trimmedNickname.value
   if (name.length < 2) {
-    alert.show('닉네임은 2글자 이상 입력해주세요.', 'warning')
+    nicknameMessage.value = '닉네임은 2~20자로 입력해주세요.'
     return
   }
   checkingNickname.value = true
@@ -372,13 +389,11 @@ const checkNickname = async () => {
     nicknameChecked.value = true
     nicknameAvailable.value = !exists
     nicknameMessage.value = exists ? '이미 사용 중인 닉네임입니다.' : '사용 가능한 닉네임입니다.'
-    alert.show(nicknameMessage.value, exists ? 'error' : 'success')
   } catch (error) {
     console.error(error)
     nicknameChecked.value = false
     nicknameAvailable.value = false
-    nicknameMessage.value = '닉네임 확인 중 오류가 발생했습니다.'
-    alert.show(nicknameMessage.value, 'error')
+    nicknameMessage.value = '닉네임을 확인하지 못했습니다. 다시 시도해주세요.'
   } finally {
     checkingNickname.value = false
   }
@@ -400,10 +415,10 @@ const checkNickname = async () => {
 
 .onboarding-page * { box-sizing: border-box; }
 .onboarding-shell { position: relative; display: flex; width: 100%; max-width: 420px; min-height: calc(100dvh - 34px); margin: 0 auto; flex-direction: column; }
-.agreements-intro__heading { display: grid; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 12px; }
+.agreements-intro__heading { display: grid; min-height: 48px; grid-template-columns: minmax(0, 1fr) 44px; align-items: center; gap: 12px; }
 .onboarding-exit { display: grid; width: 44px; height: 44px; place-items: center; justify-self: end; padding: 0; border: 0; border-radius: 50%; outline: 0; background: transparent; color: var(--v2-text-sub); }
 .onboarding-exit:focus-visible { box-shadow: 0 0 0 3px rgba(109, 69, 232, .18); }
-.onboarding-topbar { position: sticky; z-index: var(--v2-app-bar-z); top: 0; display: grid; min-height: 48px; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: end; margin: 0 -22px; padding: var(--app-safe-top) 22px 0; border-bottom: 1px solid var(--v2-app-bar-border); background: var(--v2-app-bar-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
+.onboarding-topbar { position: sticky; z-index: var(--v2-app-bar-z); top: 0; display: grid; min-height: var(--v2-detail-topbar-height); grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; margin: 0 -22px; padding: var(--app-safe-top) var(--v2-topbar-padding-x) 0; border-bottom: 1px solid var(--v2-app-bar-border); background: var(--v2-app-bar-bg); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
 .onboarding-topbar button { display: grid; width: 44px; height: 48px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .onboarding-topbar > strong { font-size: 21px; font-weight: 650; text-align: center; }
 .onboarding-topbar > strong, .onboarding-topbar > span { display: grid; min-height: 48px; align-items: center; }
@@ -411,7 +426,7 @@ const checkNickname = async () => {
 .page-intro h1 { margin: 0; font-size: 24px; font-weight: 650; letter-spacing: -.03em; }
 .page-intro h1 strong { color: var(--v2-primary); font-weight: 680; }
 .page-intro p { margin: 12px 0 0; color: var(--v2-text-sub); font-size: 13px; line-height: 1.6; }
-.onboarding-shell--agreements .agreements-intro { margin-top: calc(36px + var(--app-safe-top)); }
+.onboarding-shell--agreements .agreements-intro { margin-top: max(16px, var(--app-safe-top)); }
 .agreements-intro p { color: #756f86; }
 .profile-intro { margin-top: 24px; }
 .profile-intro p { margin-top: 0; color: #756f86; }
@@ -440,6 +455,9 @@ const checkNickname = async () => {
 .nickname-control input:focus { border-color: rgba(109, 69, 232, .5); box-shadow: 0 0 0 3px rgba(109, 69, 232, .08); }
 .nickname-control button { border: 1px solid rgba(109, 69, 232, .3); border-radius: 10px; background: var(--v2-primary-soft); color: var(--v2-primary); font: inherit; font-size: 11px; font-weight: 600; }
 .nickname-control button:disabled { border-color: #cfc7e1; background: #f2eefb; color: #8f86a4; }
+.nickname-help { color: var(--v2-text-sub); font-size: 10px; font-weight: 430; line-height: 1.4; }
+.nickname-help--success { color: var(--v2-success); }
+.nickname-help--error { color: var(--v2-danger); }
 .profile-submit { margin-top: 18px; }
 .profile-submit:disabled { border-color: #d5cee4; background: #eae5f4; color: #9f97ad; }
 .mode-intro { margin-top: 13px; }

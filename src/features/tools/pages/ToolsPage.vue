@@ -1,8 +1,15 @@
 <template>
   <q-page class="tools-page">
     <header class="tools-header">
-      <h1>Tools</h1>
-      <p>포커 실력을 높여주는 다양한 도구를 활용해보세요.</p>
+      <div class="tools-brand">
+        <span class="tools-brand__mark" aria-hidden="true">
+          <q-icon name="auto_awesome" size="20px" />
+        </span>
+        <span class="tools-brand__copy">
+          <small>POKERLY</small>
+          <h1>Tools</h1>
+        </span>
+      </div>
     </header>
 
     <section class="tools-intro">
@@ -71,36 +78,75 @@ const openTool = (to) => {
 <style scoped>
 .tools-page {
   display: grid;
-  gap: 12px;
+  gap: 16px;
   min-height: 100%;
   align-content: start;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(24px + env(safe-area-inset-bottom));
 }
 
 .tools-header {
   display: grid;
-  gap: 8px;
+  align-items: center;
 }
 
-.tools-header h1 {
+.tools-brand {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  gap: 10px;
+}
+
+.tools-brand__mark {
+  position: relative;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(109, 69, 232, 0.14);
+  border-radius: 13px;
+  background: linear-gradient(145deg, #7550ed 0%, #5d38d6 100%);
+  box-shadow: 0 7px 18px rgba(109, 69, 232, 0.2);
+  color: #fff;
+}
+
+.tools-brand__mark::after {
+  position: absolute;
+  top: -11px;
+  right: -9px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  content: '';
+}
+
+.tools-brand__copy {
+  display: grid;
+  gap: 1px;
+}
+
+.tools-brand__copy small {
+  color: var(--v2-primary);
+  font-size: 8px;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: 0.16em;
+}
+
+.tools-brand h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 22px;
-  font-weight: 560;
+  font-size: 20px;
+  font-weight: 680;
   line-height: 1;
-  letter-spacing: 0;
-}
-
-.tools-header p {
-  margin: 0;
-  color: var(--v2-text-sub);
-  font-size: 12px;
-  font-weight: 430;
-  line-height: 1.35;
+  letter-spacing: -0.02em;
 }
 
 .tools-intro {
-  padding: 4px 0 2px;
+  padding: 0;
 }
 
 .tools-intro h2 {
@@ -164,7 +210,8 @@ const openTool = (to) => {
 
 @media (max-width: 720px) {
   .tools-page {
-    padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px;
+    padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+      calc(24px + env(safe-area-inset-bottom));
   }
 
   .tools-intro h2 {
@@ -189,6 +236,12 @@ const openTool = (to) => {
 
   .tool-card__copy span {
     font-size: 13px;
+  }
+}
+
+@media (max-height: 620px) {
+  .tools-page {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
   }
 }
 </style>

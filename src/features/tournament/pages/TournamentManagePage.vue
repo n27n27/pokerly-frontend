@@ -1129,7 +1129,8 @@ const saveParticipant = async () => {
   align-content: start;
   gap: 14px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(24px + env(safe-area-inset-bottom));
 }
 
 .manage-topbar {

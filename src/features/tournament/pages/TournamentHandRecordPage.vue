@@ -1,8 +1,8 @@
 <template>
   <q-page class="hand-record-page">
     <header class="record-topbar">
-      <button class="cancel-button" type="button" @click="router.back()">
-        취소
+      <button class="cancel-button" type="button" aria-label="핸드 기록 닫기" @click="router.back()">
+        <q-icon name="close" size="30px" />
       </button>
       <h1>{{ isEditMode ? '핸드 수정' : '핸드 기록' }}</h1>
       <span aria-hidden="true"></span>
@@ -528,27 +528,26 @@ const saveHand = async () => {
   align-content: start;
   gap: 14px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(104px + env(safe-area-inset-bottom));
 }
 
 .record-topbar {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) 56px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .record-topbar button {
-  min-width: 44px;
-  height: 36px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--v2-text-sub);
-  font: inherit;
-  font-size: 13px;
-  font-weight: 520;
-  text-align: left;
+  color: var(--v2-text-main);
 }
 
 .record-topbar h1 {

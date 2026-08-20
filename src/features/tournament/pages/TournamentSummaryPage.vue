@@ -20,7 +20,7 @@
           <button v-if="!legacyEventId" type="button" @click="editTournament">
             토너먼트 결과 수정
           </button>
-          <button v-if="!legacyEventId" type="button" @click="resumeTournament">
+          <button v-if="!legacyEventId && canResumeTournament" type="button" @click="resumeTournament">
             토너먼트 재개
           </button>
           <button
@@ -200,18 +200,18 @@
         </p>
       </div>
     </section>
-    <q-dialog v-model="deleteDialogOpen">
-      <q-card class="delete-dialog">
-        <h2>{{ eventId ? '토너먼트를 삭제할까요?' : '기록을 삭제할까요?' }}</h2>
-        <p>연결된 레벨, 핸드, 복기 및 좌석 기록도 함께 삭제되며 되돌릴 수 없습니다.</p>
-        <div>
-          <button type="button" @click="deleteDialogOpen = false">취소</button>
-          <button class="danger" type="button" :disabled="deleting" @click="removeTournament">
-            {{ deleting ? '삭제 중...' : '삭제' }}
-          </button>
-        </div>
-      </q-card>
-    </q-dialog>
+    <ConfirmDialog
+      v-model="deleteDialogOpen"
+      :title="eventId ? '토너먼트를 삭제할까요?' : '기록을 삭제할까요?'"
+      description="연결된 레벨, 핸드, 복기 및 좌석 기록도 함께 삭제되며 되돌릴 수 없습니다."
+      confirm-label="삭제"
+      loading-label="삭제 중..."
+      preferred-action="cancel"
+      :loading="deleting"
+      danger
+      persistent
+      @confirm="removeTournament"
+    />
   </q-page>
 </template>
 
@@ -221,6 +221,7 @@ import { useRouter, useRoute } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
+import ConfirmDialog from 'src/shared/components/ConfirmDialog.vue'
 import {
   createStartingHandRunSummary,
   getHandActionLabel,
@@ -237,6 +238,7 @@ import { fetchTournamentSeats } from 'src/api/tournamentParticipant'
 import {
   deleteGameSession,
   fetchGameSession,
+  fetchRecentGameSessions,
   fetchRunningGameSession,
   updateGameSession,
 } from 'src/api/gameSession'
@@ -248,6 +250,7 @@ const handLogStore = useHandLogStore()
 const menuOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const deleting = ref(false)
+const latestCompletedTournamentId = ref(null)
 const selectedMajorHand = ref('')
 const tournamentId = route.params.tournamentId || '1'
 const legacyEventId = computed(() => route.query.legacyEventId || null)
@@ -532,6 +535,11 @@ const levels = computed(() => {
       return row
     })
 })
+const canResumeTournament = computed(
+  () =>
+    latestCompletedTournamentId.value != null &&
+    String(latestCompletedTournamentId.value) === String(tournamentId),
+)
 const editTournament = () => {
   menuOpen.value = false
   router.push({ path: '/app/tournament/running/finish', query: { mode: 'edit', tournamentId } })
@@ -542,6 +550,11 @@ const editBankRecord = () => {
 }
 const resumeTournament = async () => {
   menuOpen.value = false
+
+  if (!canResumeTournament.value) {
+    alert.show('가장 최근에 종료한 토너먼트만 재개할 수 있습니다.', 'warning')
+    return
+  }
 
   try {
     const currentRunning = await fetchRunningGameSession()
@@ -699,7 +712,12 @@ onMounted(async () => {
 
   if (!legacyEventId.value) {
     try {
-      session.value = await fetchGameSession(tournamentId)
+      const [currentSession, recentSessions] = await Promise.all([
+        fetchGameSession(tournamentId),
+        fetchRecentGameSessions(),
+      ])
+      session.value = currentSession
+      latestCompletedTournamentId.value = recentSessions?.[0]?.id ?? null
       localStorage.setItem('pokerly-last-tournament-result', JSON.stringify(session.value))
     } catch {
       alert.show('대회 기록을 불러오지 못했습니다.', 'error')
@@ -750,26 +768,28 @@ const goBack = () => {
   display: flex;
   min-height: 100%;
   flex-direction: column;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(24px + env(safe-area-inset-bottom));
 }
 .summary-page * {
   box-sizing: border-box;
 }
 .summary-page > .topbar {
+  position: relative;
   display: grid;
   width: 100%;
   height: var(--v2-detail-topbar-height);
   min-height: var(--v2-detail-topbar-height);
   max-height: var(--v2-detail-topbar-height);
   flex: 0 0 var(--v2-detail-topbar-height);
-  grid-template-columns: 40px 1fr 40px;
+  grid-template-columns: 44px 1fr 44px;
   align-items: center;
   background: var(--v2-page-bg);
 }
 .topbar > button {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -788,7 +808,7 @@ const goBack = () => {
 .page-menu {
   position: absolute;
   z-index: 5;
-  top: 42px;
+  top: 54px;
   right: 0;
   width: 156px;
   overflow: hidden;
@@ -815,41 +835,6 @@ const goBack = () => {
   border-bottom: 0;
 }
 .page-menu button.destructive {
-  color: var(--v2-danger, #ef4444);
-}
-.delete-dialog {
-  width: min(360px, calc(100vw - 40px));
-  padding: 24px;
-  border-radius: 18px;
-}
-.delete-dialog h2 {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 700;
-}
-.delete-dialog p {
-  margin: 12px 0 22px;
-  color: var(--v2-text-sub);
-  font-size: 14px;
-  line-height: 1.55;
-}
-.delete-dialog > div {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.delete-dialog button {
-  min-height: 46px;
-  border: 1px solid var(--v2-border);
-  border-radius: 12px;
-  background: #fff;
-  color: var(--v2-text-main);
-  font: inherit;
-  font-weight: 650;
-}
-.delete-dialog button.danger {
-  border-color: transparent;
-  background: #fff0f0;
   color: var(--v2-danger, #ef4444);
 }
 .title-row {

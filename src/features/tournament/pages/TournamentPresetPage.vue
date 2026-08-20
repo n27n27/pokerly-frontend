@@ -1,14 +1,14 @@
 <template>
-  <q-page class="preset-page">
+  <q-page class="preset-page" :class="{ 'preset-page--has-action': selectedId }">
     <header class="preset-topbar">
       <button class="preset-topbar__back" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="28px" />
       </button>
-      <span aria-hidden="true"></span>
+      <h1>등록된 대회</h1>
       <span aria-hidden="true"></span>
     </header>
 
-    <div class="preset-control-row">
+    <div v-if="viewMode !== 'recent'" class="preset-control-row">
       <label class="search-field" :class="{ 'search-field--active': search }">
         <q-icon name="search" size="19px" />
         <input
@@ -230,25 +230,38 @@ const startSelectedTournament = () => {
   gap: 9px;
   min-height: 100%;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
-    calc(180px + env(safe-area-inset-bottom));
+    calc(24px + env(safe-area-inset-bottom));
+}
+
+.preset-page--has-action {
+  padding-bottom: calc(96px + env(safe-area-inset-bottom));
 }
 
 .preset-topbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: 28px;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .preset-topbar__back {
-  width: 30px;
-  height: 30px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--v2-text-main);
   display: grid;
   place-items: center;
+}
+
+.preset-topbar h1 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.2;
+  text-align: center;
 }
 
 .preset-control-row {
@@ -445,7 +458,11 @@ const startSelectedTournament = () => {
 @media (max-width: 420px) {
   .preset-page {
     padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
-      calc(180px + env(safe-area-inset-bottom));
+      calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .preset-page--has-action {
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
   .preset-card__meta {

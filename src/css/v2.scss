@@ -10,8 +10,9 @@
   --v2-border: #ece9f5;
   --v2-page-padding-top: 28px;
   --v2-page-padding-x: 22px;
-  --v2-detail-topbar-height: 48px;
-  --v2-app-header-height: 60px;
+  --v2-topbar-padding-x: 12px;
+  --v2-detail-topbar-height: 76px;
+  --v2-app-header-height: var(--v2-detail-topbar-height);
   --v2-app-bar-bg: rgba(247, 247, 251, 0.96);
   --v2-app-bar-border: rgba(28, 18, 60, 0.08);
   --v2-app-bar-z: 1200;

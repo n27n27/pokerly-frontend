@@ -287,7 +287,7 @@ const selectInputText = (event) => event.currentTarget.select()
   align-content: start;
   gap: 8px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) calc(104px + var(--app-safe-bottom));
 }
 
 .calc-topbar {

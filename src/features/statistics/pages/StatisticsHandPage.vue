@@ -15,7 +15,7 @@
       <input
         v-model="handQuery"
         type="search"
-        placeholder="핸드 찾기"
+        placeholder="AA, AJs"
         aria-label="핸드 찾기"
         autocomplete="off"
       />

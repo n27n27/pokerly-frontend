@@ -39,28 +39,11 @@
           v-if="venues.length"
           class="select-field"
           type="button"
-          @click="venueOpen = !venueOpen"
+          @click="venueOpen = true"
         >
           <span>{{ selectedVenue?.name || '장소를 선택하세요' }}</span>
           <q-icon name="expand_more" size="24px" />
         </button>
-        <div v-if="venues.length && venueOpen" class="venue-list">
-          <button
-            v-for="venue in venues"
-            :key="venue.id"
-            type="button"
-            class="venue-list__item"
-            @click="selectVenue(venue)"
-          >
-            <span>{{ venue.name }}</span>
-            <q-icon v-if="selectedVenue?.id === venue.id" name="check" size="22px" />
-          </button>
-          <button class="venue-list__add" type="button" @click="showVenueSheet = true">
-            <q-icon name="add" size="20px" />
-            <span>매장 추가</span>
-          </button>
-        </div>
-
         <div v-if="!venueLoading && venues.length === 0" class="venue-empty">
           <q-icon name="location_on" size="36px" />
           <p>등록된 장소가 없습니다.</p>
@@ -152,6 +135,33 @@
       </p>
     </div>
 
+    <q-dialog v-model="venueOpen" position="bottom" @hide="handleVenuePickerHide">
+      <div class="venue-picker-sheet">
+        <div class="venue-picker-sheet__handle" aria-hidden="true"></div>
+        <h2>장소 선택</h2>
+
+        <div class="venue-picker-sheet__list">
+          <button
+            v-for="venue in venues"
+            :key="venue.id"
+            type="button"
+            :aria-selected="selectedVenue?.id === venue.id"
+            @click="selectVenue(venue)"
+          >
+            <span>{{ venue.name }}</span>
+            <q-icon v-if="selectedVenue?.id === venue.id" name="check" size="22px" />
+          </button>
+        </div>
+
+        <div class="venue-picker-sheet__footer">
+          <button type="button" @click="openVenueCreateSheet">
+            <q-icon name="add" size="20px" />
+            <span>새 매장 추가</span>
+          </button>
+        </div>
+      </div>
+    </q-dialog>
+
     <q-dialog v-model="showVenueSheet" position="bottom">
       <div class="venue-sheet">
         <h2>매장 추가</h2>
@@ -213,6 +223,7 @@ const handLogStore = useHandLogStore()
 const venueStore = useVenueStore()
 const { venues, loading: venueLoading } = storeToRefs(venueStore)
 const venueOpen = ref(false)
+const openVenueCreateAfterPicker = ref(false)
 const showVenueSheet = ref(false)
 const venueSaving = ref(false)
 const selectedVenue = ref(null)
@@ -237,6 +248,17 @@ const venueForm = reactive({
 const selectVenue = (venue) => {
   selectedVenue.value = venue
   venueOpen.value = false
+}
+
+const openVenueCreateSheet = () => {
+  openVenueCreateAfterPicker.value = true
+  venueOpen.value = false
+}
+
+const handleVenuePickerHide = () => {
+  if (!openVenueCreateAfterPicker.value) return
+  openVenueCreateAfterPicker.value = false
+  showVenueSheet.value = true
 }
 
 const formatNumber = (value) => {
@@ -427,19 +449,22 @@ const submitTournament = async () => {
   align-content: start;
   gap: 22px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(104px + env(safe-area-inset-bottom));
 }
 
 .create-topbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .create-topbar__back {
-  width: 36px;
-  height: 36px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
   padding: 0;
   border: 0;
   background: transparent;
@@ -455,8 +480,12 @@ const submitTournament = async () => {
   text-align: center;
 }
 
+.create-topbar + .create-intro {
+  margin-top: -10px;
+}
+
 .create-intro h2 {
-  margin: 22px 0 18px;
+  margin: 0 0 18px;
   color: var(--v2-text-main);
   font-size: 26px;
   font-weight: 560;
@@ -553,43 +582,6 @@ const submitTournament = async () => {
   font-size: 14px;
   font-weight: 450;
   text-align: left;
-}
-
-.venue-list {
-  overflow: hidden;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-md);
-  background: #ffffff;
-}
-
-.venue-list__item,
-.venue-list__add {
-  width: 100%;
-  min-height: 44px;
-  padding: 0 14px;
-  border: 0;
-  border-bottom: 1px solid var(--v2-border);
-  background: transparent;
-  color: var(--v2-text-main);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 430;
-  text-align: left;
-}
-
-.venue-list__item .q-icon,
-.venue-list__add {
-  color: var(--v2-primary);
-}
-
-.venue-list__add {
-  justify-content: flex-start;
-  gap: 8px;
-  border-bottom: 0;
-  font-weight: 520;
 }
 
 .venue-empty {
@@ -722,6 +714,87 @@ const submitTournament = async () => {
   font-weight: 560;
 }
 
+.venue-picker-sheet {
+  width: min(100%, 520px);
+  height: min(76vh, 620px);
+  max-height: calc(100dvh - var(--app-safe-top) - 24px);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.venue-picker-sheet__handle {
+  width: 38px;
+  height: 5px;
+  margin: 12px auto 0;
+  border-radius: 999px;
+  background: #d4d0dc;
+}
+
+.venue-picker-sheet h2 {
+  margin: 18px 20px 14px;
+  color: var(--v2-text-main);
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.venue-picker-sheet__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--v2-border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.venue-picker-sheet__list button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: #ffffff;
+  color: var(--v2-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 450;
+  text-align: left;
+}
+
+.venue-picker-sheet__list button[aria-selected='true'] {
+  color: var(--v2-primary);
+  font-weight: 560;
+}
+
+.venue-picker-sheet__footer {
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--v2-border);
+  background: #ffffff;
+}
+
+.venue-picker-sheet__footer button {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(109, 69, 232, 0.24);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
 .venue-sheet {
   width: 100%;
   padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
@@ -753,7 +826,6 @@ const submitTournament = async () => {
   }
 
   .create-intro h2 {
-    margin-top: 18px;
     font-size: 24px;
   }
 }

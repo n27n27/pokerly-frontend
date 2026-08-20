@@ -1047,7 +1047,7 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
 .stats-home-page {
   display: grid;
   align-content: start;
-  gap: 12px;
+  gap: 16px;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px;
 }
 
@@ -1055,8 +1055,8 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 6px 10px;
-  align-items: start;
-  min-height: 38px;
+  align-items: center;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .stats-header h1 {
@@ -1064,7 +1064,7 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   color: var(--v2-text-main);
   font-size: 22px;
   font-weight: 560;
-  line-height: 1;
+  line-height: 1.2;
 }
 
 .stats-header p {
@@ -1326,7 +1326,6 @@ onBeforeUnmount(() => trendResizeObserver?.disconnect())
   grid-template-columns: 156px 144px;
   justify-content: flex-end;
   gap: 6px;
-  transform: translateY(-8px);
 }
 
 .filter-pair > button,
@@ -1587,7 +1586,11 @@ h2 {
 
 .stats-section {
   display: grid;
-  gap: 6px;
+  gap: 10px;
+}
+
+.stats-section > h2 {
+  margin: 0;
 }
 
 .insight-section__heading {
@@ -2216,20 +2219,22 @@ h2 {
 
 @media (max-width: 420px) {
   .stats-header {
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 6px 8px;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 6px 12px;
   }
 
   .filter-pair {
     grid-column: auto;
-    grid-template-columns: 148px 132px;
-    width: auto;
-    transform: translateY(-8px);
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+    width: min(236px, 100%);
+    min-width: 0;
+    margin-right: var(--v2-page-padding-x);
+    justify-self: end;
   }
 
   .month-filter {
-    width: 148px;
-    grid-template-columns: 30px minmax(76px, 1fr) 30px;
+    width: 100%;
+    grid-template-columns: 28px minmax(0, 1fr) 28px;
   }
 
   .month-filter--all {
@@ -2237,7 +2242,7 @@ h2 {
   }
 
   .filter-pair > button {
-    width: 132px;
+    width: 100%;
   }
 
   .bank-grid,

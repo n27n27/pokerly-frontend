@@ -416,15 +416,16 @@ const goBack = () => {
   align-content: start;
   gap: 20px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(24px + env(safe-area-inset-bottom));
 }
 .hand-detail-topbar {
   position: relative;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   gap: 10px;
-  min-height: 36px;
+  min-height: var(--v2-detail-topbar-height);
 }
 .hand-detail-topbar h1 {
   margin: 0;
@@ -436,8 +437,8 @@ const goBack = () => {
 }
 .icon-button {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -454,7 +455,7 @@ const goBack = () => {
 .overflow-menu {
   position: absolute;
   z-index: 5;
-  top: 42px;
+  top: 54px;
   right: 0;
   width: 156px;
   overflow: hidden;

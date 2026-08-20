@@ -1,5 +1,5 @@
 <template>
-  <q-page class="tournament-list-page" @click="venueMenuOpen = false">
+  <q-page class="tournament-list-page">
     <header class="list-topbar">
       <button class="list-topbar__back" type="button" aria-label="뒤로 가기" @click="goBack">
         <q-icon name="chevron_left" size="28px" />
@@ -15,27 +15,60 @@
       </label>
 
       <div class="venue-filter">
-        <button class="filter-button" type="button" @click.stop="venueMenuOpen = !venueMenuOpen">
-          {{ selectedVenueLabel }}
+        <button class="filter-button" type="button">
+          <span class="filter-button__label" :title="selectedVenueLabel">{{ selectedVenueLabel }}</span>
           <q-icon name="expand_more" size="18px" />
-        </button>
-        <div v-if="venueMenuOpen" class="venue-menu" @click.stop>
-          <button type="button" :class="{ selected: selectedVenue === 'all' }" @click="selectVenue('all')">
-            매장 전체
-          </button>
-          <button
-            v-for="venue in venues"
-            :key="venue.id"
-            type="button"
-            :class="{ selected: selectedVenue === String(venue.id) }"
-            @click="selectVenue(String(venue.id))"
+          <q-menu
+            v-model="venueMenuOpen"
+            class="tournament-venue-menu"
+            anchor="bottom right"
+            self="top right"
+            transition-show="jump-down"
+            transition-hide="jump-up"
+            :offset="[0, 6]"
           >
-            {{ venue.name }}
-          </button>
-          <button type="button" :class="{ selected: selectedVenue === 'other' }" @click="selectVenue('other')">
-            기타
-          </button>
-        </div>
+            <q-list aria-label="매장 선택">
+              <q-item
+                clickable
+                v-close-popup
+                :active="selectedVenue === 'all'"
+                active-class="tournament-venue-menu__active"
+                @click="selectVenue('all')"
+              >
+                <q-item-section>매장 전체</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="selectedVenue === 'all'" name="check" size="17px" />
+                </q-item-section>
+              </q-item>
+              <q-item
+                v-for="venue in venues"
+                :key="venue.id"
+                clickable
+                v-close-popup
+                :active="selectedVenue === String(venue.id)"
+                active-class="tournament-venue-menu__active"
+                @click="selectVenue(String(venue.id))"
+              >
+                <q-item-section>{{ venue.name }}</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="selectedVenue === String(venue.id)" name="check" size="17px" />
+                </q-item-section>
+              </q-item>
+              <q-item
+                clickable
+                v-close-popup
+                :active="selectedVenue === 'other'"
+                active-class="tournament-venue-menu__active"
+                @click="selectVenue('other')"
+              >
+                <q-item-section>기타</q-item-section>
+                <q-item-section side>
+                  <q-icon v-if="selectedVenue === 'other'" name="check" size="17px" />
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-menu>
+        </button>
       </div>
       <button class="filter-button filter-button--sort" type="button" @click="toggleSort">
         {{ sortOrder === 'desc' ? '최신순' : '오래된순' }}
@@ -79,6 +112,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
 import { fetchHandLogEvents } from 'src/api/handLogApi'
 import { fetchVenues } from 'src/api/venue'
+import { useBodyScrollLock } from 'src/composables/useBodyScrollLock'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
 
 const router = useRouter()
@@ -92,6 +126,8 @@ const selectedVenue = ref(
 )
 const venueMenuOpen = ref(false)
 const sortOrder = ref('desc')
+
+useBodyScrollLock(computed(() => venueMenuOpen.value))
 
 const tournaments = ref([])
 const labels = { BUST: '탈락', BUBBLE: 'Bubble', ITM: 'ITM', CHOP: '찹', WIN: '우승' }
@@ -275,21 +311,23 @@ const openTournament = (tournament) => {
 .tournament-list-page {
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 0;
   min-height: 100%;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
 }
 
 .list-topbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .list-topbar__back {
-  width: 36px;
-  height: 36px;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
   padding: 0;
   border: 0;
   background: transparent;
@@ -301,7 +339,7 @@ const openTournament = (tournament) => {
   color: var(--v2-text-main);
   font-size: 21px;
   font-weight: 650;
-  line-height: 36px;
+  line-height: 1.2;
   text-align: center;
 }
 
@@ -310,6 +348,8 @@ const openTournament = (tournament) => {
   grid-template-columns: minmax(0, 1fr) 90px 90px;
   align-items: center;
   gap: 8px;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
 
 .filter-button,
@@ -340,47 +380,66 @@ const openTournament = (tournament) => {
   min-width: 0;
 }
 
+.filter-button__label {
+  overflow: hidden;
+  min-width: 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-filter .filter-button > .q-icon {
+  flex: 0 0 auto;
+}
+
 .venue-filter {
   position: relative;
+  min-width: 0;
 }
 
-.venue-menu {
-  position: absolute;
-  z-index: 10;
-  top: calc(100% + 7px);
-  right: 0;
-  width: max(142px, 100%);
-  max-height: 260px;
+:global(.tournament-venue-menu) {
+  width: 224px;
+  max-height: min(420px, 65vh);
+  overflow: hidden;
+  border: 1px solid rgba(109, 69, 232, 0.13);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 36px rgba(35, 25, 68, 0.15);
+}
+
+:global(.tournament-venue-menu .q-list) {
+  max-height: min(408px, 65vh);
   overflow-y: auto;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-md);
-  background: #fff;
-  box-shadow: 0 12px 28px rgba(28, 18, 60, .14);
+  overscroll-behavior: contain;
+  padding: 6px;
 }
 
-.venue-menu button {
-  display: flex;
-  width: 100%;
+:global(.tournament-venue-menu .q-item) {
   min-height: 42px;
-  align-items: center;
-  padding: 0 13px;
-  border: 0;
-  border-bottom: 1px solid var(--v2-border);
-  background: #fff;
+  padding: 8px 11px;
+  border-radius: 9px;
   color: var(--v2-text-main);
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
+  font-size: 13px;
+  font-weight: 550;
 }
 
-.venue-menu button:last-child {
-  border-bottom: 0;
+:global(.tournament-venue-menu .q-item + .q-item) {
+  margin-top: 2px;
 }
 
-.venue-menu button.selected {
-  background: var(--v2-primary-soft);
+:global(.tournament-venue-menu .q-item:hover) {
+  background: #f8f6fd;
+}
+
+:global(.tournament-venue-menu .tournament-venue-menu__active) {
   color: var(--v2-primary);
-  font-weight: 600;
+  background: rgba(109, 69, 232, .08);
+  font-weight: 700;
+}
+
+:global(.tournament-venue-menu .q-item__section--side) {
+  min-width: 22px;
+  padding-left: 8px;
+  color: var(--v2-primary);
 }
 
 .search-field {
@@ -411,6 +470,7 @@ const openTournament = (tournament) => {
 .tournament-section {
   display: grid;
   gap: 12px;
+  margin-top: 14px;
 }
 
 .tournament-section h2 {

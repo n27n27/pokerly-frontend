@@ -1,12 +1,10 @@
 <template>
   <header class="detail-header">
-    <div class="detail-header__identity">
-      <button class="detail-header__back" type="button" :aria-label="`${title} 닫기`" @click="goBack">
-        <q-icon name="chevron_left" size="27px" />
-      </button>
-      <h1 v-if="showTitle">{{ title }}</h1>
-    </div>
-    <div class="detail-header__filters">
+    <button class="detail-header__back" type="button" :aria-label="`${title}에서 뒤로가기`" @click="goBack">
+      <q-icon name="chevron_left" size="28px" />
+    </button>
+    <h1 class="detail-header__title">{{ title }}</h1>
+    <div class="detail-header__filters" aria-label="통계 조회 조건">
       <div class="month-filter" :class="{ 'month-filter--all': showAllPeriod }">
         <button v-if="!showAllPeriod" type="button" aria-label="이전 달" @click="moveMonth(-1)">
           <q-icon name="chevron_left" size="19px" />
@@ -131,10 +129,6 @@ const props = defineProps({
     type: Object,
     default: null,
   },
-  showTitle: {
-    type: Boolean,
-    default: false,
-  },
   backTo: {
     type: [String, Object],
     default: null,
@@ -203,57 +197,45 @@ onMounted(async () => {
 <style scoped>
 .detail-header {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 6px 10px;
-  align-items: start;
-  min-height: 38px;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .detail-header__back {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
   color: var(--v2-text-main);
   display: grid;
   place-items: center;
-  transform: translateY(-8px);
 }
 
-.detail-header__identity {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  transform: translateY(-8px);
-}
-
-.detail-header__identity .detail-header__back {
-  flex: 0 0 auto;
-  transform: none;
-}
-
-.detail-header__identity h1 {
+.detail-header__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
   overflow: hidden;
-  margin: 0;
-  color: var(--v2-text-main);
-  font-size: 21px;
-  font-weight: 680;
-  line-height: 1.2;
-  text-overflow: ellipsis;
+  margin: -1px;
+  padding: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 
 .detail-header__filters {
   display: grid;
-  grid-template-columns: 156px 144px;
-  justify-content: flex-end;
-  gap: 6px;
-  transform: translateY(-8px);
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  width: min(256px, 100%);
+  gap: 8px;
+  justify-self: end;
 }
 
 .venue-filter {
-  width: 144px;
+  width: 100%;
   min-width: 0;
   min-height: 38px;
   padding: 0 8px;
@@ -271,11 +253,11 @@ onMounted(async () => {
 }
 
 .month-filter {
-  width: 156px;
+  width: 100%;
   min-width: 0;
   min-height: 38px;
   display: grid;
-  grid-template-columns: 32px minmax(88px, 1fr) 32px;
+  grid-template-columns: 28px minmax(0, 1fr) 28px;
   align-items: center;
   overflow: hidden;
   border: 1px solid rgba(109, 69, 232, 0.14);
@@ -325,36 +307,10 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-@media (max-width: 420px) {
-  .detail-header {
-    gap: 6px 8px;
-  }
-
-  .detail-header__filters {
-    grid-template-columns: 148px 132px;
-    gap: 5px;
-  }
-
-  .venue-filter {
-    width: 132px;
-  }
-
-  .month-filter {
-    width: 148px;
-  }
-}
-
 @media (max-width: 360px) {
   .detail-header__filters {
-    grid-template-columns: 138px 124px;
-  }
-
-  .venue-filter {
-    width: 124px;
-  }
-
-  .month-filter {
-    width: 138px;
+    grid-template-columns: minmax(0, 1.08fr) minmax(0, 1fr);
+    gap: 6px;
   }
 }
 </style>

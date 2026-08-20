@@ -1,7 +1,11 @@
 <template>
   <q-page class="tournament-start-page">
     <header class="tournament-start-page__header">
+      <button type="button" aria-label="뒤로 가기" @click="router.back()">
+        <q-icon name="chevron_left" size="28px" />
+      </button>
       <h1>토너먼트 시작</h1>
+      <span aria-hidden="true"></span>
     </header>
 
     <div class="tournament-start-page__options">
@@ -71,13 +75,32 @@ const handleOption = (key) => {
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 24px;
 }
 
+.tournament-start-page__header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  align-items: center;
+  min-height: var(--v2-detail-topbar-height);
+}
+
+.tournament-start-page__header button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-main);
+}
+
 .tournament-start-page__header h1 {
   margin: 0;
   color: var(--v2-text-main);
-  font-size: 26px;
-  font-weight: 560;
+  font-size: 21px;
+  font-weight: 650;
   line-height: 1.2;
   letter-spacing: 0;
+  text-align: center;
 }
 
 .tournament-start-page__options {

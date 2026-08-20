@@ -336,20 +336,21 @@ const goBack = () => {
   align-content: start;
   gap: 20px;
   min-height: 100%;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(104px + env(safe-area-inset-bottom));
 }
 
 .finish-topbar {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  min-height: 36px;
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .finish-topbar button {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;

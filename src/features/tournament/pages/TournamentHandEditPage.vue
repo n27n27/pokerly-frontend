@@ -1,13 +1,14 @@
 <template>
   <q-page class="review-edit-page">
     <header class="edit-topbar">
-      <button v-if="step === 0" class="topbar-text" type="button" @click="router.back()">취소</button>
+      <button v-if="step === 0" class="topbar-close" type="button" aria-label="상세 입력 닫기" @click="router.back()">
+        <q-icon name="close" size="30px" />
+      </button>
       <button v-else class="topbar-back" type="button" aria-label="상세 입력으로 돌아가기" @click="step = 0">
         <q-icon name="chevron_left" size="28px" />
       </button>
       <h1>{{ step === 0 ? (isEditMode ? '상세 수정' : '상세 입력') : detailTitle }}</h1>
-      <button v-if="step === 0" class="topbar-text next" type="button" @click="saveHandDetails">저장</button>
-      <span v-else aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
     </header>
 
       <section v-if="step === 0" class="review-start">
@@ -248,7 +249,7 @@
           type="button"
           @click="step === 0 ? saveHandDetails() : (step = 0)"
         >
-          {{ step === 0 ? '저장하기' : '완료' }}
+          {{ step === 0 ? '저장' : '완료' }}
         </button>
     </div>
 
@@ -665,12 +666,11 @@ const saveHandDetails = async () => {
 </script>
 
 <style scoped>
-.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 52px; padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 96px; }
-.edit-topbar { display: grid; grid-template-columns: 56px 1fr 56px; align-items: center; min-height: 36px; }
+.review-edit-page { display: flex; min-height: 100%; flex-direction: column; gap: 20px; padding: var(--v2-page-padding-top) var(--v2-page-padding-x) calc(24px + env(safe-area-inset-bottom)); }
+.edit-topbar { display: grid; grid-template-columns: 44px 1fr 44px; align-items: center; min-height: var(--v2-detail-topbar-height); }
 .edit-topbar h1 { margin: 0; font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
-.topbar-text { min-height: 38px; padding: 0; border: 0; background: transparent; color: var(--v2-primary); font: inherit; font-size: 13px; text-align: left; }
-.topbar-text.next { color: #806bd2; font-weight: 480; text-align: right; }
-.topbar-back { display: grid; width: 38px; height: 38px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
+.topbar-close { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
+.topbar-back { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .step-progress { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; padding: 0 2px; }
 .step-progress i { height: 3px; border-radius: 3px; background: #e6e2f0; }
 .step-progress i.active { background: var(--v2-primary); }
@@ -764,7 +764,7 @@ const saveHandDetails = async () => {
 .bottom-actions button { min-height: 50px; border: 0; border-radius: var(--v2-radius-md); font: inherit; font-size: 14px; font-weight: 600; }
 .secondary-action { flex: .45; background: #ece9f4; color: var(--v2-text-main); }
 .primary-action { flex: 1; background: var(--v2-primary); color: #fff; }
-.primary-action:disabled, .topbar-text:disabled { color: #aaa3bc; opacity: .7; }
+.primary-action:disabled { color: #aaa3bc; opacity: .7; }
 .picker-backdrop { position: fixed; inset: 0; z-index: 3000; display: flex; align-items: flex-end; justify-content: center; padding: 0 18px 18px; background: rgba(23, 21, 31, .42); }
 .card-picker { display: grid; width: min(100%, 480px); gap: 10px; padding: 10px 18px 14px; border-radius: 16px; background: #fff; box-shadow: 0 18px 50px rgba(28, 18, 60, .18); }
 .picker-handle { width: 44px; height: 5px; justify-self: center; border-radius: 999px; background: #aaa4ba; }

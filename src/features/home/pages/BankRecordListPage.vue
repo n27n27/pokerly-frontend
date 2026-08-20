@@ -333,7 +333,8 @@ const goBack = () => {
   min-height: 100%;
   flex-direction: column;
   gap: 16px;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 112px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(88px + env(safe-area-inset-bottom));
 }
 
 .bank-record-page * {

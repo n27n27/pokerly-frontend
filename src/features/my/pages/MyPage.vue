@@ -1,7 +1,15 @@
 <template>
   <q-page class="my-page">
     <header class="my-header">
-      <h1>My</h1>
+      <div class="my-settings-brand">
+        <span class="my-settings-brand__mark" aria-hidden="true">
+          <q-icon name="tune" size="20px" />
+        </span>
+        <span class="my-settings-brand__copy">
+          <small>MY POKERLY</small>
+          <h1>내 포커 설정</h1>
+        </span>
+      </div>
     </header>
 
     <section class="settings-section">
@@ -188,9 +196,14 @@ const openDocument = (type) => router.push(`/app/my/document/${type}`)
 .my-page { display: flex; min-height: 100%; flex-direction: column; align-items: stretch; justify-content: flex-start; padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 88px; }
 .my-page * { box-sizing: border-box; }
 .my-header, .settings-section { flex: 0 0 auto; }
-.my-header h1 { margin: 0; font-size: 22px; font-weight: 650; line-height: 1; }
-.settings-section { display: grid; gap: 6px; margin-top: 8px; }
-.my-header + .settings-section { margin-top: 12px; }
+.my-header { display: grid; align-items: center; }
+.my-settings-brand { display: inline-flex; width: fit-content; align-items: center; gap: 10px; }
+.my-settings-brand__mark { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border: 1px solid rgba(109,69,232,.15); border-radius: 13px; background: var(--v2-primary-soft); color: var(--v2-primary); box-shadow: 0 5px 14px rgba(109,69,232,.08); }
+.my-settings-brand__copy { display: grid; gap: 2px; }
+.my-settings-brand__copy small { color: var(--v2-primary); font-size: 8px; font-weight: 750; line-height: 1; letter-spacing: .13em; }
+.my-settings-brand__copy h1 { margin: 0; color: var(--v2-text-main); font-size: 18px; font-weight: 680; line-height: 1.1; letter-spacing: -.02em; }
+.settings-section { display: grid; gap: 10px; margin-top: 16px; }
+.my-header + .settings-section { margin-top: 16px; }
 .settings-section h2 { margin: 0; font-size: 15px; font-weight: 600; }
 .settings-card { overflow: hidden; border: 1px solid var(--v2-border); border-radius: var(--v2-radius-lg); background: #fff; box-shadow: 0 5px 14px rgba(28,18,60,.025); }
 .profile-row { display: grid; min-height: 74px; grid-template-columns: minmax(0,1fr) auto; align-items: center; gap: 11px; padding: 12px 14px; }

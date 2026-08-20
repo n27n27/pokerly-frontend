@@ -1133,7 +1133,7 @@ const goSimpleRecord = (recordId) => {
   min-width: 0;
   grid-auto-rows: max-content;
   gap: 20px;
-  padding: 10px var(--v2-page-padding-x) 24px;
+  padding: 10px var(--v2-page-padding-x) calc(88px + var(--app-safe-bottom));
 }
 
 .home-page > * {

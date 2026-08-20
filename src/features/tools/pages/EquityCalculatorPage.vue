@@ -1,5 +1,5 @@
 <template>
-  <q-page class="equity-page">
+  <q-page class="equity-page" :class="{ 'equity-page--has-results': results.length }">
     <header class="equity-topbar">
       <button type="button" aria-label="도구로 돌아가기" @click="router.push('/app/tools')">
         <q-icon name="chevron_left" size="28px" />
@@ -379,7 +379,12 @@ const calculateEquity = async () => {
   width: 100%;
   max-width: 100%;
   overflow-x: clip;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(104px + env(safe-area-inset-bottom));
+}
+
+.equity-page--has-results {
+  padding-bottom: calc(180px + env(safe-area-inset-bottom));
 }
 
 .equity-topbar {

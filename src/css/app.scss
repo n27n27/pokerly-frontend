@@ -43,8 +43,8 @@ html.is-native body {
   margin-right: calc(var(--v2-page-padding-x) * -1);
   margin-left: calc(var(--v2-page-padding-x) * -1);
   padding-top: var(--app-safe-top);
-  padding-right: var(--v2-page-padding-x);
-  padding-left: var(--v2-page-padding-x);
+  padding-right: var(--v2-topbar-padding-x);
+  padding-left: var(--v2-topbar-padding-x);
   border-bottom: 1px solid transparent;
   background: var(--v2-app-bar-bg);
   backdrop-filter: blur(18px);
@@ -66,6 +66,24 @@ html.is-native body {
   content: '';
 }
 
+/* Statistics keeps two filters in its compact app bar, so give the row a
+ * little more edge clearance than icon-led detail headers. */
+.app-layout .stats-home-page > .stats-header:first-child {
+  padding-right: var(--v2-page-padding-x);
+  padding-left: var(--v2-page-padding-x);
+}
+
+.app-layout .tools-page > .tools-header:first-child,
+.app-layout .my-page > .my-header:first-child {
+  padding-right: var(--v2-page-padding-x);
+  padding-left: var(--v2-page-padding-x);
+}
+
+.app-layout .detail-page > .detail-header:first-child {
+  padding-right: var(--v2-page-padding-x);
+  padding-left: var(--v2-topbar-padding-x);
+}
+
 .equity-topbar,
 .calc-topbar,
 .probability-topbar {
@@ -73,8 +91,16 @@ html.is-native body {
   grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   justify-items: stretch !important;
-  margin-bottom: 12px !important;
   padding-bottom: 0 !important;
+}
+
+.equity-topbar {
+  margin-bottom: 16px !important;
+}
+
+.calc-topbar,
+.probability-topbar {
+  margin-bottom: 8px !important;
 }
 
 .equity-topbar > button,
@@ -96,18 +122,6 @@ html.is-native body {
   text-align: center !important;
 }
 
-/* Root-tab titles are compact app bars; descriptive copy remains scrollable. */
-.tools-header p {
-  position: absolute;
-  top: calc(100% + 12px);
-  right: var(--v2-page-padding-x);
-  left: var(--v2-page-padding-x);
-}
-
-.tools-header + .tools-intro {
-  margin-top: 36px;
-}
-
 /* Long, filterable lists keep their controls available below the primary row. */
 .tournament-list-page > .control-row,
 .preset-page > .preset-control-row {
@@ -122,9 +136,43 @@ html.is-native body {
   -webkit-backdrop-filter: blur(18px);
 }
 
+/* Preserve the preset page's 9px grid gap after its search row becomes sticky. */
+.preset-page > .preset-control-row {
+  top: calc(var(--v2-detail-topbar-height) + var(--app-safe-top) + 9px);
+}
+
+.preset-page > .preset-control-row::before {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  left: 0;
+  height: 9px;
+  background: var(--v2-app-bar-bg);
+  content: '';
+}
+
+.preset-page > .preset-control-row::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 9px;
+  background: var(--v2-app-bar-bg);
+  content: '';
+}
+
+.tournament-list-page > .control-row::after {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  height: 14px;
+  background: var(--v2-app-bar-bg);
+  content: '';
+}
+
 @media (max-width: 360px) {
-  .stats-header,
-  .detail-header {
+  .stats-header {
     min-height: auto !important;
   }
 }
