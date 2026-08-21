@@ -44,9 +44,24 @@ const ACTION_GROUPS = [
   },
 ]
 
-const POSITION_ORDER = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
+const PRIMARY_ACTION_GROUPS = [
+  { key: 'fold', label: '폴드', actions: new Set(['FOLD']) },
+  { key: 'call', label: '콜', actions: new Set(['LIMP', 'CALL', 'BB_DEFENSE']) },
+  {
+    key: 'open',
+    label: '오픈',
+    actions: new Set(['OPEN', 'ISO_RAISE', 'OPEN_FOLD_TO_3BET', 'OPEN_CALL_3BET']),
+  },
+  {
+    key: 'threeBetPlus',
+    label: '3Bet+',
+    actions: new Set(['THREE_BET', 'THREE_BET_PLUS', 'FOUR_BET_PLUS']),
+  },
+]
 
-const normalizePosition = (position) => {
+export const POSITION_ORDER = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
+
+export const normalizePosition = (position) => {
   const value = String(position || '').trim().toUpperCase()
   if (value === 'UTG+1') return 'UTG'
   if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
@@ -96,6 +111,12 @@ export const groupHandsByRanking = (hands, ranking, handOf) => {
     return aRank - bRank || a.label.localeCompare(b.label)
   })
 }
+
+export const buildPrimaryActionDistribution = (hands) => PRIMARY_ACTION_GROUPS.map((group) => ({
+  key: group.key,
+  label: group.label,
+  count: hands.filter((hand) => group.actions.has(actionOf(hand))).length,
+}))
 
 export const buildPlaySummary = (hands) => {
   const total = hands.length

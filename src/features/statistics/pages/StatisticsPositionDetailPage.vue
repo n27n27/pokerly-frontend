@@ -87,7 +87,11 @@ import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
 import { fetchHandLogEvent } from 'src/api/handLogApi'
 import { getHandInputValue, normalizeHand, PREFLOP_169_RANKING } from 'src/utils/handLogHandAnalysis'
 import StatisticsDetailHeader from '../components/StatisticsDetailHeader.vue'
-import { buildAnalysisRows, formatAnalysisRate } from '../utils/playAnalysis'
+import {
+  buildAnalysisRows,
+  formatAnalysisRate,
+  normalizePosition,
+} from '../utils/playAnalysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -116,12 +120,6 @@ const positionListRoute = computed(() => ({
   },
 }))
 
-const normalizePosition = (value) => {
-  const normalized = String(value || '').trim().toUpperCase()
-  if (normalized === 'UTG+1') return 'UTG'
-  if (['UTG+2', 'UTG+3'].includes(normalized)) return 'MP'
-  return normalized
-}
 const positionHands = computed(() => hands.value.filter(
   (hand) => normalizePosition(hand.position) === position.value,
 ))

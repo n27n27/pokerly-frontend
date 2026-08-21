@@ -34,11 +34,12 @@ import PlayAnalysisSummary from '../components/PlayAnalysisSummary.vue'
 import {
   buildAnalysisRows,
   formatAnalysisRate,
+  normalizePosition,
+  POSITION_ORDER,
 } from '../utils/playAnalysis'
 
 const route = useRoute()
 const router = useRouter()
-const POSITION_ORDER = ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 const filter = ref({
   year: Number(route.query.year) || new Date().getFullYear(),
   month: Number(route.query.month) || new Date().getMonth() + 1,
@@ -62,13 +63,6 @@ const hands = ref([])
 const loading = ref(false)
 const loadError = ref('')
 let loadSequence = 0
-
-const normalizePosition = (position) => {
-  const value = String(position || '').trim().toUpperCase()
-  if (value === 'UTG+1') return 'UTG'
-  if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
-  return POSITION_ORDER.includes(value) ? value : ''
-}
 
 const filterByVenue = (list) => {
   const venueId = filter.value.venueId

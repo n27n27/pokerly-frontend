@@ -43,7 +43,11 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchGameSession } from 'src/api/gameSession'
 import { useHandLogStore } from 'src/stores/handLog'
-import { buildAnalysisRows, formatAnalysisRate } from 'src/features/statistics/utils/playAnalysis'
+import {
+  buildAnalysisRows,
+  formatAnalysisRate,
+  normalizePosition,
+} from 'src/features/statistics/utils/playAnalysis'
 import { getHandInputValue, normalizeHand, PREFLOP_169_RANKING } from 'src/utils/handLogHandAnalysis'
 
 const route = useRoute()
@@ -53,12 +57,6 @@ const position = computed(() => String(route.params.position || '').toUpperCase(
 const selectedAction = ref('all')
 const session = ref(null)
 
-const normalizePosition = (value) => {
-  const normalized = String(value || '').trim().toUpperCase()
-  if (normalized === 'UTG+1') return 'UTG'
-  if (['UTG+2', 'UTG+3'].includes(normalized)) return 'MP'
-  return normalized
-}
 const allHands = computed(() => (store.selectedEvent?.blindLevels || []).flatMap((level) => level.hands || []))
 const positionHands = computed(() => allHands.value.filter((hand) => normalizePosition(hand.position) === position.value))
 const positionRow = computed(() => buildAnalysisRows([position.value], positionHands.value, (hand) => normalizePosition(hand.position))[0])

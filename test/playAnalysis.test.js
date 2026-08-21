@@ -2,8 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   buildAnalysisRows,
+  buildPrimaryActionDistribution,
   formatAnalysisRate,
   groupHandsByRanking,
+  normalizePosition,
 } from '../src/features/statistics/utils/playAnalysis.js'
 
 test('동일 핸드를 집계하고 169핸드 랭킹 순으로 정렬한다', () => {
@@ -53,4 +55,31 @@ test('후속 액션으로 기록된 3벳 이상도 액션 필터에 집계한다
 
   assert.equal(row.actions.find((action) => action.key === 'threeBet')?.count, 1)
   assert.equal(row.actions.find((action) => action.key === 'fourBet')?.count, 1)
+})
+
+test('기본 액션 분포는 후속 3벳과 4벳을 중복 집계하지 않는다', () => {
+  const hands = [
+    { actionType: 'FOLD' },
+    { actionType: 'CALL', secondaryAction: 'THREE_BET_PLUS' },
+    { actionType: 'OPEN', secondaryAction: 'FOUR_BET_PLUS' },
+    { actionType: 'THREE_BET', secondaryAction: 'CALL' },
+  ]
+
+  const distribution = buildPrimaryActionDistribution(hands)
+
+  assert.deepEqual(distribution.map(({ label, count }) => ({ label, count })), [
+    { label: '폴드', count: 1 },
+    { label: '콜', count: 1 },
+    { label: '오픈', count: 1 },
+    { label: '3Bet+', count: 1 },
+  ])
+  assert.equal(distribution.reduce((sum, item) => sum + item.count, 0), hands.length)
+})
+
+test('모든 통계 화면이 동일한 8개 포지션 정규화 규칙을 사용한다', () => {
+  assert.equal(normalizePosition('utg+1'), 'UTG')
+  assert.equal(normalizePosition('UTG+2'), 'MP')
+  assert.equal(normalizePosition('UTG+3'), 'MP')
+  assert.equal(normalizePosition('BTN'), 'BTN')
+  assert.equal(normalizePosition('unknown'), '')
 })

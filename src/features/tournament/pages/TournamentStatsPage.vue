@@ -58,7 +58,12 @@ import { fetchGameSession } from 'src/api/gameSession'
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
 import PlayAnalysisAccordionList from 'src/features/statistics/components/PlayAnalysisAccordionList.vue'
-import { buildAnalysisRows } from 'src/features/statistics/utils/playAnalysis'
+import {
+  buildAnalysisRows,
+  buildPrimaryActionDistribution,
+  normalizePosition,
+  POSITION_ORDER,
+} from 'src/features/statistics/utils/playAnalysis'
 import {
   isThreeBetPlusHand,
   isPfrAction,
@@ -101,28 +106,13 @@ const metrics = computed(() => {
   ]
 })
 
-const positionOrder = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 const formatRate = (count, total) => (total > 0 ? `${Math.round((count / total) * 100)}%` : '-')
 const actionType = (hand) => hand.actionType || hand.preflopAction || ''
-const actionGroups = [
-  { label: '폴드', matches: (value) => value === 'FOLD' },
-  { label: '콜', matches: (value) => ['LIMP', 'CALL', 'BB_DEFENSE'].includes(value) },
-  {
-    label: '오픈',
-    matches: (value) =>
-      ['OPEN', 'ISO_RAISE', 'OPEN_FOLD_TO_3BET', 'OPEN_CALL_3BET'].includes(value),
-  },
-  { label: '3Bet+', matches: (_value, hand) => isThreeBetPlusHand(hand) },
-]
 const actions = computed(() =>
-  actionGroups.map((group) => {
-    const count = allHands.value.filter((hand) => group.matches(actionType(hand), hand)).length
-    return {
-      label: group.label,
-      count,
-      rate: allHands.value.length ? formatRate(count, allHands.value.length) : '0%',
-    }
-  }),
+  buildPrimaryActionDistribution(allHands.value).map((group) => ({
+    ...group,
+    rate: allHands.value.length ? formatRate(group.count, allHands.value.length) : '0%',
+  })),
 )
 const joinKorean = (values) => {
   if (values.length <= 1) return values[0] || ''
@@ -136,14 +126,16 @@ const tournamentFeatures = computed(() => {
   const participatedByPosition = new Map()
   hands.forEach((hand) => {
     if (!hand.position || !isVpipAction(actionType(hand))) return
+    const position = normalizePosition(hand.position)
+    if (!position) return
     participatedByPosition.set(
-      hand.position,
-      (participatedByPosition.get(hand.position) || 0) + 1,
+      position,
+      (participatedByPosition.get(position) || 0) + 1,
     )
   })
   const maxPositionCount = Math.max(0, ...participatedByPosition.values())
   if (maxPositionCount > 0) {
-    const topPositions = positionOrder.filter(
+    const topPositions = POSITION_ORDER.filter(
       (position) => participatedByPosition.get(position) === maxPositionCount,
     )
     features.push(`${joinKorean(topPositions)}에서 가장 많이 참여했습니다.`)
@@ -178,14 +170,8 @@ const tournamentFeatures = computed(() => {
   return features.slice(0, 4)
 })
 
-const normalizePosition = (position) => {
-  const value = String(position || '').trim().toUpperCase()
-  if (value === 'UTG+1') return 'UTG'
-  if (['UTG+2', 'UTG+3'].includes(value)) return 'MP'
-  return value
-}
 const positionRows = computed(() => buildAnalysisRows(
-  ['UTG', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
+  POSITION_ORDER,
   allHands.value,
   (hand) => normalizePosition(hand.position),
 ))

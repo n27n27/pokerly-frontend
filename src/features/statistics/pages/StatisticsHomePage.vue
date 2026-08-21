@@ -420,6 +420,11 @@ import {
   buildBankInsights,
   buildPlayInsights,
 } from '../utils/statisticsInsights'
+import {
+  buildAnalysisRows,
+  normalizePosition,
+  POSITION_ORDER,
+} from '../utils/playAnalysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -572,8 +577,6 @@ const isItm = (session) => {
 }
 const formatHandRate = (count, total) => (total ? `${Math.round((count * 100) / total)}%` : '-')
 const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
-const winningResults = new Set(['SHOWDOWN_WIN', 'NON_SHOWDOWN_WIN', 'WIN'])
-
 const handSummary = computed(() => {
   const hands = filteredHands.value
   if (!hands.length) return null
@@ -587,37 +590,23 @@ const handSummary = computed(() => {
 })
 
 const positionSummary = computed(() => {
-  const hands = filteredHands.value.filter((hand) => hand.position)
+  const hands = filteredHands.value.filter((hand) => normalizePosition(hand.position))
   if (!hands.length) return null
-  const grouped = new Map()
-  hands.forEach((hand) => {
-    if (!grouped.has(hand.position)) grouped.set(hand.position, [])
-    grouped.get(hand.position).push(hand)
-  })
-  const rows = [...grouped.entries()].map(([position, positionHands]) => {
-    const participated = positionHands.filter((hand) => isVpipAction(actionOf(hand)))
-    const wins = participated.filter((hand) =>
-      winningResults.has(String(hand.resultType || hand.result || '').toUpperCase()),
-    ).length
-    return {
-      position,
-      participationRate: participated.length / positionHands.length,
-      winRate: participated.length ? wins / participated.length : -1,
-    }
-  })
+  const rows = buildAnalysisRows(POSITION_ORDER, hands, (hand) => normalizePosition(hand.position))
+    .filter((row) => row.total > 0)
   const mostPlayed = [...rows].sort((a, b) => b.participationRate - a.participationRate)[0]
   const bestWinning = [...rows]
-    .filter((row) => row.winRate >= 0)
+    .filter((row) => row.participated > 0)
     .sort((a, b) => b.winRate - a.winRate)[0]
   if (!mostPlayed || !bestWinning) return null
   return {
     mostPlayed: {
-      position: mostPlayed.position,
-      rate: formatHandRate(mostPlayed.participationRate * 100, 100),
+      position: mostPlayed.label,
+      rate: formatHandRate(mostPlayed.participationRate, 100),
     },
     bestWinning: {
-      position: bestWinning.position,
-      rate: formatHandRate(bestWinning.winRate * 100, 100),
+      position: bestWinning.label,
+      rate: formatHandRate(bestWinning.winRate, 100),
     },
   }
 })
