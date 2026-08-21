@@ -20,6 +20,7 @@
     "postinstall": "quasar prepare"
   },
   "dependencies": {
+    "@capgo/capacitor-social-login": "^8.4.4",
     "@quasar/extras": "^1.16.4",
     "apexcharts": "^5.3.6",
     "axios": "^1.19.0",

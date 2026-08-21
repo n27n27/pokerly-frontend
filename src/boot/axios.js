@@ -27,8 +27,10 @@ const getRT = () => localStorage.getItem(RT_KEY) || ''
 
 const setAT = (t) => localStorage.setItem(AT_KEY, t || '')
 const setRT = (t) => (t ? localStorage.setItem(RT_KEY, t) : localStorage.removeItem(RT_KEY))
+let authSessionGeneration = 0
 
 const clearTokens = () => {
+  authSessionGeneration += 1
   localStorage.removeItem(AT_KEY)
   localStorage.removeItem(RT_KEY)
 }
@@ -86,6 +88,7 @@ const processQueue = (error, token = null) => {
 
 // 🔹 refresh 호출
 const requestRefresh = async () => {
+  const requestGeneration = authSessionGeneration
   const rt = getRT()
   if (!rt) {
     const error = new Error('No refresh token')
@@ -103,6 +106,13 @@ const requestRefresh = async () => {
   }
 
   const { accessToken, refreshToken } = payload
+
+  // A refresh that started before logout must never restore the cleared session.
+  if (requestGeneration !== authSessionGeneration) {
+    const error = new Error('Authentication session was cleared')
+    error.code = 'AUTH_SESSION_CLEARED'
+    throw error
+  }
 
   setAT(accessToken)
   if (refreshToken) setRT(refreshToken)

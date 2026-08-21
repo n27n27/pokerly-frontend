@@ -16,6 +16,15 @@
       "overlaysWebView": true,
       "style": "light",
       "backgroundColor": "#f7f7fb"
+    },
+    "SocialLogin": {
+      "providers": {
+        "google": true,
+        "facebook": false,
+        "apple": false,
+        "twitter": false
+      },
+      "logLevel": 1
     }
   }
 }

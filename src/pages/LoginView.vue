@@ -62,12 +62,14 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
+import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { Capacitor } from '@capacitor/core'
 import { useAuthStore } from 'stores/auth'
 import { useAlert } from 'src/composables/useAlert'
 import { loadGoogleIdentity } from 'src/utils/googleIdentity'
 import { isKakaoInAppBrowser, openInSystemBrowser } from 'src/utils/inAppBrowser'
+import { loginWithNativeGoogle } from 'src/utils/nativeGoogleIdentity'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -78,13 +80,63 @@ const googleButtonRef = ref(null)
 const googleReady = ref(false)
 const googleLoadFailed = ref(false)
 const isKakaoBrowser = isKakaoInAppBrowser()
+const isNativeApp = Capacitor.isNativePlatform()
 
-const googleFallbackEnabled = googleLoadFailed
+const googleFallbackEnabled = computed(() => isNativeApp || googleLoadFailed.value)
 const googleFallbackLabel = 'Google로 계속하기'
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
 
-const handleGoogleFallback = () => {
+const submitGoogleIdToken = async (idToken) => {
+  loading.value = 'google'
+
+  try {
+    const payload = await auth.loginWithGoogle({
+      idToken,
+      language: navigator.language?.startsWith('en') ? 'en' : 'ko',
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
+    })
+
+    await handleAuthResult(payload)
+  } catch (e) {
+    console.error(e)
+
+    const code = e?.response?.data?.error?.code
+    const message = e?.response?.data?.error?.message
+
+    if (code === 'GOOGLE_TOKEN_INVALID') {
+      alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
+      return
+    }
+
+    if (e?.message === 'GOOGLE_NATIVE_CLIENT_ID_MISSING') {
+      alert.show('현재 Google 로그인을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'error')
+      return
+    }
+
+    alert.show(message || 'Google 로그인에 실패했습니다.', 'error')
+  } finally {
+    loading.value = null
+  }
+}
+
+const handleGoogleFallback = async () => {
+  if (isNativeApp) {
+    try {
+      const idToken = await loginWithNativeGoogle()
+      await submitGoogleIdToken(idToken)
+    } catch (e) {
+      if (e?.message === 'GOOGLE_NATIVE_CLIENT_ID_MISSING') {
+        alert.show('현재 Google 로그인을 사용할 수 없습니다. 잠시 후 다시 시도해주세요.', 'error')
+        return
+      }
+
+      console.error(e)
+      alert.show('Google 로그인을 완료하지 못했습니다.', 'error')
+    }
+    return
+  }
+
   if (isKakaoBrowser) {
     openInSystemBrowser()
     return
@@ -125,31 +177,7 @@ const initGoogleLogin = async () => {
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: async (response) => {
-        loading.value = 'google'
-
-        try {
-          const payload = await auth.loginWithGoogle({
-            idToken: response.credential,
-            language: navigator.language?.startsWith('en') ? 'en' : 'ko',
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Seoul',
-          })
-
-          await handleAuthResult(payload)
-        } catch (e) {
-          console.error(e)
-
-          const code = e?.response?.data?.error?.code
-          const message = e?.response?.data?.error?.message
-
-          if (code === 'GOOGLE_TOKEN_INVALID') {
-            alert.show('Google 인증이 만료되었습니다. 다시 시도해주세요.', 'warning')
-            return
-          }
-
-          alert.show(message || 'Google 로그인에 실패했습니다.', 'error')
-        } finally {
-          loading.value = null
-        }
+        await submitGoogleIdToken(response.credential)
       },
     })
 
@@ -176,6 +204,7 @@ const initGoogleLogin = async () => {
 }
 
 onMounted(() => {
+  if (isNativeApp) return
   initGoogleLogin()
 })
 </script>
@@ -203,11 +232,12 @@ onMounted(() => {
   min-height: calc(100dvh - 60px);
   display: flex;
   flex-direction: column;
+  justify-content: center;
 }
 
 .login-block {
   width: 100%;
-  margin-top: clamp(50px, 9vh, 92px);
+  transform: translateY(-4vh);
 }
 
 .auth-header {
@@ -429,7 +459,7 @@ onMounted(() => {
   }
 
   .login-block {
-    margin-top: clamp(42px, 8vh, 70px);
+    transform: translateY(-4vh);
   }
 
   .login-actions {
@@ -444,8 +474,13 @@ onMounted(() => {
 }
 
 @media (max-height: 700px) {
+  .auth-shell {
+    justify-content: flex-start;
+  }
+
   .login-block {
     margin-top: 22px;
+    transform: none;
   }
 
   .brand-symbol { width: 92px; height: 100px; }

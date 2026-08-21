@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { api, clearTokens } from 'boot/axios'
+import { Capacitor } from '@capacitor/core'
 import { ref, computed } from 'vue'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -170,6 +171,17 @@ export const useAuthStore = defineStore('auth', () => {
       clearTokens()
       user.value = null
       localStorage.removeItem('pokerly-record-mode')
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          const { logoutFromNativeGoogle } = await import('src/utils/nativeGoogleIdentity')
+          await logoutFromNativeGoogle()
+        } catch (error) {
+          // Pokerly logout is already complete; a provider cleanup failure must
+          // not restore or retain the local application session.
+          console.warn('Google native logout failed', error)
+        }
+      }
     }
   }
   return {

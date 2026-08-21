@@ -39,6 +39,9 @@ npm run mobile:open:android
   `src-capacitor/android/local.properties`의 `sdk.dir`을 설정해야 한다.
 - 실제 기기가 없어도 Xcode Simulator와 Android Emulator로 주요 흐름을 검증할 수 있다.
 - `pokerly://app/home` 커스텀 딥 링크는 양쪽 플랫폼에서 바로 사용할 수 있다.
+- 네이티브 Google 로그인은 웹 OAuth 클라이언트 ID와 별도로 번들 ID
+  `kr.pokerly.app`용 iOS OAuth 클라이언트 ID가 필요하다. 빌드 환경의
+  `VITE_GOOGLE_IOS_CLIENT_ID`에 해당 값을 설정한다.
 - `https://pokerly.kr/...` 앱 링크 자동 연결은 출시 서명 정보가 정해진 뒤 서버에
   AASA 및 `assetlinks.json`을 배포해야 완성된다.
 

@@ -12,6 +12,14 @@
 				<string>pokerly</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>Google Sign-In</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.451459626162-1e0c72g51v44v1jd1rglglpnlvgnailh</string>
+			</array>
+		</dict>
 	</array>
   <key>CAPACITOR_DEBUG</key>
 	<string>$(CAPACITOR_DEBUG)</string>

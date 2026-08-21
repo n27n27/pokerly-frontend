@@ -8,7 +8,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let windowScene = scene as? UIWindowScene else { return }
 
         window = UIWindow(windowScene: windowScene)
-        window?.rootViewController = CAPBridgeViewController()
+        let bridgeViewController = CAPBridgeViewController()
+        bridgeViewController.loadViewIfNeeded()
+        // Keep normal page scrolling, but remove the small elastic movement
+        // that WKWebView allows even when the document fits the viewport.
+        bridgeViewController.webView?.scrollView.bounces = false
+        bridgeViewController.webView?.scrollView.alwaysBounceVertical = false
+        window?.rootViewController = bridgeViewController
         window?.makeKeyAndVisible()
 
         SceneDelegateProxy.shared.scene(scene, willConnectTo: session, options: connectionOptions)
