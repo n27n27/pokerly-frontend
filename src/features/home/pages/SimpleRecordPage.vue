@@ -8,7 +8,8 @@
       <span aria-hidden="true"></span>
     </header>
 
-    <section class="record-form-card">
+    <div class="record-form-scroll">
+      <section class="record-form-card">
       <h2>기본 정보</h2>
       <div class="form-fields">
         <label class="form-field">
@@ -56,9 +57,9 @@
           <em>회</em>
         </div>
       </div>
-    </section>
+      </section>
 
-    <section class="record-form-card record-form-card--result">
+      <section class="record-form-card record-form-card--result">
       <h2>결과</h2>
       <div class="form-fields">
         <div class="amount-grid">
@@ -71,10 +72,36 @@
             <input v-model="form.prize" inputmode="numeric" placeholder="상금 입력" />
           </label>
         </div>
-      </div>
-    </section>
 
-    <StickyPrimaryAction :label="isEdit ? '수정하기' : '저장하기'" :disabled="!canSave" :loading="saving" loading-label="저장 중..." @click="saveRecord" />
+        <div class="satellite-control">
+          <span>새틀 획득</span>
+          <button
+            type="button"
+            role="switch"
+            :aria-checked="form.satelliteAwarded"
+            :class="{ active: form.satelliteAwarded }"
+            @click="toggleSatellite"
+          >
+            <i aria-hidden="true"></i>
+            <b>{{ form.satelliteAwarded ? 'ON' : 'OFF' }}</b>
+          </button>
+        </div>
+
+        <label v-if="form.satelliteAwarded" class="form-field">
+          <span>새틀명 <small>선택</small></span>
+          <input v-model.trim="form.satelliteName" maxlength="100" placeholder="획득한 대회명을 입력해주세요" />
+        </label>
+      </div>
+      </section>
+    </div>
+
+    <StickyPrimaryAction
+      :label="isEdit ? '수정하기' : '저장하기'"
+      :disabled="!canSave"
+      :loading="saving"
+      loading-label="저장 중..."
+      @click="saveRecord"
+    />
 
     <q-dialog v-model="venuePickerOpen" position="bottom">
       <q-card class="venue-sheet">
@@ -162,6 +189,8 @@ const form = reactive({
   entries: 1,
   rank: '',
   prize: '',
+  satelliteAwarded: false,
+  satelliteName: '',
 })
 const canSave = computed(() => Boolean(form.tournamentName.trim() && form.date && form.buyIn))
 
@@ -197,6 +226,11 @@ const addVenue = async () => {
 
 const number = (value) => Number(String(value || '').replaceAll(',', '')) || 0
 
+const toggleSatellite = () => {
+  form.satelliteAwarded = !form.satelliteAwarded
+  if (!form.satelliteAwarded) form.satelliteName = ''
+}
+
 onMounted(async () => {
   await venueStore.loadVenues()
   venueRecords.value = [...venueStore.venues]
@@ -212,6 +246,8 @@ onMounted(async () => {
     entries: session.entries || 1,
     rank: session.finalRank || '',
     prize: number(session.prize).toLocaleString('ko-KR'),
+    satelliteAwarded: Boolean(session.satelliteAwarded),
+    satelliteName: session.satelliteName || '',
   })
   venueSelectionMade.value = Boolean(venue)
 })
@@ -226,14 +262,15 @@ const saveRecord = async () => {
     sessionType: venueId ? 'VENUE' : 'OTHER',
     gameType: 'TOURNAMENT',
     tournamentName: form.tournamentName.trim(),
-    tournamentResult: number(form.prize) > 0 ? 'ITM' : 'BUST',
+    tournamentResult: number(form.prize) > 0 || form.satelliteAwarded ? 'ITM' : 'BUST',
     startLevel: null,
     currentLevel: null,
     buyInPerEntry: number(form.buyIn),
     entries: Number(form.entries) || 1,
     discount: number(form.discount),
     prize: number(form.prize),
-    satelliteAwarded: false,
+    satelliteAwarded: form.satelliteAwarded,
+    satelliteName: form.satelliteAwarded ? form.satelliteName.trim() : null,
     notes: '',
     tournamentStatus: 'COMPLETED',
     finalRank: Number(form.rank) || null,
@@ -249,6 +286,8 @@ const saveRecord = async () => {
       discount: payload.discount,
       prize: payload.prize,
       finalRank: payload.finalRank,
+      satelliteAwarded: payload.satelliteAwarded,
+      satelliteName: payload.satelliteName,
       })
     } else {
       await createGameSession(payload)
@@ -273,13 +312,16 @@ const saveRecord = async () => {
 <style scoped>
 .simple-record-page {
   display: grid;
-  min-height: 100%;
-  align-content: start;
+  height: 100%;
+  min-height: 0 !important;
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 14px;
-  padding: var(--v2-page-padding-top) var(--v2-page-padding-x) 180px;
+  padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
+    calc(88px + var(--app-safe-bottom));
 }
 
 .simple-record-page * { box-sizing: border-box; }
+.record-form-scroll { display: grid; min-height: 0; align-content: start; gap: 14px; overflow-y: auto; overscroll-behavior-y: contain; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
 .simple-record-topbar { display: grid; min-height: var(--v2-detail-topbar-height); grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; }
 .simple-record-topbar button { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; background: transparent; color: var(--v2-text-main); }
 .simple-record-topbar h1 { margin: 0; color: var(--v2-text-main); font-size: 21px; font-weight: 650; line-height: 1.2; text-align: center; }
@@ -294,6 +336,7 @@ const saveRecord = async () => {
 .form-field > span:first-child { display: inline-flex; width: max-content; align-items: baseline; gap: 2px; color: #4f4a5e; font-size: 11px; font-weight: 580; line-height: 1.2; }
 .buy-in-control > span:first-child { color: #4f4a5e; font-size: 11px; font-weight: 580; }
 .form-field > span:first-child b { display: inline-block; color: var(--v2-primary); font-size: 11px; font-weight: 650; line-height: 1; transform: translateY(1px); vertical-align: baseline; }
+.form-field > span:first-child small { color: var(--v2-text-sub); font-size: 10px; font-weight: 500; }
 .form-field input { width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid var(--v2-border); border-radius: 10px; outline: 0; background: #fbfaff; color: var(--v2-text-main); font: inherit; font-size: 13px; }
 .form-field input[inputmode="numeric"] { text-align: right; font-variant-numeric: tabular-nums; }
 .form-field textarea { width: 100%; min-height: 76px; resize: none; padding: 11px 12px; border: 1px solid var(--v2-border); border-radius: 10px; outline: 0; background: #fbfaff; color: var(--v2-text-main); font: inherit; font-size: 13px; line-height: 1.45; }
@@ -312,6 +355,12 @@ const saveRecord = async () => {
 .form-field--suffix > span:last-child { position: relative; display: block; }
 .form-field--suffix input { padding-right: 32px; }
 .form-field--suffix em { position: absolute; top: 50%; right: 12px; transform: translateY(-50%); }
+.satellite-control { display: flex; min-height: 44px; align-items: center; justify-content: space-between; padding: 0 12px; border: 1px solid var(--v2-border); border-radius: 10px; background: #fbfaff; }
+.satellite-control > span { color: #4f4a5e; font-size: 11px; font-weight: 580; }
+.satellite-control button { display: flex; min-width: 58px; height: 30px; align-items: center; justify-content: space-between; gap: 5px; padding: 3px 7px 3px 4px; border: 0; border-radius: 999px; background: #e9e6ef; color: #8d8799; font: inherit; }
+.satellite-control button i { width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(28, 18, 60, .15); }
+.satellite-control button b { font-size: 9px; font-weight: 700; }
+.satellite-control button.active { flex-direction: row-reverse; padding-right: 4px; padding-left: 7px; background: var(--v2-primary); color: #fff; }
 .venue-sheet { width: min(100%, 420px); padding: 10px 18px 22px; border-radius: 20px 20px 0 0; background: #fff; }
 .venue-sheet__handle { display: block; width: 46px; height: 5px; margin: 0 auto 15px; border-radius: 999px; background: #aaa5b7; }
 .venue-sheet h2 { margin: 0 0 10px; font-size: 17px; font-weight: 620; }
