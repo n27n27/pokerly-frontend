@@ -92,7 +92,10 @@
         >
           <span class="tournament-row__main">
             <strong>{{ tournament.title }}</strong>
-            <span>{{ tournament.date }}</span>
+            <span class="tournament-row__meta">
+              <span>{{ tournament.date }}</span>
+              <small v-if="tournament.isSimpleRecord">간편 기록</small>
+            </span>
           </span>
 
           <span v-if="tournament.badge" class="tournament-row__badge" :class="`tournament-row__badge--${tournament.tone}`">
@@ -170,6 +173,7 @@ onMounted(async () => {
         key: `session-${session.id}`,
         id: session.id,
         source: isSimpleRecord ? 'simple-record' : 'session',
+        isSimpleRecord,
         title: tournamentName
           ? tournamentDisplayName(tournamentName)
           : `${venueName} 간편 기록`,
@@ -203,6 +207,7 @@ onMounted(async () => {
         key: `event-${event.id}`,
         id: event.id,
         source: 'event',
+        isSimpleRecord: false,
         title: String(event.name || '').trim() || '이름 없는 토너먼트',
         date: rawDate ? rawDate.replaceAll('-', '.') : '-',
         rawDate,
@@ -289,13 +294,6 @@ const openTournament = (tournament) => {
       name: 'tournament-summary',
       params: { tournamentId: `event-${tournament.id}` },
       query: { legacyEventId: tournament.id, ...returnQuery },
-    })
-    return
-  }
-  if (tournament.source === 'simple-record') {
-    router.push({
-      name: 'simple-record',
-      query: { recordId: tournament.id },
     })
     return
   }
@@ -523,6 +521,24 @@ const openTournament = (tournament) => {
   min-width: 0;
   display: grid;
   gap: 6px;
+}
+
+.tournament-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.tournament-row__meta small {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: #f1edff;
+  color: var(--v2-primary);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .tournament-row__main strong {

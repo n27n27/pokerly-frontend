@@ -317,7 +317,10 @@
         >
           <span class="recent-row__main">
             <strong>{{ item.title }}</strong>
-            <span>{{ item.meta }}</span>
+            <span class="recent-row__meta">
+              <span>{{ item.meta }}</span>
+              <small v-if="item.isSimpleRecord">간편 기록</small>
+            </span>
           </span>
 
           <span class="recent-row__outcome">
@@ -834,6 +837,7 @@ const loadRecentTournaments = async () => {
       entries: session.entries || 1,
       netProfit: Number(session.netProfit || 0),
       result: session.netProfit != null ? formatSignedNumber(session.netProfit) : '',
+      isSimpleRecord: !session.handLogEventId,
     }))
   } catch {
     recentLoadFailed.value = true
@@ -2239,6 +2243,24 @@ const goSimpleRecord = (recordId) => {
   display: grid;
   gap: 5px;
   min-width: 0;
+}
+
+.recent-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.recent-row__meta small {
+  flex: 0 0 auto;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: #f1edff;
+  color: var(--v2-primary);
+  font-size: 9px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .recent-row__outcome {

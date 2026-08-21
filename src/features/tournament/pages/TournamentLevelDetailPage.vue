@@ -141,6 +141,16 @@
           <span>{{ stat.label }}</span>
         </div>
       </div>
+      <button
+        v-if="!isSummaryView && isCurrentLevel"
+        class="level-end-action"
+        type="button"
+        :disabled="endingLevel"
+        @click="endLevel"
+      >
+        <q-spinner v-if="endingLevel" size="20px" />
+        <span>{{ endingLevel ? '종료 중...' : '레벨 종료' }}</span>
+      </button>
     </section>
 
     <section v-if="blindLevel" class="rank-distribution">
@@ -222,14 +232,6 @@
       </span>
       <span>핸드 기록</span>
     </button>
-    <StickyPrimaryAction
-      v-if="!isSummaryView && isCurrentLevel"
-      label="레벨 종료"
-      :loading="endingLevel"
-      loading-label="종료 중..."
-      @click="endLevel"
-    />
-
     <q-dialog v-model="moveSheetOpen" position="bottom" persistent>
       <q-card class="move-level-sheet">
         <div class="move-level-sheet__handle"></div>
@@ -290,7 +292,6 @@ import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
-import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { fetchRunningGameSession, updateGameSessionProgress } from 'src/api/gameSession'
 import { buildLevelReviewText } from 'src/utils/handLogExportText'
@@ -968,7 +969,7 @@ const goBack = () => {
   gap: 20px;
   min-height: 100%;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
-    calc(104px + env(safe-area-inset-bottom));
+    calc(24px + env(safe-area-inset-bottom));
 }
 
 .level-detail-page--summary {
@@ -1393,6 +1394,28 @@ const goBack = () => {
   background-clip: text;
 }
 
+.level-end-action {
+  width: 100%;
+  min-height: var(--v2-sticky-cta-height);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--v2-sticky-cta-radius);
+  background: var(--v2-sticky-cta-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: var(--v2-sticky-cta-font-size);
+  font-weight: 600;
+}
+
+.level-end-action:disabled {
+  background: #e9e4f7;
+  color: #aaa3bc;
+}
+
 .hand-groups__card {
   overflow: hidden;
   border: 1px solid var(--v2-border);
@@ -1807,7 +1830,7 @@ const goBack = () => {
 .hand-fab {
   position: fixed;
   right: 26px;
-  bottom: 174px;
+  bottom: calc(78px + var(--v2-sticky-cta-bottom-gap) + 12px);
   width: 72px;
   height: 72px;
   border: 0;
@@ -1929,7 +1952,7 @@ const goBack = () => {
 
   .hand-fab {
     right: var(--v2-page-padding-x);
-    bottom: 170px;
+    bottom: calc(78px + var(--v2-sticky-cta-bottom-gap) + 12px);
     width: 64px;
     height: 64px;
   }

@@ -266,7 +266,7 @@ const runningTournament = (() => {
 })()
 const session = ref(null)
 const eventId = computed(
-  () => legacyEventId.value || session.value?.handLogEventId || runningTournament.eventId,
+  () => legacyEventId.value || session.value?.handLogEventId || null,
 )
 const event = computed(() => handLogStore.selectedEvent)
 const cachedResult = (() => {
@@ -542,7 +542,10 @@ const canResumeTournament = computed(
 )
 const editTournament = () => {
   menuOpen.value = false
-  router.push({ path: '/app/tournament/running/finish', query: { mode: 'edit', tournamentId } })
+  router.push({
+    name: 'tournament-finish',
+    query: { mode: 'edit', tournamentId, from: 'summary' },
+  })
 }
 const editBankRecord = () => {
   menuOpen.value = false
@@ -706,10 +709,6 @@ const preloadTournamentSeats = async () => {
 }
 
 onMounted(async () => {
-  // iOS Safari는 탭 이벤트와 클립보드 호출 사이에 네트워크 await가 있으면
-  // 사용자 활성화를 잃을 수 있으므로 복사에 필요한 좌석을 화면 진입 시 준비한다.
-  void preloadTournamentSeats()
-
   if (!legacyEventId.value) {
     try {
       const [currentSession, recentSessions] = await Promise.all([
@@ -727,8 +726,13 @@ onMounted(async () => {
 
   if (!eventId.value) {
     handLogStore.selectedEvent = null
+    tournamentSeatsLoading.value = false
     return
   }
+
+  // iOS Safari는 탭 이벤트와 클립보드 호출 사이에 네트워크 await가 있으면
+  // 사용자 활성화를 잃을 수 있으므로 복사에 필요한 좌석을 화면 진입 시 준비한다.
+  void preloadTournamentSeats()
 
   try {
     await handLogStore.fetchEventDetail(eventId.value)

@@ -326,7 +326,20 @@ const confirmResult = async () => {
 }
 
 const goBack = () => {
-  router.push({ name: 'home' })
+  if (route.query.from === 'manage') {
+    router.replace({ name: 'tournament-manage' })
+    return
+  }
+
+  if (route.query.from === 'summary' && route.query.tournamentId) {
+    router.replace({
+      name: 'tournament-summary',
+      params: { tournamentId: route.query.tournamentId },
+    })
+    return
+  }
+
+  router.replace({ name: 'tournament-running' })
 }
 </script>
 

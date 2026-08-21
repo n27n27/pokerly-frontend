@@ -132,7 +132,9 @@
       @open-hand="openSummaryHand"
     />
 
-    <StickyPrimaryAction label="토너먼트 종료" @click="openFinish" />
+    <section class="tournament-end-action">
+      <button type="button" @click="openFinish">토너먼트 종료</button>
+    </section>
 
     <q-dialog v-model="levelSheetOpen" position="bottom">
       <q-card class="level-sheet">
@@ -203,7 +205,6 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import TournamentHandOverview from 'src/features/tournament/components/TournamentHandOverview.vue'
-import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import { fetchRunningGameSession, updateGameSession } from 'src/api/gameSession'
 import { formatLocalDate } from 'src/utils/localDate'
@@ -675,7 +676,7 @@ const openSummaryHand = (hand) => {
 }
 
 const openFinish = () => {
-  router.push('/app/tournament/running/finish')
+  router.push({ name: 'tournament-finish', query: { from: 'running' } })
 }
 
 const goBack = () => {
@@ -690,7 +691,24 @@ const goBack = () => {
   gap: 20px;
   min-height: 100%;
   padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
-    calc(104px + env(safe-area-inset-bottom));
+    calc(24px + env(safe-area-inset-bottom));
+}
+
+.tournament-end-action {
+  padding-top: 2px;
+}
+
+.tournament-end-action button {
+  width: 100%;
+  min-height: var(--v2-sticky-cta-height);
+  padding: 0 18px;
+  border: 0;
+  border-radius: var(--v2-sticky-cta-radius);
+  background: var(--v2-sticky-cta-primary);
+  color: #fff;
+  font: inherit;
+  font-size: var(--v2-sticky-cta-font-size);
+  font-weight: 600;
 }
 
 .running-topbar {
@@ -1246,7 +1264,7 @@ const goBack = () => {
 @media (max-width: 420px) {
   .running-page {
     padding: var(--v2-page-padding-top) var(--v2-page-padding-x)
-      calc(104px + env(safe-area-inset-bottom));
+      calc(24px + env(safe-area-inset-bottom));
   }
 
   .running-summary {

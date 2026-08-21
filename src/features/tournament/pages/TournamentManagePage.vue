@@ -174,6 +174,17 @@
       </div>
     </section>
 
+    <section class="tournament-operation-section">
+      <h2>대회 운영</h2>
+      <button type="button" @click="openTournamentFinish">
+        <span>
+          <strong>토너먼트 종료</strong>
+          <small>결과와 상금을 입력하고 대회를 종료합니다.</small>
+        </span>
+        <q-icon name="chevron_right" size="20px" />
+      </button>
+    </section>
+
     <q-dialog v-model="editSheetOpen" position="bottom">
       <q-card class="tournament-edit-sheet">
         <div class="tournament-edit-sheet__handle" aria-hidden="true"></div>
@@ -473,6 +484,8 @@ import {
 
 const router = useRouter()
 const alert = useAlert()
+const openTournamentFinish = () =>
+  router.push({ name: 'tournament-finish', query: { from: 'manage' } })
 const tournamentMenuOpen = ref(false)
 const editSheetOpen = ref(false)
 const participantSheetOpen = ref(false)
@@ -1314,6 +1327,55 @@ const saveParticipant = async () => {
 .seat-section {
   display: grid;
   gap: 10px;
+}
+
+.tournament-operation-section {
+  display: grid;
+  gap: 10px;
+}
+
+.tournament-operation-section h2 {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 15px;
+  font-weight: 520;
+}
+
+.tournament-operation-section > button {
+  width: 100%;
+  min-height: 64px;
+  padding: 12px 14px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-lg);
+  background: #fff;
+  color: var(--v2-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font: inherit;
+  text-align: left;
+}
+
+.tournament-operation-section > button > span {
+  display: grid;
+  gap: 4px;
+}
+
+.tournament-operation-section strong {
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.tournament-operation-section small {
+  color: var(--v2-text-sub);
+  font-size: 12px;
+  font-weight: 430;
+}
+
+.tournament-operation-section .q-icon {
+  flex: 0 0 auto;
+  color: var(--v2-text-sub);
 }
 
 .section-header h2 {
