@@ -177,7 +177,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
 import { useHandLogStore } from 'src/stores/handLog'
-import { getHandActionLabel, getPreflopRankStat, getResultLabel } from 'src/utils/handLogHandAnalysis'
+import {
+  getHandActionLabel,
+  getPreflopRankStat,
+  getResultLabel,
+  orderHoleCards,
+} from 'src/utils/handLogHandAnalysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -192,7 +197,7 @@ const levelName = computed(
     String(route.query.levelName || '') ||
     (handLogStore.selectedBlindLevel?.levelNo
       ? `L${handLogStore.selectedBlindLevel.levelNo}`
-      : '-')
+      : '-'),
 )
 const handId = computed(() => String(route.params.handId || ''))
 const eventId = computed(
@@ -248,7 +253,7 @@ const reviewShowdownHands = computed(() =>
   Object.entries(reviewTimeline.value.showdownCards || {})
     .map(([position, cards]) => ({
       position,
-      cards: (Array.isArray(cards) ? cards : []).filter(Boolean).map((card) => ({
+      cards: orderHoleCards((Array.isArray(cards) ? cards : []).filter(Boolean)).map((card) => ({
         ...card,
         red: ['♥', '♦'].includes(card.suit),
       })),

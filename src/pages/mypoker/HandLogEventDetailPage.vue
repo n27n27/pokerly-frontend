@@ -377,7 +377,7 @@ import { copyToClipboard } from 'src/utils/copyToClipboard'
 import {
   isPfrAction,
   isShowdownResult,
-  isThreeBetPlusAction,
+  isThreeBetPlusHand,
   isVpipAction,
 } from 'src/utils/handLogHandAnalysis'
 
@@ -451,7 +451,7 @@ const pfrCount = computed(() => {
 })
 
 const threeBetPlusCount = computed(() => {
-  return allHands.value.filter((hand) => isThreeBetPlusAction(getActionValue(hand))).length
+  return allHands.value.filter(isThreeBetPlusHand).length
 })
 
 const showdownCount = computed(() => {

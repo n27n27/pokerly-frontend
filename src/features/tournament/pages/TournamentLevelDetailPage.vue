@@ -299,7 +299,7 @@ import {
   createStartingHandRunSummary,
   getHandActionLabel,
   isPfrAction,
-  isThreeBetPlusAction,
+  isThreeBetPlusHand,
   isVpipAction,
 } from 'src/utils/handLogHandAnalysis'
 
@@ -567,7 +567,7 @@ const stats = computed(() => {
   const actionOf = (hand) => hand.actionType || hand.preflopAction || ''
   const vpip = hands.value.filter((hand) => isVpipAction(actionOf(hand))).length
   const pfr = hands.value.filter((hand) => isPfrAction(actionOf(hand))).length
-  const threeBet = hands.value.filter((hand) => isThreeBetPlusAction(actionOf(hand))).length
+  const threeBet = hands.value.filter(isThreeBetPlusHand).length
   const review = hands.value.filter((hand) => hand.needsReview).length
   return [
     { label: '복기 필요', value: String(review) },

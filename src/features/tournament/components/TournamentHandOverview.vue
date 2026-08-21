@@ -81,7 +81,7 @@ import {
   createStartingHandRunSummary,
   getHandActionLabel,
   isPfrAction,
-  isThreeBetPlusAction,
+  isThreeBetPlusHand,
   isVpipAction,
   normalizeHand,
 } from 'src/utils/handLogHandAnalysis'
@@ -102,7 +102,7 @@ const stats = computed(() => {
   const review = props.hands.filter((hand) => hand.reviewRequired).length
   const vpip = props.hands.filter((hand) => isVpipAction(action(hand))).length
   const pfr = props.hands.filter((hand) => isPfrAction(action(hand))).length
-  const threeBet = props.hands.filter((hand) => isThreeBetPlusAction(action(hand))).length
+  const threeBet = props.hands.filter(isThreeBetPlusHand).length
   return [
     { label: '복기 필요', value: String(review) },
     { label: 'VPIP', value: percent(vpip, total) },

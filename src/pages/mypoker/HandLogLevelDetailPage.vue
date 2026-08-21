@@ -481,7 +481,7 @@ import {
   getResultLabel,
   isPfrAction,
   isShowdownResult,
-  isThreeBetPlusAction,
+  isThreeBetPlusHand,
   isVpipAction,
 } from 'src/utils/handLogHandAnalysis'
 
@@ -559,7 +559,7 @@ const pfrCount = computed(() => {
 })
 
 const threeBetPlusCount = computed(() => {
-  return levelHands.value.filter((hand) => isThreeBetPlusAction(getActionValue(hand))).length
+  return levelHands.value.filter(isThreeBetPlusHand).length
 })
 
 const showdownCount = computed(() => {

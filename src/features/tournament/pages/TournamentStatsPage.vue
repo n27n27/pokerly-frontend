@@ -60,7 +60,7 @@ import { useHandLogStore } from 'src/stores/handLog'
 import PlayAnalysisAccordionList from 'src/features/statistics/components/PlayAnalysisAccordionList.vue'
 import { buildAnalysisRows } from 'src/features/statistics/utils/playAnalysis'
 import {
-  THREE_BET_PLUS_ACTIONS,
+  isThreeBetPlusHand,
   isPfrAction,
   isVpipAction,
   normalizeHand,
@@ -91,9 +91,7 @@ const metrics = computed(() => {
   const pfrCount = hands.filter((hand) =>
     isPfrAction(hand.actionType || hand.preflopAction || ''),
   ).length
-  const threeBetCount = hands.filter((hand) =>
-    THREE_BET_PLUS_ACTIONS.has(hand.actionType || hand.preflopAction || ''),
-  ).length
+  const threeBetCount = hands.filter(isThreeBetPlusHand).length
 
   return [
     { label: 'VPIP', value: formatRate(vpipCount, total) },
@@ -114,11 +112,11 @@ const actionGroups = [
     matches: (value) =>
       ['OPEN', 'ISO_RAISE', 'OPEN_FOLD_TO_3BET', 'OPEN_CALL_3BET'].includes(value),
   },
-  { label: '3Bet+', matches: (value) => THREE_BET_PLUS_ACTIONS.has(value) },
+  { label: '3Bet+', matches: (_value, hand) => isThreeBetPlusHand(hand) },
 ]
 const actions = computed(() =>
   actionGroups.map((group) => {
-    const count = allHands.value.filter((hand) => group.matches(actionType(hand))).length
+    const count = allHands.value.filter((hand) => group.matches(actionType(hand), hand)).length
     return {
       label: group.label,
       count,
@@ -161,9 +159,7 @@ const tournamentFeatures = computed(() => {
     features.push(`${label}${particle} 가장 많이 기록된 프리플랍 액션입니다.`)
   }
 
-  const threeBetCount = hands.filter((hand) =>
-    THREE_BET_PLUS_ACTIONS.has(actionType(hand)),
-  ).length
+  const threeBetCount = hands.filter(isThreeBetPlusHand).length
   if (threeBetCount > 0) features.push(`3Bet은 ${threeBetCount}회 기록했습니다.`)
 
   const bbDefenseCount = hands.filter(

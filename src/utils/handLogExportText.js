@@ -1,4 +1,4 @@
-import { getActionLabel, getResultLabel } from './handLogHandAnalysis.js'
+import { getActionLabel, getResultLabel, orderHoleCards } from './handLogHandAnalysis.js'
 
 const formatNumber = (value) => {
   if (value === null || value === undefined || value === '') {
@@ -92,14 +92,19 @@ const formatTimeline = (hand) => {
   const board = parseJson(hand?.boardCards, [])
   board.forEach((street) => {
     const cards = (street.cards || []).map(formatCard).filter(Boolean)
-    if (cards.length) lines.push(`   보드 ${String(street.key || street.name || '').toUpperCase()}: ${cards.join(' ')}`)
+    if (cards.length)
+      lines.push(
+        `   보드 ${String(street.key || street.name || '').toUpperCase()}: ${cards.join(' ')}`,
+      )
   })
 
   const showdownEntries = Object.entries(timeline.showdownCards || {}).filter(([, cards]) =>
     cards?.some(Boolean),
   )
   showdownEntries.forEach(([player, cards]) => {
-    lines.push(`   쇼다운 ${player}: ${cards.map(formatCard).filter(Boolean).join(' ')}`)
+    lines.push(
+      `   쇼다운 ${player}: ${orderHoleCards(cards).map(formatCard).filter(Boolean).join(' ')}`,
+    )
   })
 
   if (timeline.actions?.length) {

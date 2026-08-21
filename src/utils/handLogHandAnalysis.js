@@ -422,6 +422,44 @@ const getRankIndex = (rank) => {
   return RANKS.indexOf(rank)
 }
 
+export const orderHoleCardFields = (hand) => {
+  if (!hand) return hand
+
+  const firstRank = String(hand.firstRank || '')
+    .toUpperCase()
+    .replace('10', 'T')
+  const secondRank = String(hand.secondRank || '')
+    .toUpperCase()
+    .replace('10', 'T')
+  const firstIndex = getRankIndex(firstRank)
+  const secondIndex = getRankIndex(secondRank)
+
+  if (firstIndex < 0 || secondIndex < 0 || firstIndex <= secondIndex) return hand
+
+  return {
+    ...hand,
+    firstRank: secondRank,
+    firstSuit: hand.secondSuit,
+    secondRank: firstRank,
+    secondSuit: hand.firstSuit,
+  }
+}
+
+export const orderHoleCards = (cards) => {
+  if (!Array.isArray(cards) || cards.length !== 2 || cards.some((card) => !card)) return cards
+
+  const rankOf = (card) =>
+    String(card?.rank || '')
+      .toUpperCase()
+      .replace('10', 'T')
+  const firstIndex = getRankIndex(rankOf(cards[0]))
+  const secondIndex = getRankIndex(rankOf(cards[1]))
+
+  return firstIndex >= 0 && secondIndex >= 0 && firstIndex > secondIndex
+    ? [cards[1], cards[0]]
+    : cards
+}
+
 export const normalizeHand = (hand) => {
   const value = String(hand || '')
     .trim()
@@ -523,6 +561,20 @@ export const isPfrAction = (action) => {
 
 export const isThreeBetPlusAction = (action) => {
   return THREE_BET_PLUS_ACTIONS.has(action)
+}
+
+export const isThreeBetPlusHand = (hand) => {
+  const secondaryAction = String(hand?.secondaryAction || '')
+    .trim()
+    .toUpperCase()
+  if (['THREE_BET_PLUS', 'FOUR_BET_PLUS', 'FIVE_BET_PLUS'].includes(secondaryAction)) {
+    return true
+  }
+
+  const primaryAction = String(hand?.actionType || hand?.preflopAction || '')
+    .trim()
+    .toUpperCase()
+  return isThreeBetPlusAction(primaryAction)
 }
 
 export const isShowdownResult = (result) => {

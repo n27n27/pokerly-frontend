@@ -20,7 +20,11 @@ import {
 } from 'src/api/handLogApi'
 import { formatLocalDate } from 'src/utils/localDate'
 
-import { getHandStrength, normalizeHand as normalizeStartingHand } from 'src/utils/handLogHandAnalysis'
+import {
+  getHandStrength,
+  normalizeHand as normalizeStartingHand,
+  orderHoleCardFields,
+} from 'src/utils/handLogHandAnalysis'
 
 const normalizeCardRankForApi = (rank) => {
   const value = String(rank || '')
@@ -73,12 +77,13 @@ export const useHandLogStore = defineStore('handLog', () => {
   const normalizeHand = (hand) => {
     if (!hand) return null
 
-    const rawHand = hand.holeCards || hand.hand || ''
+    const orderedHand = orderHoleCardFields(hand)
+    const rawHand = orderedHand.holeCards || orderedHand.hand || ''
     const holeCards = normalizeStartingHand(rawHand) || rawHand
     const handStrength = getHandStrength(holeCards)
 
     return {
-      ...hand,
+      ...orderedHand,
       holeCards,
       hand: holeCards,
       reviewRequired: Boolean(hand.reviewRequired),

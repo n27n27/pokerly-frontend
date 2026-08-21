@@ -226,7 +226,7 @@ import {
   createStartingHandRunSummary,
   getHandActionLabel,
   isPfrAction,
-  isThreeBetPlusAction,
+  isThreeBetPlusHand,
   isVpipAction,
   normalizeHand,
 } from 'src/utils/handLogHandAnalysis'
@@ -451,7 +451,7 @@ const preflopSummary = computed(() => {
   return [
     `VPIP ${percent(hands.filter((hand) => isVpipAction(action(hand))).length)}`,
     `PFR ${percent(hands.filter((hand) => isPfrAction(action(hand))).length)}`,
-    `3Bet+ ${percent(hands.filter((hand) => isThreeBetPlusAction(action(hand))).length)}`,
+    `3Bet+ ${percent(hands.filter(isThreeBetPlusHand).length)}`,
   ].join(' · ')
 })
 

@@ -271,6 +271,7 @@ import CardPickerSheet from 'src/shared/components/CardPickerSheet.vue'
 import { useAlert } from 'src/composables/useAlert'
 import { useHandActionTimeline } from 'src/features/tournament/composables/useHandActionTimeline'
 import { useHandLogStore } from 'src/stores/handLog'
+import { orderHoleCards } from 'src/utils/handLogHandAnalysis'
 
 const route = useRoute()
 const router = useRouter()
@@ -510,7 +511,12 @@ const loadHandDetails = async () => {
       const savedTimeline = JSON.parse(hand.actionTimeline)
       timeline.hydrate(savedTimeline)
       selectedPlayers.value = [...timeline.trackedPlayers.value]
-      showdownCards.value = { ...(savedTimeline.showdownCards || {}) }
+      showdownCards.value = Object.fromEntries(
+        Object.entries(savedTimeline.showdownCards || {}).map(([position, cards]) => [
+          position,
+          orderHoleCards(cards),
+        ]),
+      )
     }
   } catch {
     alert.show('상세 정보를 불러오지 못했습니다.', 'error')
