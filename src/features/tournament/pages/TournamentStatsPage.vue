@@ -229,21 +229,21 @@ onMounted(async () => {
 }
 
 .detail-topbar {
+  position: relative;
   display: grid;
   width: 100%;
   height: 36px;
   min-height: 36px;
   max-height: 36px;
   flex: 0 0 36px;
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 10px;
 }
 
 .detail-topbar button {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -257,6 +257,10 @@ onMounted(async () => {
   font-weight: 650;
   line-height: 1.2;
   text-align: center;
+}
+
+.detail-topbar > span {
+  display: block;
 }
 
 .feature-summary {

@@ -786,7 +786,7 @@ const goBack = () => {
   min-height: var(--v2-detail-topbar-height);
   max-height: var(--v2-detail-topbar-height);
   flex: 0 0 var(--v2-detail-topbar-height);
-  grid-template-columns: 44px 1fr 44px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
   background: var(--v2-page-bg);
 }
@@ -800,10 +800,15 @@ const goBack = () => {
   background: transparent;
   color: var(--v2-text-main);
 }
+.topbar > button:first-of-type {
+  grid-column: 1;
+}
 .topbar > button:last-of-type {
-  justify-self: end;
+  grid-column: 3;
 }
 .topbar h1 {
+  grid-column: 2;
+  grid-row: 1;
   margin: 0;
   font-size: 21px;
   font-weight: 650;

@@ -38,6 +38,7 @@ html.is-native body {
   z-index: var(--v2-app-bar-z);
   top: 0;
   box-sizing: content-box;
+  width: auto !important;
   min-height: var(--v2-detail-topbar-height);
   margin-top: calc(var(--v2-page-padding-top) * -1);
   margin-right: calc(var(--v2-page-padding-x) * -1);

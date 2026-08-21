@@ -72,7 +72,7 @@
           :key="item.id"
           class="simple-record"
           type="button"
-          @click="goSimpleRecord(item.id)"
+          @click="openRecentTournament(item)"
         >
           <span class="simple-record__main">
             <strong>{{ item.title }}</strong>

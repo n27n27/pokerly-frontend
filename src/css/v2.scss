@@ -102,21 +102,21 @@ h6 {
 }
 
 .tournament-analysis-topbar {
+  position: relative;
   display: grid;
   width: 100%;
   height: var(--v2-detail-topbar-height);
   min-height: var(--v2-detail-topbar-height);
   max-height: var(--v2-detail-topbar-height);
   flex: 0 0 var(--v2-detail-topbar-height);
-  grid-template-columns: 40px minmax(0, 1fr) 40px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
   align-items: center;
-  gap: 10px;
 }
 
 .tournament-analysis-topbar button {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   place-items: center;
   padding: 0;
   border: 0;
@@ -131,6 +131,10 @@ h6 {
   font-weight: 650;
   line-height: 1.2;
   text-align: center;
+}
+
+.tournament-analysis-topbar > span {
+  display: block;
 }
 
 .app-card {
