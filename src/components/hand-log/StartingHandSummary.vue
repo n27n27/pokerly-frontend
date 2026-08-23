@@ -3,7 +3,7 @@
     <div class="section-title">핸드 요약</div>
 
     <div class="text-caption text-grey-7 q-mt-xs">
-      169개 스타팅 핸드 순위 기준, 주요 그룹은 실전 분류 기준입니다.
+      1,326개 실제 콤보 확률 기준, 주요 그룹은 실전 분류 기준입니다.
     </div>
 
     <div class="run-card q-mt-md">

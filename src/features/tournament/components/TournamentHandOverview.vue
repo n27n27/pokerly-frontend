@@ -16,7 +16,7 @@
     <section>
       <div class="section-heading section-heading--spread">
         <h2>순위 구간 분포</h2>
-        <span>169개 스타팅 핸드 기준</span>
+        <span>1,326개 실제 콤보 확률 기준</span>
       </div>
       <div class="rank-card">
         <div class="rank-meter">

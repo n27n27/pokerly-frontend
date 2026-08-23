@@ -205,40 +205,40 @@ export const ALL_IN_COMPATIBLE_ACTIONS = new Set([
 ])
 
 export const PREFLOP_RANK_BUCKETS = [
-  { key: 'P1_10', label: '1~10%', minRank: 1, maxRank: 17 },
-  { key: 'P11_20', label: '11~20%', minRank: 18, maxRank: 34 },
-  { key: 'P21_30', label: '21~30%', minRank: 35, maxRank: 51 },
-  { key: 'P31_40', label: '31~40%', minRank: 52, maxRank: 68 },
-  { key: 'P41_50', label: '41~50%', minRank: 69, maxRank: 85 },
-  { key: 'P51_60', label: '51~60%', minRank: 86, maxRank: 102 },
-  { key: 'P61_70', label: '61~70%', minRank: 103, maxRank: 119 },
-  { key: 'P71_80', label: '71~80%', minRank: 120, maxRank: 136 },
-  { key: 'P81_90', label: '81~90%', minRank: 137, maxRank: 153 },
-  { key: 'P91_100', label: '91~100%', minRank: 154, maxRank: 169 },
+  { key: 'P1_10', label: '1~10%', minRank: 1, maxRank: 24 },
+  { key: 'P11_20', label: '11~20%', minRank: 25, maxRank: 46 },
+  { key: 'P21_30', label: '21~30%', minRank: 47, maxRank: 72 },
+  { key: 'P31_40', label: '31~40%', minRank: 73, maxRank: 94 },
+  { key: 'P41_50', label: '41~50%', minRank: 95, maxRank: 112 },
+  { key: 'P51_60', label: '51~60%', minRank: 113, maxRank: 125 },
+  { key: 'P61_70', label: '61~70%', minRank: 126, maxRank: 136 },
+  { key: 'P71_80', label: '71~80%', minRank: 137, maxRank: 147 },
+  { key: 'P81_90', label: '81~90%', minRank: 148, maxRank: 158 },
+  { key: 'P91_100', label: '91~100%', minRank: 159, maxRank: 169 },
 ]
 
 export const PREFLOP_RANK_SUMMARY_BUCKETS = [
   {
     key: 'TOP',
     label: '상위 20%',
-    description: '1~34위',
+    description: '1~46위',
     minRank: 1,
-    maxRank: 34,
+    maxRank: 46,
     colorClass: 'rank-summary-card--top',
   },
   {
     key: 'MIDDLE',
     label: '중간 21~60%',
-    description: '35~102위',
-    minRank: 35,
-    maxRank: 102,
+    description: '47~125위',
+    minRank: 47,
+    maxRank: 125,
     colorClass: 'rank-summary-card--middle',
   },
   {
     key: 'LOW',
     label: '하위 61~100%',
-    description: '103~169위',
-    minRank: 103,
+    description: '126~169위',
+    minRank: 126,
     maxRank: 169,
     colorClass: 'rank-summary-card--low',
   },
@@ -418,6 +418,16 @@ export const PREFLOP_169_RANKING = [
 
 const PREFLOP_RANK_MAP = new Map(PREFLOP_169_RANKING.map((hand, index) => [hand, index + 1]))
 
+export const TOTAL_STARTING_HAND_COMBOS = 1326
+
+export const getStartingHandComboCount = (hand) => {
+  const normalized = normalizeHand(hand)
+
+  if (!normalized) return 0
+  if (normalized.length === 2) return 6
+  return normalized.endsWith('s') ? 4 : 12
+}
+
 const getRankIndex = (rank) => {
   return RANKS.indexOf(rank)
 }
@@ -490,6 +500,11 @@ export const normalizeHand = (hand) => {
 
   return `${highRank}${lowRank}${suffix}`
 }
+
+const PREFLOP_CUMULATIVE_COMBO_COUNTS = PREFLOP_169_RANKING.reduce((counts, hand) => {
+  counts.push((counts.at(-1) || 0) + getStartingHandComboCount(hand))
+  return counts
+}, [])
 
 const findPreflopRankBucket = (rank) => {
   return PREFLOP_RANK_BUCKETS.find((bucket) => {
@@ -663,7 +678,11 @@ export const getPreflopRankStat = (hand) => {
   return {
     hand: normalized,
     rank,
-    percentile: Number(((rank / PREFLOP_169_RANKING.length) * 100).toFixed(1)),
+    percentile: Number(
+      ((PREFLOP_CUMULATIVE_COMBO_COUNTS[rank - 1] / TOTAL_STARTING_HAND_COMBOS) * 100).toFixed(
+        1,
+      ),
+    ),
     bucketKey: bucket?.key || 'UNKNOWN',
     bucketLabel: bucket?.label || '알 수 없음',
     summaryKey: summaryBucket?.key || 'UNKNOWN',
@@ -798,32 +817,32 @@ export const STARTING_HAND_RUN_BUCKETS = [
   {
     key: 'TOP_10',
     label: '상위 10%',
-    description: '1~17위',
+    description: '1~24위',
     minRank: 1,
-    maxRank: 17,
+    maxRank: 24,
     tone: 'premium',
   },
   {
     key: 'TOP_11_25',
     label: '상위 11~25%',
-    description: '18~42위',
-    minRank: 18,
-    maxRank: 42,
+    description: '25~56위',
+    minRank: 25,
+    maxRank: 56,
     tone: 'strong',
   },
   {
     key: 'MID_26_60',
     label: '중위 26~60%',
-    description: '43~102위',
-    minRank: 43,
-    maxRank: 102,
+    description: '57~125위',
+    minRank: 57,
+    maxRank: 125,
     tone: 'middle',
   },
   {
     key: 'LOW_61_100',
     label: '하위 61~100%',
-    description: '103~169위',
-    minRank: 103,
+    description: '126~169위',
+    minRank: 126,
     maxRank: 169,
     tone: 'low',
   },
@@ -832,7 +851,7 @@ export const STARTING_HAND_RUN_BUCKETS = [
 export const createStartingHandRunSummary = (hands = []) => {
   const normalizedHands = hands
     .map((item) => normalizeHand(getHandInputValue(item)))
-    .filter(Boolean)
+    .filter((hand) => PREFLOP_RANK_MAP.has(hand))
 
   const total = normalizedHands.length
 

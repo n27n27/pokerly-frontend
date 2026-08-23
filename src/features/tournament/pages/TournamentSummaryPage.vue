@@ -118,7 +118,7 @@
     <section v-if="tournamentHands.length" class="content-section">
       <div class="rank-distribution__heading">
         <h2>순위 구간 분포</h2>
-        <span>169개 스타팅 핸드 기준</span>
+        <span>1,326개 실제 콤보 확률 기준</span>
       </div>
       <div class="rank-distribution__card">
         <div class="rank-meter" aria-hidden="true">
