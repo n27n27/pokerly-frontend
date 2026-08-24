@@ -83,3 +83,53 @@ test('모든 통계 화면이 동일한 8개 포지션 정규화 규칙을 사�
   assert.equal(normalizePosition('BTN'), 'BTN')
   assert.equal(normalizePosition('unknown'), '')
 })
+
+test('포지션 통계는 BB 체크를 플레이로 집계하고 워크는 제외한다', () => {
+  const hands = [
+    { position: 'BB', actionType: 'CHECK', resultType: 'WIN' },
+    { position: 'BB', actionType: 'BB_DEFENSE', resultType: 'LOSS' },
+    { position: 'BB', actionType: 'WALK', resultType: 'NON_SHOWDOWN_WIN' },
+  ]
+
+  const [row] = buildAnalysisRows(
+    ['BB'],
+    hands,
+    (hand) => hand.position,
+    { includeBigBlindChecks: true },
+  )
+
+  assert.equal(row.participationLabel, '플레이')
+  assert.equal(row.participated, 2)
+  assert.equal(row.participatedWins, 1)
+  assert.equal(row.participatedLosses, 1)
+  assert.equal(row.participatedResultCount, 2)
+  assert.equal(row.winRate, 50)
+})
+
+test('BB 플레이 결과 미기록은 승률 표본에서 제외한다', () => {
+  const hands = [
+    { position: 'BB', actionType: 'CHECK', resultType: 'NOT_RECORDED' },
+    { position: 'BB', actionType: 'BB_DEFENSE' },
+  ]
+
+  const [row] = buildAnalysisRows(
+    ['BB'],
+    hands,
+    (hand) => hand.position,
+    { includeBigBlindChecks: true },
+  )
+
+  assert.equal(row.participated, 2)
+  assert.equal(row.participatedUnrecorded, 2)
+  assert.equal(row.participatedResultCount, 0)
+  assert.equal(row.winRate, 0)
+})
+
+test('표준 VPIP 집계는 BB 체크를 포함하지 않는다', () => {
+  const hands = [{ position: 'BB', actionType: 'CHECK', resultType: 'WIN' }]
+  const [row] = buildAnalysisRows(['BB'], hands, (hand) => hand.position)
+
+  assert.equal(row.participationLabel, '참여')
+  assert.equal(row.participated, 0)
+  assert.equal(row.participatedResultCount, 0)
+})

@@ -13,8 +13,11 @@
         <span>총 {{ positionRow.total }}회</span>
       </div>
       <div class="position-summary__metrics">
-        <span>참여 <strong>{{ formatAnalysisRate(positionRow.participationRate) }}</strong></span>
-        <span>참여 승률 <strong>{{ formatAnalysisRate(positionRow.winRate) }}</strong></span>
+        <span>{{ positionRow.participationLabel }} <strong>{{ formatAnalysisRate(positionRow.participationRate) }}</strong></span>
+        <span>
+          승률
+          <strong>{{ positionRow.participatedResultCount ? formatAnalysisRate(positionRow.winRate) : '-' }}</strong>
+        </span>
       </div>
       <p>{{ playSummary }}</p>
     </section>
@@ -127,6 +130,7 @@ const positionRow = computed(() => buildAnalysisRows(
   [position.value],
   positionHands.value,
   (hand) => normalizePosition(hand.position),
+  { includeBigBlindChecks: true },
 )[0])
 const actionHands = (key) => positionRow.value.actions.find(
   (option) => option.key === key,
@@ -152,7 +156,7 @@ const playSummary = computed(() => {
   const actionParts = summaryActions
     .filter((action) => action.hands.length > 0)
     .map((action) => `${action.label} ${action.hands.length}`)
-  return [`${positionRow.value.participated}회 참여`, ...actionParts].join(' · ')
+  return [`${positionRow.value.participated}회 ${positionRow.value.participationLabel}`, ...actionParts].join(' · ')
 })
 const selectedHands = computed(() =>
   actionOptions.value.find((option) => option.key === selectedAction.value)?.hands || [],

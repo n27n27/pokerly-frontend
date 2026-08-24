@@ -10,8 +10,11 @@
 
     <section class="tournament-position-summary">
       <div><span>총 기록</span><strong>{{ positionRow.total }}회</strong></div>
-      <div><span>참여</span><strong>{{ positionRow.participated }}회</strong><small>{{ rate(positionRow.participationRate) }}</small></div>
-      <div><span>참여 승률</span><strong>{{ rate(positionRow.winRate) }}</strong></div>
+      <div><span>{{ positionRow.participationLabel }}</span><strong>{{ positionRow.participated }}회</strong><small>{{ rate(positionRow.participationRate) }}</small></div>
+      <div>
+        <span>승률</span>
+        <strong>{{ positionRow.participatedResultCount ? rate(positionRow.winRate) : '-' }}</strong>
+      </div>
     </section>
 
     <div class="action-filter" role="radiogroup" aria-label="프리플랍 액션">
@@ -59,7 +62,12 @@ const session = ref(null)
 
 const allHands = computed(() => (store.selectedEvent?.blindLevels || []).flatMap((level) => level.hands || []))
 const positionHands = computed(() => allHands.value.filter((hand) => normalizePosition(hand.position) === position.value))
-const positionRow = computed(() => buildAnalysisRows([position.value], positionHands.value, (hand) => normalizePosition(hand.position))[0])
+const positionRow = computed(() => buildAnalysisRows(
+  [position.value],
+  positionHands.value,
+  (hand) => normalizePosition(hand.position),
+  { includeBigBlindChecks: true },
+)[0])
 const actionHands = (key) => positionRow.value.actions.find((action) => action.key === key)?.hands || []
 const actionOptions = computed(() => [
   { key: 'all', label: '전체', hands: positionHands.value },

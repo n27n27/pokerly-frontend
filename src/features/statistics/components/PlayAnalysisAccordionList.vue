@@ -25,14 +25,16 @@
               class="analysis-row__metric analysis-row__metric--participation"
               :class="{ 'is-zero': row.participationRate === 0 }"
             >
-              참여 <strong>{{ formatRate(row.participationRate) }}</strong>
+              {{ row.participationLabel || '참여' }}
+              <strong>{{ formatRate(row.participationRate) }}</strong>
             </span>
             <span
               class="analysis-row__metric analysis-row__metric--win"
-              :class="{ 'is-zero': row.winRate === 0 }"
-              aria-label="참여했을 때 승률"
+              :class="{ 'is-zero': row.participatedResultCount > 0 && row.winRate === 0 }"
+              :aria-label="`${row.participationLabel || '참여'}했을 때 승률`"
             >
-              승률 <strong>{{ formatRate(row.winRate) }}</strong>
+              승률
+              <strong>{{ formatWinRate(row) }}</strong>
             </span>
           </template>
           <strong v-else>{{ formatParticipatedResult(row) }}</strong>
@@ -49,12 +51,12 @@
             <small aria-hidden="true">&nbsp;</small>
           </div>
           <div>
-            <span>참여</span>
+            <span>{{ row.participationLabel || '참여' }}</span>
             <strong>{{ row.participated }}회</strong>
             <small>{{ formatRate(row.participationRate) }}</small>
           </div>
           <div>
-            <span>참여 결과</span>
+            <span>{{ row.participationLabel || '참여' }} 결과</span>
             <strong>{{ formatParticipatedResult(row) }}</strong>
             <small aria-hidden="true">&nbsp;</small>
           </div>
@@ -156,16 +158,23 @@ const openAndScroll = async (key) => {
 defineExpose({ openAndScroll })
 
 const formatRate = formatAnalysisRate
-const formatResultWithDraws = (item) => [
-  `${item.wins}승`,
-  `${item.losses}패`,
-  item.draws ? `${item.draws}무` : '',
-].filter(Boolean).join(' · ')
-const formatParticipatedResult = (item) => [
-  `${item.participatedWins}승`,
-  `${item.participatedLosses}패`,
-  item.participatedDraws ? `${item.participatedDraws}무` : '',
-].filter(Boolean).join(' · ')
+const formatWinRate = (item) => item.participatedResultCount
+  ? formatAnalysisRate(item.winRate)
+  : '-'
+const formatResultCounts = (wins, losses, draws) => {
+  if (wins + losses + draws === 0) return '결과 미기록'
+  return [
+    `${wins}승`,
+    `${losses}패`,
+    draws ? `${draws}무` : '',
+  ].filter(Boolean).join(' · ')
+}
+const formatResultWithDraws = (item) => formatResultCounts(item.wins, item.losses, item.draws)
+const formatParticipatedResult = (item) => formatResultCounts(
+  item.participatedWins,
+  item.participatedLosses,
+  item.participatedDraws,
+)
 </script>
 
 <style scoped>

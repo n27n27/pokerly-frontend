@@ -592,11 +592,16 @@ const handSummary = computed(() => {
 const positionSummary = computed(() => {
   const hands = filteredHands.value.filter((hand) => normalizePosition(hand.position))
   if (!hands.length) return null
-  const rows = buildAnalysisRows(POSITION_ORDER, hands, (hand) => normalizePosition(hand.position))
+  const rows = buildAnalysisRows(
+    POSITION_ORDER,
+    hands,
+    (hand) => normalizePosition(hand.position),
+    { includeBigBlindChecks: true },
+  )
     .filter((row) => row.total > 0)
   const mostPlayed = [...rows].sort((a, b) => b.participationRate - a.participationRate)[0]
   const bestWinning = [...rows]
-    .filter((row) => row.participated > 0)
+    .filter((row) => row.participatedResultCount > 0)
     .sort((a, b) => b.winRate - a.winRate)[0]
   if (!mostPlayed || !bestWinning) return null
   return {

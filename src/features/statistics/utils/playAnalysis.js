@@ -131,9 +131,12 @@ export const buildPlaySummary = (hands) => {
   }
 }
 
-export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
+export const buildAnalysisRows = (keys, hands, keyOf, options = {}) => keys.map((key) => {
   const matchedHands = hands.filter((hand) => keyOf(hand) === key)
-  const participatedHands = matchedHands.filter((hand) => isVpipAction(actionOf(hand)))
+  const includesBigBlindChecks = options.includeBigBlindChecks && key === 'BB'
+  const isParticipatedHand = (hand, includeCheck = includesBigBlindChecks) =>
+    isVpipAction(actionOf(hand)) || (includeCheck && actionOf(hand) === 'CHECK')
+  const participatedHands = matchedHands.filter((hand) => isParticipatedHand(hand))
   const participated = participatedHands.length
   const results = countResults(matchedHands)
   const participatedResults = countResults(participatedHands)
@@ -171,7 +174,8 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
 
   const positions = POSITION_ORDER.map((position) => {
     const positionHands = matchedHands.filter((hand) => normalizePosition(hand.position) === position)
-    const positionParticipatedHands = positionHands.filter((hand) => isVpipAction(actionOf(hand)))
+    const positionParticipatedHands = positionHands.filter((hand) =>
+      isParticipatedHand(hand, options.includeBigBlindChecks && position === 'BB'))
     return {
       key: position,
       label: position,
@@ -186,6 +190,7 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
     label: key,
     total: matchedHands.length,
     participated,
+    participationLabel: includesBigBlindChecks ? '플레이' : '참여',
     participationRate: matchedHands.length ? participated * 100 / matchedHands.length : 0,
     winRate: recordedParticipatedResults
       ? participatedResults.wins * 100 / recordedParticipatedResults
@@ -194,6 +199,7 @@ export const buildAnalysisRows = (keys, hands, keyOf) => keys.map((key) => {
     participatedLosses: participatedResults.losses,
     participatedDraws: participatedResults.draws,
     participatedUnrecorded: participatedResults.unrecorded,
+    participatedResultCount: recordedParticipatedResults,
     actions: groupedActions,
     hands: matchedHands,
     positions,

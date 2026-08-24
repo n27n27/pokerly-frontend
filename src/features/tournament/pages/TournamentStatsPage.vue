@@ -174,6 +174,7 @@ const positionRows = computed(() => buildAnalysisRows(
   POSITION_ORDER,
   allHands.value,
   (hand) => normalizePosition(hand.position),
+  { includeBigBlindChecks: true },
 ))
 const openPositionDetail = (row) => router.push({
   name: 'tournament-position-stats',

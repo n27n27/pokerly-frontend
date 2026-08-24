@@ -82,12 +82,13 @@ const rows = computed(() => buildAnalysisRows(
   POSITION_ORDER,
   normalizedHands.value,
   (hand) => hand.normalizedPosition,
+  { includeBigBlindChecks: true },
 ))
 const highestParticipation = computed(() => rows.value
   .filter((row) => row.total > 0)
   .reduce((best, row) => (!best || row.participationRate > best.participationRate ? row : best), null))
 const highestWinRate = computed(() => rows.value
-  .filter((row) => row.participated > 0)
+  .filter((row) => row.participatedResultCount > 0)
   .reduce((best, row) => (!best || row.winRate > best.winRate ? row : best), null))
 const summaryItems = computed(() => [
   { label: '기록 핸드', value: `${normalizedHands.value.length}개` },
