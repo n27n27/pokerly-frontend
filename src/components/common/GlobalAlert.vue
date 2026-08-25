@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 
 const visible = ref(false)
 const message = ref('')
@@ -39,6 +39,8 @@ function show(msg, t = 'info', duration = 2400) {
   clearTimeout(timer)
   timer = setTimeout(() => (visible.value = false), duration)
 }
+
+onBeforeUnmount(() => clearTimeout(timer))
 
 defineExpose({ show })
 </script>

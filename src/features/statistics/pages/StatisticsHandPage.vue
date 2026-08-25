@@ -104,10 +104,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
-import { fetchHandLogEvent } from 'src/api/handLogApi'
+import { getStatisticsEvents } from 'src/services/statisticsEventRepository'
 import {
   getHandInputValue,
   normalizeHand,
@@ -172,6 +172,7 @@ const handTypeOptions = [
   { label: '오프수딧', value: 'offsuit' },
 ]
 let loadSequence = 0
+let loadController = null
 
 const filterByVenue = (list) => {
   const venueId = filter.value.venueId
@@ -233,31 +234,29 @@ const displayRows = computed(() => {
 })
 const load = async () => {
   const sequence = ++loadSequence
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
   loadError.value = ''
   try {
     const sessionList = filter.value.allPeriod
-      ? await fetchAllGameSessions()
-      : await fetchMonthlySessions(filter.value.year, filter.value.month)
+      ? await fetchAllGameSessions({ signal: controller.signal })
+      : await fetchMonthlySessions(filter.value.year, filter.value.month, { signal: controller.signal })
     const completed = filterByVenue((sessionList || [])
       .filter((item) => item.tournamentStatus !== 'RUNNING'))
     const eventIds = [...new Set(completed
       .map((item) => item.handLogEventId)
       .filter(Boolean)
       .map(String))]
-    const events = await Promise.all(eventIds.map(async (eventId) => {
-      try {
-        return await fetchHandLogEvent(eventId)
-      } catch {
-        return null
-      }
-    }))
+    const events = await getStatisticsEvents(eventIds, { signal: controller.signal })
     if (sequence !== loadSequence) return
     hands.value = events
       .filter(Boolean)
       .flatMap((event) => (event.blindLevels || [])
         .flatMap((level) => level.hands || []))
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return
     if (sequence !== loadSequence) return
     console.error('핸드 통계 로드 실패', error)
     hands.value = []
@@ -282,6 +281,7 @@ const applyFilters = (nextFilter) => {
 }
 
 onMounted(load)
+onBeforeUnmount(() => loadController?.abort())
 </script>
 
 <style scoped>

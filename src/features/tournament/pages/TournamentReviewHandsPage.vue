@@ -10,7 +10,7 @@
 
     <section class="hand-list" aria-label="복기 핸드 목록">
       <article
-        v-for="hand in hands"
+        v-for="hand in visibleHands"
         :key="hand.id"
         class="hand-row"
         role="button"
@@ -35,12 +35,13 @@
         </span>
       </article>
       <div v-if="!hands.length" class="hand-list__empty">복기할 핸드가 없습니다.</div>
+      <div v-if="hasMoreHands" ref="loadMoreSentinel" class="hand-list__sentinel" aria-hidden="true"></div>
     </section>
   </q-page>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { fetchGameSession } from 'src/api/gameSession'
@@ -60,6 +61,10 @@ const runningTournament = (() => {
 })()
 const tournamentId = computed(() => route.params.tournamentId)
 const loadedEventId = ref(route.query.eventId || route.query.legacyEventId || null)
+const visibleCount = ref(40)
+const loadMoreSentinel = ref(null)
+let listObserver = null
+const loadController = new AbortController()
 
 const cardsOf = (hand) => {
   const ranks =
@@ -103,6 +108,18 @@ const hands = computed(() =>
       })),
   ),
 )
+const visibleHands = computed(() => hands.value.slice(0, visibleCount.value))
+const hasMoreHands = computed(() => visibleCount.value < hands.value.length)
+
+const observeIncrementalList = async () => {
+  await nextTick()
+  listObserver?.disconnect()
+  if (!loadMoreSentinel.value || !hasMoreHands.value) return
+  listObserver = new IntersectionObserver(([entry]) => {
+    if (entry.isIntersecting) visibleCount.value = Math.min(visibleCount.value + 40, hands.value.length)
+  }, { rootMargin: '300px 0px' })
+  listObserver.observe(loadMoreSentinel.value)
+}
 
 const openHand = (hand) => {
   router.push({
@@ -123,7 +140,9 @@ onMounted(async () => {
   if (!tournamentId.value) return
   try {
     const explicitEventId = route.query.eventId || route.query.legacyEventId
-    const session = explicitEventId ? null : await fetchGameSession(tournamentId.value)
+    const session = explicitEventId
+      ? null
+      : await fetchGameSession(tournamentId.value, { signal: loadController.signal })
     const eventId = explicitEventId || session?.handLogEventId ||
       (String(runningTournament.sessionId) === String(tournamentId.value)
         ? runningTournament.eventId
@@ -135,14 +154,20 @@ onMounted(async () => {
     }
 
     loadedEventId.value = eventId
-    await handLogStore.fetchEventDetail(eventId)
+    await handLogStore.fetchEventDetail(eventId, { signal: loadController.signal })
+    await observeIncrementalList()
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return
     if (error?.response?.status === 404) {
       handLogStore.selectedEvent = null
       return
     }
     alert.show('복기 핸드를 불러오지 못했습니다.', 'error')
   }
+})
+onBeforeUnmount(() => {
+  loadController.abort()
+  listObserver?.disconnect()
 })
 </script>
 
@@ -159,6 +184,10 @@ onMounted(async () => {
 .review-hands-page *::before,
 .review-hands-page *::after {
   box-sizing: border-box;
+}
+
+.hand-list__sentinel {
+  min-height: 1px;
 }
 
 .review-topbar {

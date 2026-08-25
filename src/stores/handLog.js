@@ -339,7 +339,7 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
-  const fetchEventDetail = async (eventId) => {
+  const fetchEventDetail = async (eventId, { signal } = {}) => {
     if (!eventId) {
       selectedEvent.value = null
       return null
@@ -348,7 +348,8 @@ export const useHandLogStore = defineStore('handLog', () => {
     detailLoading.value = true
 
     try {
-      const data = await fetchHandLogEvent(eventId)
+      const data = await fetchHandLogEvent(eventId, { signal })
+      if (signal?.aborted) return null
 
       const normalized = upsertEvent(data)
 
@@ -540,7 +541,7 @@ export const useHandLogStore = defineStore('handLog', () => {
     }
   }
 
-  const fetchBlindLevelDetail = async (eventId, blindLevelId) => {
+  const fetchBlindLevelDetail = async (eventId, blindLevelId, { signal } = {}) => {
     if (!eventId || !blindLevelId) {
       selectedBlindLevel.value = null
       return null
@@ -549,7 +550,8 @@ export const useHandLogStore = defineStore('handLog', () => {
     levelLoading.value = true
 
     try {
-      const data = await fetchHandLogBlindLevel(eventId, blindLevelId)
+      const data = await fetchHandLogBlindLevel(eventId, blindLevelId, { signal })
+      if (signal?.aborted) return null
       const normalizedLevel = normalizeBlindLevel(data)
 
       selectedBlindLevel.value = normalizedLevel

@@ -1,8 +1,8 @@
 import { api } from 'boot/axios'
 
 // 매장 목록
-export async function fetchVenues() {
-  const res = await api.get('/venues')
+export async function fetchVenues({ signal } = {}) {
+  const res = await api.get('/venues', { signal })
   return res.data.data || []
 }
 

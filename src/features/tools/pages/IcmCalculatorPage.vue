@@ -79,7 +79,14 @@
       <p>{{ activeMethod.description }}</p>
     </section>
 
-    <StickyPrimaryAction label="찹 계산하기" icon="calculate" :disabled="!canCalculate" @click="calculate" />
+    <StickyPrimaryAction
+      label="찹 계산하기"
+      loading-label="계산 중"
+      icon="calculate"
+      :disabled="!canCalculate"
+      :loading="calculating"
+      @click="calculate"
+    />
 
     <section v-if="results.length" class="panel result-panel">
       <div class="panel-header">
@@ -132,13 +139,15 @@
 </template>
 
 <script setup>
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 
 import StickyPrimaryAction from 'src/shared/components/StickyPrimaryAction.vue'
+import { useAlert } from 'src/composables/useAlert'
 import { allocateRoundedTotal } from 'src/utils/icmCalculator'
 
 const router = useRouter()
+const alert = useAlert()
 
 let nextId = 5
 
@@ -151,6 +160,7 @@ const players = reactive([
 
 const prizes = reactive([null, null, null, null])
 const results = ref([])
+const calculating = ref(false)
 const chopMethod = ref('icm')
 const chopMethods = [
   { value: 'icm', label: 'ICM 찹', description: '각 플레이어의 모든 최종 순위 확률과 지급 구조를 반영합니다.' },
@@ -167,30 +177,68 @@ const canCalculate = computed(() =>
   prizes.every((prize) => prize !== null && prize !== '' && Number(prize) >= 0),
 )
 
+let calculationWorker = null
+let calculationTimeout = null
+let calculationRequestId = 0
+let rejectCalculation = null
+
+const cancelCalculation = () => {
+  rejectCalculation?.(new DOMException('The operation was aborted', 'AbortError'))
+  rejectCalculation = null
+  calculationWorker?.terminate()
+  calculationWorker = null
+  clearTimeout(calculationTimeout)
+  calculationTimeout = null
+  calculating.value = false
+}
+
 watch([players, prizes], () => {
+  calculationRequestId += 1
+  cancelCalculation()
   results.value = []
 }, { deep: true })
 
-const calculateFinishProbabilities = (remainingPlayers, remainingPlaces, probability, probabilities) => {
-  if (!remainingPlaces.length || !remainingPlayers.length) return
-
-  const total = remainingPlayers.reduce((sum, player) => sum + Number(player.stack || 0), 0)
-  if (total <= 0) return
-
-  remainingPlayers.forEach((player, index) => {
-    const place = remainingPlaces[0]
-    const nextProbability = probability * (Number(player.stack || 0) / total)
-    probabilities[player.id][place] += nextProbability
-
-    const nextPlayers = remainingPlayers.filter((_, playerIndex) => playerIndex !== index)
-    calculateFinishProbabilities(nextPlayers, remainingPlaces.slice(1), nextProbability, probabilities)
-  })
-}
-
-const calculate = () => {
+const calculate = async () => {
   if (!canCalculate.value) return
-  const probabilities = Object.fromEntries(players.map((player) => [player.id, Array(players.length).fill(0)]))
-  calculateFinishProbabilities([...players], players.map((_, index) => index), 1, probabilities)
+  cancelCalculation()
+  calculating.value = true
+  const requestId = ++calculationRequestId
+  const stacks = players.map((player) => Number(player.stack || 0))
+  calculationWorker = new Worker(new URL('../workers/icm.worker.js', import.meta.url), { type: 'module' })
+
+  let probabilities
+  try {
+    probabilities = await new Promise((resolve, reject) => {
+      rejectCalculation = reject
+      calculationWorker.addEventListener('message', ({ data }) => {
+        if (data.requestId !== requestId) return
+        if (data.error) reject(new Error(data.error))
+        else resolve(data.probabilities)
+      }, { once: true })
+      calculationWorker.addEventListener('error', (event) => {
+        reject(event.error || new Error(event.message || 'ICM 계산에 실패했습니다.'))
+      }, { once: true })
+      calculationTimeout = setTimeout(() => {
+        reject(new Error('ICM_CALCULATION_TIMEOUT'))
+        calculationWorker?.terminate()
+      }, 10_000)
+      calculationWorker.postMessage({ requestId, stacks })
+    })
+  } catch (error) {
+    if (requestId === calculationRequestId) {
+      alert.show(
+        error?.message === 'ICM_CALCULATION_TIMEOUT'
+          ? '플레이어 수가 많아 계산을 안전하게 중단했습니다.'
+          : 'ICM 계산을 완료하지 못했습니다.',
+        'error',
+      )
+    }
+    return
+  } finally {
+    if (requestId === calculationRequestId) cancelCalculation()
+  }
+
+  if (requestId !== calculationRequestId) return
 
   const chipEvPerChip = totalPrizes.value / Math.max(totalStacks.value, 1)
   const stackRanks = new Map(
@@ -200,7 +248,7 @@ const calculate = () => {
   )
 
   const rawResults = players.map((player, playerIndex) => {
-      const icmValue = probabilities[player.id].reduce((sum, probability, placeIndex) => {
+      const icmValue = probabilities[playerIndex].reduce((sum, probability, placeIndex) => {
         return sum + probability * Number(prizes[placeIndex] || 0)
       }, 0)
       const chipChopValue = Number(player.stack || 0) * chipEvPerChip
@@ -217,9 +265,21 @@ const calculate = () => {
         currentRankPrize,
       }
     })
-  const icmValues = allocateRoundedTotal(rawResults.map((row) => row.icmValue), totalPrizes.value)
-  const chipChopValues = allocateRoundedTotal(rawResults.map((row) => row.chipChopValue), totalPrizes.value)
-  const equalChopValues = allocateRoundedTotal(rawResults.map((row) => row.equalChopValue), totalPrizes.value)
+  const icmValues = allocateRoundedTotal(
+    rawResults.map((row) => row.icmValue),
+    totalPrizes.value,
+    2,
+  )
+  const chipChopValues = allocateRoundedTotal(
+    rawResults.map((row) => row.chipChopValue),
+    totalPrizes.value,
+    2,
+  )
+  const equalChopValues = allocateRoundedTotal(
+    rawResults.map((row) => row.equalChopValue),
+    totalPrizes.value,
+    2,
+  )
 
   results.value = rawResults
     .map((row, index) => ({
@@ -230,6 +290,11 @@ const calculate = () => {
     }))
     .sort((a, b) => a.rank - b.rank)
 }
+
+onBeforeUnmount(() => {
+  calculationRequestId += 1
+  cancelCalculation()
+})
 
 const adjustCount = (amount) => {
   if (amount > 0 && players.length < 15) {
@@ -245,7 +310,9 @@ const adjustCount = (amount) => {
 
 }
 
-const formatNumber = (value) => Math.round(Number(value || 0)).toLocaleString('ko-KR')
+const formatNumber = (value) => Number(value || 0).toLocaleString('ko-KR', {
+  maximumFractionDigits: 2,
+})
 const formatDifference = (value) => `${value >= 0 ? '+' : ''}${formatNumber(value)}`
 const differenceClass = (value) => ({ positive: value > 0, negative: value < 0 })
 const selectedChopValue = (row) => ({

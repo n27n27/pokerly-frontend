@@ -410,7 +410,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
-import { fetchHandLogEvent } from 'src/api/handLogApi'
+import { getStatisticsEvents } from 'src/services/statisticsEventRepository'
 import { fetchVenues } from 'src/api/venue'
 import { useAuthStore } from 'src/stores/auth'
 import { isPfrAction, isVpipAction } from 'src/utils/handLogHandAnalysis'
@@ -453,6 +453,7 @@ const venueMenuOpen = ref(false)
 const handEventCache = ref(new Map())
 let loadSequence = 0
 let trendResizeObserver = null
+let loadController = null
 
 useBodyScrollLock(computed(() => periodMenuOpen.value || venueMenuOpen.value))
 
@@ -955,7 +956,7 @@ const moveMonth = (delta) => {
   selectedMonth.value = date.getMonth() + 1
 }
 
-const loadHandEvents = async (sessionList) => {
+const loadHandEvents = async (sessionList, signal) => {
   const eventIds = [
     ...new Set(
       sessionList
@@ -963,30 +964,32 @@ const loadHandEvents = async (sessionList) => {
         .filter(Boolean)
         .map(String),
     ),
-  ].filter((eventId) => !handEventCache.value.has(eventId))
-  if (!eventIds.length) return
+  ]
+  if (!eventIds.length) {
+    handEventCache.value = new Map()
+    return
+  }
 
-  const results = await Promise.all(
-    eventIds.map(async (eventId) => {
-      try {
-        return [eventId, await fetchHandLogEvent(eventId)]
-      } catch {
-        return [eventId, null]
-      }
-    }),
+  const events = await getStatisticsEvents(eventIds, { signal })
+  if (signal?.aborted) return
+  handEventCache.value = new Map(
+    eventIds.map((eventId, index) => [eventId, events[index]]).filter(([, event]) => event),
   )
-  const nextCache = new Map(handEventCache.value)
-  results.forEach(([eventId, event]) => nextCache.set(eventId, event))
-  handEventCache.value = nextCache
 }
 
 const load = async () => {
   const sequence = ++loadSequence
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
   loadError.value = ''
   try {
-    const allSessionsPromise = fetchAllGameSessions()
-    const [allSessionList, venueList] = await Promise.all([allSessionsPromise, fetchVenues()])
+    const allSessionsPromise = fetchAllGameSessions({ signal: controller.signal })
+    const [allSessionList, venueList] = await Promise.all([
+      allSessionsPromise,
+      fetchVenues({ signal: controller.signal }),
+    ])
     if (sequence !== loadSequence) return
     const completedSessions = (allSessionList || []).filter(
       (item) => item.tournamentStatus !== 'RUNNING',
@@ -1007,8 +1010,9 @@ const load = async () => {
       !venues.value.some((item) => Number(item.id) === Number(venueId.value))
     )
       venueId.value = null
-    void loadHandEvents(filterByVenue(sessions.value))
+    await loadHandEvents(filterByVenue(sessions.value), controller.signal)
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return
     if (sequence !== loadSequence) return
     console.error('통계 로드 실패', error)
     sessions.value = []
@@ -1021,7 +1025,9 @@ const load = async () => {
 
 watch([selectedYear, selectedMonth, showAllPeriod], load)
 watch(venueId, () => {
-  void loadHandEvents(filteredSessions.value)
+  void loadHandEvents(filteredSessions.value, loadController?.signal).catch((error) => {
+    if (error?.name !== 'AbortError' && error?.code !== 'ERR_CANCELED') console.error(error)
+  })
 })
 watch(trendMode, () => {
   trendTooltip.value = null
@@ -1034,7 +1040,10 @@ onMounted(() => {
   })
   if (trendPanelRef.value) trendResizeObserver.observe(trendPanelRef.value)
 })
-onBeforeUnmount(() => trendResizeObserver?.disconnect())
+onBeforeUnmount(() => {
+  loadController?.abort()
+  trendResizeObserver?.disconnect()
+})
 </script>
 
 <style scoped>

@@ -331,6 +331,8 @@ const savingStack = ref(false)
 const endingLevel = ref(false)
 const selectedGroupHand = ref('')
 const restoring = ref(false)
+let componentActive = true
+let restoreController = null
 
 const storedTournament = reactive(
   (() => {
@@ -677,7 +679,13 @@ const movableLevels = computed(() =>
     })),
 )
 
-const wait = (milliseconds) => new Promise((resolve) => window.setTimeout(resolve, milliseconds))
+const wait = (milliseconds, signal) => new Promise((resolve, reject) => {
+  const timeoutId = window.setTimeout(resolve, milliseconds)
+  signal?.addEventListener('abort', () => {
+    window.clearTimeout(timeoutId)
+    reject(new DOMException('The operation was aborted', 'AbortError'))
+  }, { once: true })
+})
 
 const syncRunningTournament = (runningSession) => {
   if (!runningSession) return null
@@ -694,19 +702,24 @@ const syncRunningTournament = (runningSession) => {
 }
 
 const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
-  if (restoring.value || !levelId.value) return
+  if (!componentActive || restoring.value || !levelId.value) return
+  restoreController?.abort()
+  const controller = new AbortController()
+  restoreController = controller
   restoring.value = true
   let lastError = null
 
   try {
     for (let attempt = 0; attempt <= retries; attempt += 1) {
+      if (!componentActive || controller.signal.aborted) return false
       const eventIds = [eventId.value]
 
       // iOS 홈 화면 앱은 종료 후 재실행될 때 로컬 상태와 마지막 URL만 먼저
       // 복구될 수 있다. 매 시도마다 서버의 진행 중 대회를 canonical 기준으로 잡는다.
       if (!route.query.legacyEventId) {
         try {
-          const runningSession = await fetchRunningGameSession()
+          const runningSession = await fetchRunningGameSession({ signal: controller.signal })
+          if (!componentActive || controller.signal.aborted) return false
           const syncedEventId = syncRunningTournament(runningSession)
           eventIds.unshift(syncedEventId)
         } catch (error) {
@@ -717,9 +730,12 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
       const candidates = [...new Set(eventIds.filter(Boolean).map(String))]
       for (const requestedEventId of candidates) {
         const [eventResult, levelResult] = await Promise.allSettled([
-          handLogStore.fetchEventDetail(requestedEventId),
-          handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value),
+          handLogStore.fetchEventDetail(requestedEventId, { signal: controller.signal }),
+          handLogStore.fetchBlindLevelDetail(requestedEventId, levelId.value, {
+            signal: controller.signal,
+          }),
         ])
+        if (!componentActive || controller.signal.aborted) return false
 
         // 이 화면의 필수 데이터는 레벨 상세이다. iOS 재실행 직후 대회 전체
         // 조회만 일시적으로 실패해도 레벨 화면까지 막지 않는다.
@@ -745,14 +761,22 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
           levelResult.reason || (eventResult.status === 'rejected' ? eventResult.reason : lastError)
       }
 
-      if (attempt < retries) await wait(Math.min(500 * 2 ** attempt, 3000))
+      if (attempt < retries) {
+        await wait(Math.min(500 * 2 ** attempt, 3000), controller.signal)
+      }
     }
 
     if (notify) alert.show('레벨 정보를 불러오지 못했습니다.', 'error')
     if (lastError) console.error('레벨 정보 복구 실패', lastError)
     return false
+  } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return false
+    throw error
   } finally {
-    restoring.value = false
+    if (restoreController === controller) {
+      restoreController = null
+      restoring.value = false
+    }
   }
 }
 
@@ -777,6 +801,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  componentActive = false
+  restoreController?.abort()
   document.removeEventListener('visibilitychange', restoreOnVisible)
   window.removeEventListener('pageshow', restoreOnPageShow)
   window.removeEventListener('online', restoreOnOnline)

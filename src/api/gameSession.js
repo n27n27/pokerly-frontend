@@ -25,15 +25,16 @@ export const deleteGameSession = async (id) => {
   return res.data.data
 }
 
-export const fetchMonthlySessions = async (year, month) => {
+export const fetchMonthlySessions = async (year, month, { signal } = {}) => {
   const res = await api.get('/game-sessions', {
     params: { year, month, _: Date.now() },
+    signal,
   })
   return res.data.data
 }
 
-export const fetchGameSession = async (id) => {
-  const res = await api.get(`/game-sessions/${id}`)
+export const fetchGameSession = async (id, { signal } = {}) => {
+  const res = await api.get(`/game-sessions/${id}`, { signal })
   return res.data.data
 }
 
@@ -42,16 +43,18 @@ export const fetchRecentGameSessions = async () => {
   return res.data.data
 }
 
-export const fetchRunningGameSession = async () => {
+export const fetchRunningGameSession = async ({ signal } = {}) => {
   const res = await api.get('/game-sessions/running', {
     params: { _: Date.now() },
+    signal,
   })
   return res.data.data
 }
 
-export const fetchAllGameSessions = async () => {
+export const fetchAllGameSessions = async ({ signal } = {}) => {
   const res = await api.get('/game-sessions/all', {
     params: { _: Date.now() },
+    signal,
   })
   return res.data.data
 }

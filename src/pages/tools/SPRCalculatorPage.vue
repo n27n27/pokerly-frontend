@@ -136,7 +136,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import { logToolUsage } from 'src/api/tools'
 
 const TOOL_CODE = 'SPR'
@@ -278,6 +278,10 @@ function logCalculateDebounced() {
 
 watch([heroStack, villainStack, potSize, useEffectiveStack], () => {
   logCalculateDebounced()
+})
+
+onBeforeUnmount(() => {
+  if (calcTimer) clearTimeout(calcTimer)
 })
 </script>
 

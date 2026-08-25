@@ -24,10 +24,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
-import { fetchHandLogEvent } from 'src/api/handLogApi'
+import { getStatisticsEvents } from 'src/services/statisticsEventRepository'
 import StatisticsDetailHeader from '../components/StatisticsDetailHeader.vue'
 import PlayAnalysisAccordionList from '../components/PlayAnalysisAccordionList.vue'
 import PlayAnalysisSummary from '../components/PlayAnalysisSummary.vue'
@@ -63,6 +63,7 @@ const hands = ref([])
 const loading = ref(false)
 const loadError = ref('')
 let loadSequence = 0
+let loadController = null
 
 const filterByVenue = (list) => {
   const venueId = filter.value.venueId
@@ -122,26 +123,24 @@ const openPositionDetail = (row) => {
 }
 const load = async () => {
   const sequence = ++loadSequence
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
   loadError.value = ''
   try {
     const sessionList = filter.value.allPeriod
-      ? await fetchAllGameSessions()
-      : await fetchMonthlySessions(filter.value.year, filter.value.month)
+      ? await fetchAllGameSessions({ signal: controller.signal })
+      : await fetchMonthlySessions(filter.value.year, filter.value.month, { signal: controller.signal })
     const completed = filterByVenue((sessionList || [])
       .filter((item) => item.tournamentStatus !== 'RUNNING'))
     const eventIds = [...new Set(completed
       .map((item) => item.handLogEventId)
       .filter(Boolean)
       .map(String))]
-    const events = await Promise.all(eventIds.map(async (eventId) => {
-      try {
-        const event = await fetchHandLogEvent(eventId)
-        return { ...event, _statisticsEventId: eventId }
-      } catch {
-        return null
-      }
-    }))
+    const loadedEvents = await getStatisticsEvents(eventIds, { signal: controller.signal })
+    const events = loadedEvents.map((event, index) =>
+      event ? { ...event, _statisticsEventId: eventIds[index] } : null)
     if (sequence !== loadSequence) return
     hands.value = events
       .filter(Boolean)
@@ -153,6 +152,7 @@ const load = async () => {
           levelName: level.name,
         }))))
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return
     if (sequence !== loadSequence) return
     console.error('포지션 통계 로드 실패', error)
     hands.value = []
@@ -177,6 +177,7 @@ const applyFilters = (nextFilter) => {
 }
 
 onMounted(load)
+onBeforeUnmount(() => loadController?.abort())
 </script>
 
 <style scoped>

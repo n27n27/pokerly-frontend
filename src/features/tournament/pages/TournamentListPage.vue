@@ -110,10 +110,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions } from 'src/api/gameSession'
 import { fetchHandLogEvents } from 'src/api/handLogApi'
+import { getStatisticsEvents } from 'src/services/statisticsEventRepository'
 import { fetchVenues } from 'src/api/venue'
 import { useBodyScrollLock } from 'src/composables/useBodyScrollLock'
 import { tournamentDisplayName } from 'src/utils/tournamentName'
@@ -133,6 +134,7 @@ const sortOrder = ref('desc')
 useBodyScrollLock(computed(() => venueMenuOpen.value))
 
 const tournaments = ref([])
+const loadController = new AbortController()
 const labels = { BUST: '탈락', BUBBLE: 'Bubble', ITM: 'ITM', CHOP: '찹', WIN: '우승' }
 
 const fetchAllLegacyEvents = async () => {
@@ -140,7 +142,7 @@ const fetchAllLegacyEvents = async () => {
   let page = 0
   let hasNext = true
   while (hasNext && page < 100) {
-    const response = await fetchHandLogEvents({ page, size: 100 })
+    const response = await fetchHandLogEvents({ page, size: 100, signal: loadController.signal })
     events.push(...(Array.isArray(response?.content) ? response.content : []))
     hasNext = Boolean(response?.hasNext)
     page += 1
@@ -188,13 +190,17 @@ onMounted(async () => {
 
   // 신규 데이터는 세션에 표시 정보가 모두 있으므로 느린 레거시 이벤트 조회를 생략한다.
   tournaments.value = buildSessionItems()
-  const needsLegacyEvents = completedSessions.some((session) =>
-    (!session.handLogEventId && !session.tournamentName && !session.tournamentResult)
-    || (session.handLogEventId && !session.tournamentName),
-  )
-  if (!needsLegacyEvents) return
+  const missingLinkedEventIds = [...new Set(completedSessions
+    .filter((session) => session.handLogEventId && !session.tournamentName)
+    .map((session) => String(session.handLogEventId)))]
+  const needsUnlinkedLegacyEvents = completedSessions.some((session) =>
+    !session.handLogEventId && !session.tournamentName && !session.tournamentResult)
+  if (!missingLinkedEventIds.length && !needsUnlinkedLegacyEvents) return
 
-  const legacyEvents = await fetchAllLegacyEvents()
+  const linkedEvents = await getStatisticsEvents(missingLinkedEventIds, {
+    signal: loadController.signal,
+  })
+  const legacyEvents = needsUnlinkedLegacyEvents ? await fetchAllLegacyEvents() : linkedEvents
   const eventById = new Map((legacyEvents || []).map((event) => [String(event.id), event]))
   const linkedEventIds = new Set(
     (sessions || []).map((session) => session.handLogEventId).filter(Boolean).map(String),
@@ -220,6 +226,7 @@ onMounted(async () => {
 
   tournaments.value = [...buildSessionItems(eventById), ...legacyItems]
 })
+onBeforeUnmount(() => loadController.abort())
 
 const selectedVenueLabel = computed(() => {
   if (selectedVenue.value === 'all') return '매장 전체'

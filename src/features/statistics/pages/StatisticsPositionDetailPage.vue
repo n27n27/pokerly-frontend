@@ -13,7 +13,7 @@
         <span>총 {{ positionRow.total }}회</span>
       </div>
       <div class="position-summary__metrics">
-        <span>{{ positionRow.participationLabel }} <strong>{{ formatAnalysisRate(positionRow.participationRate) }}</strong></span>
+        <span>참여 <strong>{{ formatAnalysisRate(positionRow.participationRate) }}</strong></span>
         <span>
           승률
           <strong>{{ positionRow.participatedResultCount ? formatAnalysisRate(positionRow.winRate) : '-' }}</strong>
@@ -84,10 +84,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { fetchAllGameSessions, fetchMonthlySessions } from 'src/api/gameSession'
-import { fetchHandLogEvent } from 'src/api/handLogApi'
+import { getStatisticsEvents } from 'src/services/statisticsEventRepository'
 import { getHandInputValue, normalizeHand, PREFLOP_169_RANKING } from 'src/utils/handLogHandAnalysis'
 import StatisticsDetailHeader from '../components/StatisticsDetailHeader.vue'
 import {
@@ -112,6 +112,8 @@ const hands = ref([])
 const loading = ref(false)
 const loadError = ref('')
 const selectedAction = ref('all')
+let loadSequence = 0
+let loadController = null
 const positionListRoute = computed(() => ({
   name: route.query.fromInsight === '1' ? 'statistics' : 'statistics-position',
   query: {
@@ -156,7 +158,7 @@ const playSummary = computed(() => {
   const actionParts = summaryActions
     .filter((action) => action.hands.length > 0)
     .map((action) => `${action.label} ${action.hands.length}`)
-  return [`${positionRow.value.participated}회 ${positionRow.value.participationLabel}`, ...actionParts].join(' · ')
+  return [`${positionRow.value.participated}회 참여`, ...actionParts].join(' · ')
 })
 const selectedHands = computed(() =>
   actionOptions.value.find((option) => option.key === selectedAction.value)?.hands || [],
@@ -206,27 +208,33 @@ const filterByVenue = (sessions) => {
   return sessions.filter((item) => Number(item.venueId) === Number(filter.value.venueId))
 }
 const load = async () => {
+  const sequence = ++loadSequence
+  loadController?.abort()
+  const controller = new AbortController()
+  loadController = controller
   loading.value = true
   loadError.value = ''
   try {
     const sessions = filter.value.allPeriod
-      ? await fetchAllGameSessions()
-      : await fetchMonthlySessions(filter.value.year, filter.value.month)
+      ? await fetchAllGameSessions({ signal: controller.signal })
+      : await fetchMonthlySessions(filter.value.year, filter.value.month, { signal: controller.signal })
     const eventIds = [...new Set(filterByVenue((sessions || [])
       .filter((item) => item.tournamentStatus !== 'RUNNING'))
       .map((item) => item.handLogEventId)
       .filter(Boolean)
       .map(String))]
-    const events = await Promise.all(eventIds.map((eventId) =>
-      fetchHandLogEvent(eventId).catch(() => null)))
+    const events = await getStatisticsEvents(eventIds, { signal: controller.signal })
+    if (sequence !== loadSequence) return
     hands.value = events.filter(Boolean).flatMap((event) =>
       (event.blindLevels || []).flatMap((level) => level.hands || []))
   } catch (error) {
+    if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return
+    if (sequence !== loadSequence) return
     console.error('포지션 상세 로드 실패', error)
     hands.value = []
     loadError.value = '포지션 상세를 불러오지 못했습니다.'
   } finally {
-    loading.value = false
+    if (sequence === loadSequence) loading.value = false
   }
 }
 
@@ -246,6 +254,7 @@ const applyFilters = (nextFilter) => {
 }
 
 onMounted(load)
+onBeforeUnmount(() => loadController?.abort())
 </script>
 
 <style scoped>
