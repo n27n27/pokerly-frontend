@@ -190,7 +190,6 @@ export const buildAnalysisRows = (keys, hands, keyOf, options = {}) => keys.map(
     label: key,
     total: matchedHands.length,
     participated,
-    participationLabel: includesBigBlindChecks ? '플레이' : '참여',
     participationRate: matchedHands.length ? participated * 100 / matchedHands.length : 0,
     winRate: recordedParticipatedResults
       ? participatedResults.wins * 100 / recordedParticipatedResults

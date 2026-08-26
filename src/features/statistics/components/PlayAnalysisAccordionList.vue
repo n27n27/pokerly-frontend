@@ -25,13 +25,12 @@
               class="analysis-row__metric analysis-row__metric--participation"
               :class="{ 'is-zero': row.participationRate === 0 }"
             >
-              {{ row.participationLabel || '참여' }}
-              <strong>{{ formatRate(row.participationRate) }}</strong>
+              참여 <strong>{{ formatRate(row.participationRate) }}</strong>
             </span>
             <span
               class="analysis-row__metric analysis-row__metric--win"
               :class="{ 'is-zero': row.participatedResultCount > 0 && row.winRate === 0 }"
-              :aria-label="`${row.participationLabel || '참여'}했을 때 승률`"
+              aria-label="참여했을 때 승률"
             >
               승률
               <strong>{{ formatWinRate(row) }}</strong>
@@ -51,12 +50,12 @@
             <small aria-hidden="true">&nbsp;</small>
           </div>
           <div>
-            <span>{{ row.participationLabel || '참여' }}</span>
+            <span>참여</span>
             <strong>{{ row.participated }}회</strong>
             <small>{{ formatRate(row.participationRate) }}</small>
           </div>
           <div>
-            <span>{{ row.participationLabel || '참여' }} 결과</span>
+            <span>참여 결과</span>
             <strong>{{ formatParticipatedResult(row) }}</strong>
             <small aria-hidden="true">&nbsp;</small>
           </div>

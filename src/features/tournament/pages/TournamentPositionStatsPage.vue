@@ -10,7 +10,7 @@
 
     <section class="tournament-position-summary">
       <div><span>총 기록</span><strong>{{ positionRow.total }}회</strong></div>
-      <div><span>{{ positionRow.participationLabel }}</span><strong>{{ positionRow.participated }}회</strong><small>{{ rate(positionRow.participationRate) }}</small></div>
+      <div><span>참여</span><strong>{{ positionRow.participated }}회</strong><small>{{ rate(positionRow.participationRate) }}</small></div>
       <div>
         <span>승률</span>
         <strong>{{ positionRow.participatedResultCount ? rate(positionRow.winRate) : '-' }}</strong>
