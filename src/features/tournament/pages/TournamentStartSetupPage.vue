@@ -30,27 +30,27 @@
 
       <div class="setup-card">
         <label class="setup-label" for="venue">매장</label>
-        <button id="venue" class="select-field" type="button" @click="venueOpen = !venueOpen">
+        <button id="venue" class="select-field" type="button" @click="venueOpen = true">
           <span>{{ form.venueName || '선택해 주세요' }}</span>
           <q-icon name="expand_more" size="24px" />
         </button>
-
-        <div v-if="venueOpen" class="venue-list">
+        <div v-if="!venueLoading && venues.length === 0" class="venue-empty">
+          <q-icon name="location_on" size="36px" />
+          <p>등록된 장소가 없습니다.</p>
           <button
-            v-for="venue in venues"
-            :key="venue.id"
-            class="venue-list__item"
             type="button"
-            @click="selectVenue(venue)"
+            @click="
+              () => {
+                venueOpen = false
+                showVenueSheet = true
+              }
+            "
           >
-            <span>{{ venue.name }}</span>
-            <q-icon v-if="form.venueId === venue.id" name="check" size="20px" />
-          </button>
-          <button class="venue-list__add" type="button" @click="showVenueSheet = true">
-            <q-icon name="add" size="20px" />
-            <span>매장 추가</span>
+            <q-icon name="add" size="18px" />
+            장소 추가
           </button>
         </div>
+        <div v-else-if="venueLoading" class="venue-loading">장소를 불러오는 중...</div>
       </div>
 
       <div class="setup-card">
@@ -161,6 +161,40 @@
         </div>
       </div>
     </q-dialog>
+    <q-dialog v-model="venueOpen" position="bottom">
+      <div class="venue-picker-sheet">
+        <div class="venue-picker-sheet__handle" aria-hidden="true"></div>
+        <h2>장소 선택</h2>
+
+        <div class="venue-picker-sheet__list">
+          <button
+            v-for="venue in venues"
+            :key="venue.id"
+            type="button"
+            :aria-selected="form.venueId === venue.id"
+            @click="selectVenue(venue)"
+          >
+            <span>{{ venue.name }}</span>
+            <q-icon v-if="form.venueId === venue.id" name="check" size="22px" />
+          </button>
+        </div>
+
+        <div class="venue-picker-sheet__footer">
+          <button
+            type="button"
+            @click="
+              () => {
+                venueOpen = false
+                showVenueSheet = true
+              }
+            "
+          >
+            <q-icon name="add" size="20px" />
+            <span>새 매장 추가</span>
+          </button>
+        </div>
+      </div>
+    </q-dialog>
     <StickyPrimaryAction
       label="토너먼트 시작"
       :loading="submitting"
@@ -191,7 +225,7 @@ const router = useRouter()
 const alert = useAlert()
 const handLogStore = useHandLogStore()
 const venueStore = useVenueStore()
-const { venues } = storeToRefs(venueStore)
+const { venues, loading: venueLoading } = storeToRefs(venueStore)
 
 const venueOpen = ref(false)
 const submitting = ref(false)
@@ -676,41 +710,132 @@ const startTournament = async () => {
   text-align: left;
 }
 
-.venue-list {
-  overflow: hidden;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-md);
-  background: #fff;
+.venue-empty {
+  min-height: 152px;
+  border: 1px dashed rgba(109, 69, 232, 0.24);
+  border-radius: var(--v2-radius-lg);
+  background: rgba(241, 236, 255, 0.44);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
 }
 
-.venue-list__item,
-.venue-list__add {
-  width: 100%;
-  min-height: 44px;
+.venue-loading {
+  min-height: 72px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  color: var(--v2-text-sub);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.venue-empty .q-icon {
+  color: var(--v2-primary);
+}
+
+.venue-empty p {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 14px;
+  font-weight: 450;
+}
+
+.venue-empty button {
+  min-height: 34px;
   padding: 0 14px;
+  border: 1px solid var(--v2-primary);
+  border-radius: var(--v2-radius-sm);
+  background: #ffffff;
+  color: var(--v2-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.venue-picker-sheet {
+  width: min(100%, 520px);
+  height: min(76vh, 620px);
+  max-height: calc(100dvh - var(--app-safe-top) - 24px);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.venue-picker-sheet__handle {
+  width: 38px;
+  height: 5px;
+  margin: 12px auto 0;
+  border-radius: 999px;
+  background: #d4d0dc;
+}
+
+.venue-picker-sheet h2 {
+  margin: 18px 20px 14px;
+  color: var(--v2-text-main);
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.venue-picker-sheet__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--v2-border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.venue-picker-sheet__list button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
   border: 0;
   border-bottom: 1px solid var(--v2-border);
-  background: transparent;
+  background: #ffffff;
   color: var(--v2-text-main);
   display: flex;
   align-items: center;
   justify-content: space-between;
   font: inherit;
-  font-size: 14px;
-  font-weight: 430;
+  font-size: 15px;
+  font-weight: 450;
   text-align: left;
 }
 
-.venue-list__item .q-icon,
-.venue-list__add {
+.venue-picker-sheet__list button[aria-selected='true'] {
   color: var(--v2-primary);
+  font-weight: 560;
 }
 
-.venue-list__add {
-  justify-content: flex-start;
+.venue-picker-sheet__footer {
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--v2-border);
+  background: #ffffff;
+}
+
+.venue-picker-sheet__footer button {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(109, 69, 232, 0.24);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   gap: 8px;
-  border-bottom: 0;
-  font-weight: 520;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 .venue-sheet {
