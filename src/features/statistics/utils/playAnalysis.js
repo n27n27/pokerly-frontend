@@ -83,10 +83,11 @@ const countResults = (hands) => hands.reduce((counts, hand) => {
   if (WIN_RESULTS.has(result)) counts.wins += 1
   else if (LOSS_RESULTS.has(result)) counts.losses += 1
   else if (DRAW_RESULTS.has(result)) counts.draws += 1
+  else if (actionOf(hand) === 'WALK') counts.walks += 1
   else if (actionOf(hand) === 'FOLD') counts.losses += 1
   else counts.unrecorded += 1
   return counts
-}, { wins: 0, losses: 0, draws: 0, unrecorded: 0 })
+}, { wins: 0, losses: 0, draws: 0, unrecorded: 0, walks: 0 })
 
 export const formatAnalysisRate = (value) => {
   const rate = Number(value || 0)
@@ -197,6 +198,7 @@ export const buildAnalysisRows = (keys, hands, keyOf, options = {}) => keys.map(
     participatedWins: participatedResults.wins,
     participatedLosses: participatedResults.losses,
     participatedDraws: participatedResults.draws,
+    participatedWalks: participatedResults.walks,
     participatedUnrecorded: participatedResults.unrecorded,
     participatedResultCount: recordedParticipatedResults,
     actions: groupedActions,
