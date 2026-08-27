@@ -14,12 +14,21 @@
       <div class="form-fields">
         <label class="form-field">
           <span>매장</span>
-          <button class="venue-select-button" type="button" @click="venuePickerOpen = true">
+          <button class="select-field" type="button" @click="venuePickerOpen = true">
             <span :class="{ placeholder: !venueSelectionMade }">
               {{ venueSelectionMade ? (form.venue || '선택 안 함') : '매장을 선택해주세요' }}
             </span>
-            <q-icon name="expand_more" size="20px" />
+            <q-icon name="expand_more" size="24px" />
           </button>
+          <div v-if="!venueLoading && venues.length === 0" class="venue-empty">
+            <q-icon name="location_on" size="36px" />
+            <p>등록된 장소가 없습니다.</p>
+            <button type="button" @click="openVenueAdd">
+              <q-icon name="add" size="18px" />
+              장소 추가
+            </button>
+          </div>
+          <div v-else-if="venueLoading" class="venue-loading">장소를 불러오는 중...</div>
         </label>
 
         <label class="form-field">
@@ -104,35 +113,35 @@
     />
 
     <q-dialog v-model="venuePickerOpen" position="bottom">
-      <q-card class="venue-sheet">
-        <span class="venue-sheet__handle" aria-hidden="true"></span>
-        <h2>매장 선택</h2>
-        <div class="venue-list">
+      <div class="venue-picker-sheet">
+        <div class="venue-picker-sheet__handle" aria-hidden="true"></div>
+        <h2>장소 선택</h2>
+
+        <div class="venue-picker-sheet__list">
           <button
             v-for="venue in venues"
-            :key="venue"
+            :key="venue.id"
             type="button"
-            :class="{ selected: form.venue === venue }"
-            @click="selectVenue(venue)"
+            :aria-selected="form.venue === venue.name"
+            @click="selectVenue(venue.name)"
           >
-            <span>{{ venue }}</span>
-            <q-icon v-if="form.venue === venue" name="check" size="19px" />
-          </button>
-          <button type="button" :class="{ selected: venueSelectionMade && !form.venue }" @click="selectVenue('')">
-            <span>선택 안 함</span>
-            <q-icon v-if="venueSelectionMade && !form.venue" name="check" size="19px" />
+            <span>{{ venue.name }}</span>
+            <q-icon v-if="form.venue === venue.name" name="check" size="22px" />
           </button>
         </div>
-        <button class="add-venue-button" type="button" @click="openVenueAdd">
-          <q-icon name="add" size="19px" />
-          매장 추가
-        </button>
-      </q-card>
+
+        <div class="venue-picker-sheet__footer">
+          <button type="button" @click="openVenueAdd">
+            <q-icon name="add" size="20px" />
+            <span>새 매장 추가</span>
+          </button>
+        </div>
+      </div>
     </q-dialog>
 
     <q-dialog v-model="venueAddOpen" position="bottom">
-      <q-card class="venue-sheet venue-add-sheet">
-        <span class="venue-sheet__handle" aria-hidden="true"></span>
+      <div class="venue-sheet venue-add-sheet">
+        <div class="venue-sheet__handle" aria-hidden="true"></div>
         <h2>매장 추가</h2>
         <label class="form-field">
           <span>매장명 <b>*</b></span>
@@ -149,13 +158,14 @@
         <button class="confirm-venue-button" type="button" :disabled="!newVenueName" @click="addVenue">
           추가하기
         </button>
-      </q-card>
+      </div>
     </q-dialog>
   </q-page>
 </template>
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
@@ -170,8 +180,7 @@ const route = useRoute()
 const alert = useAlert()
 const venueStore = useVenueStore()
 const isEdit = computed(() => Boolean(route.query.recordId))
-const venueRecords = ref([])
-const venues = computed(() => venueRecords.value.map((venue) => venue.name))
+const { venues, loading: venueLoading } = storeToRefs(venueStore)
 const venuePickerOpen = ref(false)
 const venueAddOpen = ref(false)
 const newVenueName = ref('')
@@ -210,16 +219,18 @@ const openVenueAdd = () => {
 
 const addVenue = async () => {
   if (!newVenueName.value) return
-  if (!venues.value.includes(newVenueName.value)) {
+  const exists = venues.value.find((venue) => venue.name === newVenueName.value)
+  if (!exists) {
     const created = await venueStore.addVenue({
       name: newVenueName.value,
       location: newVenueLocation.value,
       notes: newVenueMemo.value,
       pointBalance: 0,
     })
-    venueRecords.value.push(created)
+    form.venue = created?.name || newVenueName.value
+  } else {
+    form.venue = exists.name
   }
-  form.venue = newVenueName.value
   venueSelectionMade.value = true
   venueAddOpen.value = false
 }
@@ -233,10 +244,9 @@ const toggleSatellite = () => {
 
 onMounted(async () => {
   await venueStore.loadVenues()
-  venueRecords.value = [...venueStore.venues]
   if (!isEdit.value) return
   const session = await fetchGameSession(route.query.recordId)
-  const venue = venueRecords.value.find((item) => item.id === session.venueId)
+  const venue = venueStore.venues.find((item) => item.id === session.venueId)
   Object.assign(form, {
     venue: venue?.name || '',
     tournamentName: session.tournamentName || '',
@@ -255,7 +265,7 @@ onMounted(async () => {
 const saveRecord = async () => {
   if (!canSave.value || saving.value) return
   saving.value = true
-  const venueId = venueRecords.value.find((venue) => venue.name === form.venue)?.id || null
+  const venueId = venues.value.find((venue) => venue.name === form.venue)?.id || null
   const payload = {
     venueId,
     playDate: form.date,
@@ -342,9 +352,156 @@ const saveRecord = async () => {
 .form-field textarea { width: 100%; min-height: 76px; resize: none; padding: 11px 12px; border: 1px solid var(--v2-border); border-radius: 10px; outline: 0; background: #fbfaff; color: var(--v2-text-main); font: inherit; font-size: 13px; line-height: 1.45; }
 .form-field input:focus, .form-field textarea:focus { border-color: rgba(109, 69, 232, .48); background: #fff; box-shadow: 0 0 0 3px rgba(109, 69, 232, .08); }
 .form-field input::placeholder, .form-field textarea::placeholder { color: #aaa5b7; }
-.venue-select-button { display: flex; width: 100%; height: 44px; align-items: center; justify-content: space-between; padding: 0 11px 0 12px; border: 1px solid var(--v2-border); border-radius: 10px; background: #fbfaff; color: var(--v2-text-main); font: inherit; font-size: 13px; text-align: left; }
-.venue-select-button .placeholder { color: #aaa5b7; }
-.venue-select-button .q-icon { color: var(--v2-text-sub); }
+.select-field {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  background: #fff;
+  color: var(--v2-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 450;
+  text-align: left;
+}
+
+.select-field .placeholder { color: #aaa5b7; }
+.select-field .q-icon { color: var(--v2-text-sub); }
+
+.venue-empty {
+  min-height: 152px;
+  border: 1px dashed rgba(109, 69, 232, 0.24);
+  border-radius: var(--v2-radius-lg);
+  background: rgba(241, 236, 255, 0.44);
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+}
+
+.venue-loading {
+  min-height: 72px;
+  border: 1px solid var(--v2-border);
+  border-radius: var(--v2-radius-md);
+  color: var(--v2-text-sub);
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+}
+
+.venue-empty .q-icon {
+  color: var(--v2-primary);
+}
+
+.venue-empty p {
+  margin: 0;
+  color: var(--v2-text-main);
+  font-size: 14px;
+  font-weight: 450;
+}
+
+.venue-empty button {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--v2-primary);
+  border-radius: var(--v2-radius-sm);
+  background: #ffffff;
+  color: var(--v2-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 520;
+}
+
+.venue-picker-sheet {
+  width: min(100%, 520px);
+  height: min(76vh, 620px);
+  max-height: calc(100dvh - var(--app-safe-top) - 24px);
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 24px 24px 0 0;
+  background: #ffffff;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.venue-picker-sheet__handle {
+  width: 38px;
+  height: 5px;
+  margin: 12px auto 0;
+  border-radius: 999px;
+  background: #d4d0dc;
+}
+
+.venue-picker-sheet h2 {
+  margin: 18px 20px 14px;
+  color: var(--v2-text-main);
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.venue-picker-sheet__list {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border-top: 1px solid var(--v2-border);
+  -webkit-overflow-scrolling: touch;
+}
+
+.venue-picker-sheet__list button {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 20px;
+  border: 0;
+  border-bottom: 1px solid var(--v2-border);
+  background: #ffffff;
+  color: var(--v2-text-main);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 450;
+  text-align: left;
+}
+
+.venue-picker-sheet__list button[aria-selected='true'] {
+  color: var(--v2-primary);
+  font-weight: 560;
+}
+
+.venue-picker-sheet__footer {
+  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--v2-border);
+  background: #ffffff;
+}
+
+.venue-picker-sheet__footer button {
+  width: 100%;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid rgba(109, 69, 232, 0.24);
+  border-radius: var(--v2-radius-md);
+  background: var(--v2-primary-soft);
+  color: var(--v2-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.venue-sheet { width: min(100%, 420px); padding: 10px 18px 22px; border-radius: 20px 20px 0 0; background: #fff; }
 .amount-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .buy-in-control { display: grid; min-height: 58px; grid-template-columns: minmax(0, 1fr) auto 18px; align-items: center; gap: 8px; padding: 8px 10px 8px 12px; border: 1px solid var(--v2-border); border-radius: 10px; background: #fbfaff; }
 .buy-in-control > div { display: flex; align-items: center; gap: 12px; }
@@ -364,11 +521,6 @@ const saveRecord = async () => {
 .venue-sheet { width: min(100%, 420px); padding: 10px 18px 22px; border-radius: 20px 20px 0 0; background: #fff; }
 .venue-sheet__handle { display: block; width: 46px; height: 5px; margin: 0 auto 15px; border-radius: 999px; background: #aaa5b7; }
 .venue-sheet h2 { margin: 0 0 10px; font-size: 17px; font-weight: 620; }
-.venue-list { display: grid; }
-.venue-list button { display: flex; width: 100%; min-height: 50px; align-items: center; justify-content: space-between; padding: 0 4px; border: 0; border-bottom: 1px solid var(--v2-border); background: transparent; color: var(--v2-text-main); font: inherit; font-size: 14px; text-align: left; }
-.venue-list button:last-child { border-bottom: 0; }
-.venue-list button.selected { color: var(--v2-primary); font-weight: 600; }
-.add-venue-button { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; gap: 5px; margin-top: 6px; border: 1px solid rgba(109, 69, 232, .22); border-radius: 10px; background: var(--v2-primary-soft); color: var(--v2-primary); font: inherit; font-size: 13px; font-weight: 600; }
 .venue-add-sheet { display: grid; gap: 12px; }
 .venue-add-sheet h2 { margin-bottom: 0; }
 .confirm-venue-button { width: 100%; min-height: 44px; margin-top: 4px; border: 0; border-radius: 10px; background: var(--v2-primary); color: #fff; font: inherit; font-size: 13px; font-weight: 600; }
