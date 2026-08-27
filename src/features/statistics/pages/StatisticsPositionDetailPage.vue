@@ -172,27 +172,18 @@ const handSectionTitle = computed(() => selectedAction.value === 'all'
 const emptyStateMessage = computed(() => selectedAction.value === 'all'
   ? '아직 기록된 핸드가 없습니다.'
   : `아직 ${selectedActionLabel.value} 기록이 없습니다.`)
-const formatResultCounts = ({
-  wins = 0,
-  losses = 0,
-  draws = 0,
-  walks = 0,
-  unrecorded = 0,
-}) => {
-  const recorded = wins + losses + draws + walks
-  if (recorded === 0 && unrecorded === 0) return '결과 미기록'
-  if (recorded === 1 && unrecorded === 0) {
+const formatResultCounts = ({ wins, losses, draws }) => {
+  const recorded = wins + losses + draws
+  if (recorded === 0) return '결과 미기록'
+  if (recorded === 1) {
     if (wins) return '1승'
     if (losses) return '1패'
-    if (draws) return '1무'
-    return '1올폴드'
+    return '1무'
   }
   return [
-    wins ? `${wins}승` : '',
-    losses ? `${losses}패` : '',
+    `${wins}승`,
+    `${losses}패`,
     draws ? `${draws}무` : '',
-    walks ? `${walks}올폴드` : '',
-    unrecorded ? `${unrecorded}미기록` : '',
   ].filter(Boolean).join(' · ')
 }
 const formatActionResult = (row) => formatResultCounts(row)
@@ -208,9 +199,7 @@ const handSectionSummary = computed(() => {
     wins: result.wins + row.wins,
     losses: result.losses + row.losses,
     draws: result.draws + row.draws,
-    walks: result.walks + row.walks,
-    unrecorded: result.unrecorded + row.unrecorded,
-  }), { wins: 0, losses: 0, draws: 0, walks: 0, unrecorded: 0 })
+  }), { wins: 0, losses: 0, draws: 0 })
   return `${total} · ${formatResultCounts(totals)}`
 })
 const filterByVenue = (sessions) => {

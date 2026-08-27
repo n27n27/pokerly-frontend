@@ -160,29 +160,19 @@ const formatRate = formatAnalysisRate
 const formatWinRate = (item) => item.participatedResultCount
   ? formatAnalysisRate(item.winRate)
   : '-'
-const formatResultCounts = (item) => {
-  const { wins = 0, losses = 0, draws = 0, walks = 0, unrecorded = 0 } = item
-  if (wins + losses + draws + walks + unrecorded === 0) return '결과 미기록'
-  if (wins + losses + draws === 0 && walks > 0 && unrecorded === 0) {
-    return `${walks}올폴드`
-  }
+const formatResultCounts = (wins, losses, draws) => {
+  if (wins + losses + draws === 0) return '결과 미기록'
   return [
-    wins ? `${wins}승` : '',
-    losses ? `${losses}패` : '',
+    `${wins}승`,
+    `${losses}패`,
     draws ? `${draws}무` : '',
-    walks ? `${walks}올폴드` : '',
-    unrecorded ? `${unrecorded}미기록` : '',
   ].filter(Boolean).join(' · ')
 }
-const formatResultWithDraws = (item) => formatResultCounts(item)
+const formatResultWithDraws = (item) => formatResultCounts(item.wins, item.losses, item.draws)
 const formatParticipatedResult = (item) => formatResultCounts(
-  {
-    wins: item.participatedWins,
-    losses: item.participatedLosses,
-    draws: item.participatedDraws,
-    walks: item.participatedWalks,
-    unrecorded: item.participatedUnrecorded,
-  },
+  item.participatedWins,
+  item.participatedLosses,
+  item.participatedDraws,
 )
 </script>
 
