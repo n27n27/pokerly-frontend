@@ -426,7 +426,11 @@ const quickEditTitle = computed(() => ({
 const loadRunningTournament = async () => {
   try {
     const session = await fetchRunningGameSession()
-    if (!session) return
+    if (!session) {
+      runningTournament.value = null
+      localStorage.removeItem('pokerly-running-tournament')
+      return
+    }
 
     const cached = JSON.parse(localStorage.getItem('pokerly-running-tournament') || '{}')
     const parsed = {

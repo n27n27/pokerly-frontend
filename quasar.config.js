@@ -24,6 +24,7 @@ export default defineConfig((ctx) => {
       'apexcharts',
       'version-guard',
       'formatters',
+      'viewport-sync',
       ...(ctx.mode.capacitor ? ['capacitor'] : []),
     ],
 

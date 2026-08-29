@@ -495,7 +495,20 @@ export const useHandLogStore = defineStore('handLog', () => {
         selectedBlindLevel.value = normalizedLevel
       }
 
-      await fetchEventDetail(eventId)
+      if (selectedEvent.value && String(selectedEvent.value.id) === String(eventId)) {
+        const blindLevels = (selectedEvent.value.blindLevels || []).map((level) =>
+          String(level.id) === String(blindLevelId) ? normalizedLevel : level,
+        )
+        selectedEvent.value = {
+          ...selectedEvent.value,
+          blindLevels,
+        }
+
+        const eventIndex = events.value.findIndex((event) => String(event.id) === String(eventId))
+        if (eventIndex >= 0) {
+          events.value[eventIndex] = selectedEvent.value
+        }
+      }
 
       return normalizedLevel
     } finally {

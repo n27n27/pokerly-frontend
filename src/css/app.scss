@@ -52,6 +52,14 @@ html.is-native body {
   -webkit-backdrop-filter: blur(18px);
 }
 
+/* iOS 홈 화면 앱은 sticky backdrop-filter와 fixed GPU 레이어가 함께 있으면
+ * 라우트 복귀 후 스크롤 콘텐츠 일부를 이전 타일로 남겨두는 경우가 있다. */
+html.is-standalone .app-layout .q-page > header:first-child {
+  background: #f7f7fb;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 /* Account is the only app page whose own frame intentionally has no top inset. */
 .app-layout .account-page > header:first-child {
   margin-top: 0;
@@ -181,6 +189,10 @@ html.is-native body {
 html.keyboard-visible .q-footer,
 html.keyboard-visible .bottom-navigation {
   display: none !important;
+}
+
+html.viewport-resyncing #q-app {
+  min-height: var(--visual-viewport-height, 100dvh);
 }
 
 // Prevent browsers from placing profile/password-manager controls inside app inputs.

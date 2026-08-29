@@ -74,6 +74,11 @@ onBeforeUnmount(() => {
   transform: translateZ(0);
 }
 
+:global(html.is-standalone) .bottom-nav {
+  backface-visibility: visible;
+  transform: none;
+}
+
 :global(body.q-body--prevent-scroll) .bottom-nav {
   pointer-events: none;
 }
@@ -90,6 +95,10 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
   contain: paint;
+}
+
+:global(html.is-standalone) .bottom-nav-inner {
+  contain: none;
 }
 
 .nav-item {

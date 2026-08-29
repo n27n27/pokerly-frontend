@@ -483,6 +483,19 @@ const saveStack = async () => {
 
   const endStack = Number(stackInput.value.replaceAll(',', ''))
   const savedAverageStack = parseStoredNumber(averageStackInput.value)
+  const maximumStack = 2_147_483_647
+  if (
+    !Number.isSafeInteger(endStack) ||
+    endStack < 0 ||
+    endStack > maximumStack ||
+    (savedAverageStack != null &&
+      (!Number.isSafeInteger(savedAverageStack) ||
+        savedAverageStack < 0 ||
+        savedAverageStack > maximumStack))
+  ) {
+    alert.show('스택은 0부터 2,147,483,647 사이의 숫자로 입력해 주세요.', 'warning')
+    return
+  }
   savingStack.value = true
   try {
     const saved = await handLogStore.updateBlindLevelInfo(eventId.value, blindLevel.value.id, {
@@ -494,19 +507,31 @@ const saveStack = async () => {
     if (!saved) throw new Error('Stack update returned no data')
 
     if (isCurrentLevel.value) {
-      storedTournament.currentStack = formatInputNumber(endStack)
-      storedTournament.averageStack = formatInputNumber(savedAverageStack)
-      storedTournament.currentBb =
+      const nextCurrentBb =
         Number(saved.bigBlind || blindLevel.value.bigBlind) > 0
           ? Number((endStack / Number(saved.bigBlind || blindLevel.value.bigBlind)).toFixed(1))
           : null
-      localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
       if (storedTournament.sessionId) {
-        await updateGameSessionProgress(storedTournament.sessionId, {
-          currentStack: endStack,
-          averageStack: savedAverageStack,
-        })
+        let synchronizationError = null
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            await updateGameSessionProgress(storedTournament.sessionId, {
+              currentStack: endStack,
+              averageStack: savedAverageStack,
+              clearAverageStack: savedAverageStack == null,
+            })
+            synchronizationError = null
+            break
+          } catch (error) {
+            synchronizationError = error
+          }
+        }
+        if (synchronizationError) throw synchronizationError
       }
+      storedTournament.currentStack = formatInputNumber(endStack)
+      storedTournament.averageStack = formatInputNumber(savedAverageStack)
+      storedTournament.currentBb = nextCurrentBb
+      localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
     }
     stackSheetOpen.value = false
   } catch {
@@ -702,7 +727,7 @@ const syncRunningTournament = (runningSession) => {
 }
 
 const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
-  if (!componentActive || restoring.value || !levelId.value) return
+  if (!componentActive || restoring.value || savingStack.value || !levelId.value) return
   restoreController?.abort()
   const controller = new AbortController()
   restoreController = controller
@@ -782,12 +807,15 @@ const loadLevelData = async ({ notify = true, retries = 5 } = {}) => {
 
 const restoreOnVisible = () => {
   if (document.visibilityState !== 'visible') return
+  if (savingStack.value || handLogStore.saving) return
   if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
 }
 const restoreOnPageShow = () => {
+  if (savingStack.value || handLogStore.saving) return
   if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
 }
 const restoreOnOnline = () => {
+  if (savingStack.value || handLogStore.saving) return
   if (!blindLevel.value || !handLogStore.selectedEvent) loadLevelData({ notify: false })
 }
 
