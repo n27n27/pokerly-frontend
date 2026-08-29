@@ -973,6 +973,11 @@ const moveSelectedHands = async (targetLevelId, targetLevelName) => {
 
 const goBack = () => {
   if (route.query.tournamentId) {
+    if (window.history.state?.back) {
+      router.back()
+      return
+    }
+
     router.push({
       name: 'tournament-summary',
       params: { tournamentId: route.query.tournamentId },

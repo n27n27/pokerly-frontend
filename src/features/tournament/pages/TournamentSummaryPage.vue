@@ -759,6 +759,11 @@ const goBack = () => {
     return
   }
   if (route.query.from === 'tournaments') {
+    if (window.history.state?.back) {
+      router.back()
+      return
+    }
+
     router.replace({ name: 'tournament-list' })
     return
   }
