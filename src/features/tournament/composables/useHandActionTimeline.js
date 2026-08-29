@@ -3,10 +3,27 @@ import { computed, reactive, ref, toValue } from 'vue'
 const STREETS = ['PREFLOP', 'FLOP', 'TURN', 'RIVER']
 const PREFLOP_ORDER = ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB']
 const POSTFLOP_ORDER = ['SB', 'BB', 'UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN']
+const KNOWN_POSITIONS = new Set([...PREFLOP_ORDER, ...POSTFLOP_ORDER])
 
 const ordered = (players, street) => {
   const order = street === 'PREFLOP' ? PREFLOP_ORDER : POSTFLOP_ORDER
   return order.filter((position) => players.includes(position))
+}
+
+const normalizePlayer = (value) => {
+  if (!value) return ''
+  if (typeof value === 'string') {
+    const normalized = value
+      .replace(/\(나\)\s*$/u, '')
+      .replace(/\s+/gu, '')
+      .split(':')[0]
+      .toUpperCase()
+    return KNOWN_POSITIONS.has(normalized) ? normalized : ''
+  }
+  if (typeof value === 'object') {
+    return normalizePlayer(value.position || value.player || value.name)
+  }
+  return ''
 }
 
 export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
@@ -99,7 +116,8 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
 
   const start = (players, tablePlayers = players, initialStreet = 'PREFLOP') => {
     const startStreet = STREETS.includes(initialStreet) ? initialStreet : 'PREFLOP'
-    trackedPlayers.value = ordered([...new Set(players)], startStreet)
+    const normalizedPlayers = [...new Set(players.map(normalizePlayer).filter(Boolean))]
+    trackedPlayers.value = ordered(normalizedPlayers, startStreet)
     alivePlayers.value = [...trackedPlayers.value]
     allInPlayers.value = []
     pendingPlayers.value = [...trackedPlayers.value]
@@ -107,7 +125,7 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
     currentBet.value = startStreet === 'PREFLOP' ? blindValue() : 0
     lastRaiseSize.value = startStreet === 'PREFLOP' ? blindValue() : 1
     lastAggressor.value = ''
-    const tablePositions = [...new Set(tablePlayers)]
+    const tablePositions = [...new Set(tablePlayers.map(normalizePlayer).filter(Boolean))]
     potSize.value =
       (tablePositions.includes('SB') ? blindValue() / 2 : 0) +
       (tablePositions.includes('BB') ? blindValue() : 0) +
@@ -296,17 +314,28 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
 
   const hydrate = (data) => {
     if (!data?.trackedPlayers?.length) return false
-    const hydratedActions =
+    const hydratedActions = (
       Number(data.version || 1) < 2
         ? recalculatePot(data.actions || [])
         : data.actions || []
-    trackedPlayers.value = [...data.trackedPlayers]
+    ).map((action) => ({
+      ...action,
+      player: normalizePlayer(action.player || action.position),
+    }))
+    const hydratedTrackedPlayers = [
+      ...new Set((data.trackedPlayers || []).map(normalizePlayer).filter(Boolean)),
+    ]
+    trackedPlayers.value = hydratedTrackedPlayers
     restore({
       street: data.street || 'PREFLOP',
-      alivePlayers: data.alivePlayers || data.trackedPlayers,
+      alivePlayers:
+        (data.alivePlayers || data.trackedPlayers || [])
+          .map(normalizePlayer)
+          .filter(Boolean),
       allInPlayers:
-        data.allInPlayers ||
-        hydratedActions.filter((action) => action.isAllIn).map((action) => action.player),
+        data.allInPlayers && data.allInPlayers.length
+          ? data.allInPlayers.map(normalizePlayer).filter(Boolean)
+          : hydratedActions.filter((action) => action.isAllIn).map((action) => action.player),
       pendingPlayers: data.pendingPlayers || [],
       currentBet: Number(data.currentBet) || 0,
       lastRaiseSize: Number(data.lastRaiseSize) || 1,
@@ -316,7 +345,12 @@ export const useHandActionTimeline = ({ bigBlind = 0, ante = 0 } = {}) => {
         hydratedActions.at(-1)?.potAfter ??
         blindValue() * 1.5 + anteValue(),
       actions: hydratedActions,
-      contributions: data.contributions || {},
+      contributions: Object.fromEntries(
+        Object.entries(data.contributions || {}).map(([player, amount]) => [
+          normalizePlayer(player),
+          amount,
+        ]).filter(([player]) => player),
+      ),
     })
     history.value = []
     started.value = true

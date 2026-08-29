@@ -307,6 +307,23 @@ const storedTournament = (() => {
   }
 })()
 const parseNumber = (value) => Number(String(value || '').replaceAll(',', '')) || 0
+const normalizePosition = (value) => {
+  const normalized = String(value || '')
+    .replace(/\(나\)\s*$/u, '')
+    .replace(/\s+/gu, '')
+    .split(':')[0]
+    .toUpperCase()
+
+  if (!normalized) return ''
+
+  if (
+    ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'].includes(normalized)
+  ) {
+    return normalized
+  }
+
+  return ''
+}
 const blindLevel = computed(() =>
   handLogStore.selectedBlindLevel?.id &&
   String(handLogStore.selectedBlindLevel.id) === levelId.value
@@ -339,7 +356,7 @@ const positionMap = {
   11: ['UTG', 'UTG+1', 'UTG+2', 'MP', 'LJ', 'HJ', 'CO', 'BTN', 'SB', 'BB'],
 }
 const positionOptions = computed(() => positionMap[handedCount.value])
-const heroPosition = computed(() => handLogStore.selectedHand?.position || '')
+const heroPosition = computed(() => normalizePosition(handLogStore.selectedHand?.position || ''))
 const isHeroTurn = computed(
   () =>
     Boolean(heroPosition.value) &&
@@ -501,7 +518,8 @@ const loadHandDetails = async () => {
     handedCount.value = hand.handedCount
       ? Math.min(11, Math.max(4, Number(hand.handedCount)))
       : handedCount.value
-    selectedPlayers.value = hand.position ? [hand.position] : []
+    const normalizedPosition = normalizePosition(hand.position)
+    selectedPlayers.value = normalizedPosition ? [normalizedPosition] : []
     memo.value = hand.memo || ''
     if (hand.boardCards) {
       const savedBoard = JSON.parse(hand.boardCards)
@@ -510,7 +528,11 @@ const loadHandDetails = async () => {
     if (hand.actionTimeline) {
       const savedTimeline = JSON.parse(hand.actionTimeline)
       timeline.hydrate(savedTimeline)
-      selectedPlayers.value = [...timeline.trackedPlayers.value]
+      selectedPlayers.value = [...new Set(
+        (timeline.trackedPlayers.value || [])
+          .map((position) => normalizePosition(position))
+          .filter(Boolean),
+      )]
       showdownCards.value = Object.fromEntries(
         Object.entries(savedTimeline.showdownCards || {}).map(([position, cards]) => [
           position,
