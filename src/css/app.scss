@@ -33,7 +33,7 @@ html.is-native body {
  * still provide their own title/actions, while positioning, safe area and
  * scroll separation are owned here so native and web routes behave alike.
  */
-.app-layout .q-page > header:first-child {
+.app-layout .q-page > header:first-of-type {
   position: sticky;
   z-index: var(--v2-app-bar-z);
   top: 0;
@@ -54,18 +54,18 @@ html.is-native body {
 
 /* iOS 홈 화면 앱은 sticky backdrop-filter와 fixed GPU 레이어가 함께 있으면
  * 라우트 복귀 후 스크롤 콘텐츠 일부를 이전 타일로 남겨두는 경우가 있다. */
-html.is-standalone .app-layout .q-page > header:first-child {
+html.is-standalone .app-layout .q-page > header:first-of-type {
   background: #f7f7fb;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
 }
 
 /* Account is the only app page whose own frame intentionally has no top inset. */
-.app-layout .account-page > header:first-child {
+.app-layout .account-page > header:first-of-type {
   margin-top: 0;
 }
 
-.app-layout .q-page > header:first-child::after {
+.app-layout .q-page > header:first-of-type::after {
   position: absolute;
   right: 0;
   bottom: -1px;
@@ -84,8 +84,13 @@ html.is-standalone .app-layout .q-page > header:first-child {
 
 .app-layout .tools-page > .tools-header:first-child,
 .app-layout .my-page > .my-header:first-child {
+  min-height: var(--v2-detail-topbar-height);
   padding-right: var(--v2-page-padding-x);
   padding-left: var(--v2-page-padding-x);
+}
+
+.app-layout .bank-record-page > .bank-record-topbar:first-child {
+  min-height: var(--v2-detail-topbar-height);
 }
 
 .app-layout .detail-page > .detail-header:first-child {
@@ -189,6 +194,42 @@ html.is-standalone .app-layout .q-page > header:first-child {
 html.keyboard-visible .q-footer,
 html.keyboard-visible .bottom-navigation {
   display: none !important;
+}
+
+// Once the navigation is hidden, fixed form actions belong to the resized
+// viewport edge rather than the navigation slot they normally clear.
+html.keyboard-visible .sticky-primary-action {
+  bottom: 4px !important;
+}
+
+// Hide the page-level action only while the focused input actually belongs to a
+// bottom sheet. Quasar can retain closed dialog nodes, so a DOM :has() check is
+// not a reliable indication that a sheet is currently visible.
+html.is-native.keyboard-visible.keyboard-in-bottom-sheet .sticky-primary-action {
+  display: none !important;
+}
+
+/*
+ * Quasar adds the iOS safe-area inset to every dialog container. That is
+ * appropriate for centered dialogs, but a bottom sheet already reaches the
+ * physical viewport edge and owns its own small action padding. Keeping both
+ * rules leaves a blank strip below the sheet and makes Quasar recalculate the
+ * card height a second time while the native keyboard resizes the WebView.
+ * Limit the override to native, bottom-positioned dialogs so regular dialogs
+ * and page safe areas keep Quasar's defaults.
+ */
+html.is-native body.q-ios-padding .q-dialog__inner--bottom,
+html.is-native body.q-safe-area-padding .q-dialog__inner--bottom {
+  padding-bottom: 0 !important;
+}
+
+html.is-native.keyboard-visible body.q-ios-padding .q-dialog__inner--bottom > div,
+html.is-native.keyboard-visible body.q-safe-area-padding .q-dialog__inner--bottom > div {
+  max-height: 100% !important;
+}
+
+html.is-native.keyboard-visible .q-dialog__inner--bottom > div {
+  overscroll-behavior: contain;
 }
 
 html.viewport-resyncing #q-app {

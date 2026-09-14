@@ -816,7 +816,7 @@ const startTournament = async () => {
 }
 
 .venue-picker-sheet__footer {
-  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px 20px max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--v2-border);
   background: #ffffff;
 }
@@ -840,7 +840,7 @@ const startTournament = async () => {
 
 .venue-sheet {
   width: 100%;
-  padding: 22px 20px calc(20px + env(safe-area-inset-bottom));
+  padding: 22px 20px max(12px, env(safe-area-inset-bottom));
   border-radius: 18px 18px 0 0;
   background: #fff;
   display: grid;

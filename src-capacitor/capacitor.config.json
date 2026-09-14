@@ -5,7 +5,7 @@
   "plugins": {
     "Keyboard": {
       "resize": "native",
-      "resizeOnFullScreen": true
+      "resizeOnFullScreen": false
     },
     "SplashScreen": {
       "launchAutoHide": false,
@@ -14,8 +14,8 @@
     },
     "StatusBar": {
       "overlaysWebView": true,
-      "style": "light",
-      "backgroundColor": "#f7f7fb"
+      "style": "dark",
+      "backgroundColor": "#050410"
     },
     "SocialLogin": {
       "providers": {

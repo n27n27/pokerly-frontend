@@ -1763,7 +1763,7 @@ const saveParticipant = async () => {
   max-height: 88vh;
   overflow-y: auto;
   margin: 0 auto;
-  padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 24px 8px;
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   display: grid;
@@ -1854,7 +1854,7 @@ const saveParticipant = async () => {
 .my-seat-sheet {
   width: min(100%, 520px);
   margin: 0 auto;
-  padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 24px max(12px, env(safe-area-inset-bottom));
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   display: grid;
@@ -1864,7 +1864,7 @@ const saveParticipant = async () => {
 .table-size-sheet {
   width: min(100%, 520px);
   margin: 0 auto;
-  padding: 12px 24px calc(28px + env(safe-area-inset-bottom));
+  padding: 12px 24px max(12px, env(safe-area-inset-bottom));
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   display: grid;
@@ -1914,7 +1914,7 @@ const saveParticipant = async () => {
   width: min(100%, 520px);
   max-height: 78vh;
   margin: 0 auto;
-  padding: 12px 20px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 20px max(12px, env(safe-area-inset-bottom));
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   display: grid;
@@ -2375,7 +2375,7 @@ const saveParticipant = async () => {
   box-sizing: border-box;
   width: min(100%, 520px);
   margin: 0;
-  padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 24px max(12px, env(safe-area-inset-bottom));
   background: #ffffff;
   backface-visibility: hidden;
   transform: translate3d(-50%, 0, 0);

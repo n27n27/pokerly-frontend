@@ -117,7 +117,7 @@ const confirmDate = () => {
 
 .date-picker-sheet {
   width: min(100%, 420px);
-  padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+  padding: 10px 18px max(12px, env(safe-area-inset-bottom));
   border-radius: 20px 20px 0 0;
   background: #fff;
 }

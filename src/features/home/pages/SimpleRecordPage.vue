@@ -479,7 +479,7 @@ const saveRecord = async () => {
 }
 
 .venue-picker-sheet__footer {
-  padding: 12px 20px calc(12px + env(safe-area-inset-bottom));
+  padding: 12px 20px max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--v2-border);
   background: #ffffff;
 }

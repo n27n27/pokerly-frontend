@@ -22,8 +22,10 @@
 }
 
 .app-toolbar {
+  box-sizing: border-box;
+  height: calc(var(--v2-app-header-height) + var(--app-safe-top));
   min-height: calc(var(--v2-app-header-height) + var(--app-safe-top));
-  padding: calc(8px + var(--app-safe-top)) var(--v2-page-padding-x) 8px;
+  padding: var(--app-safe-top) var(--v2-page-padding-x) 0;
 }
 
 .app-brand {

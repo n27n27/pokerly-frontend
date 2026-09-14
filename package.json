@@ -12,7 +12,7 @@
     "test": "node --test test/*.test.js",
     "dev": "quasar dev",
     "build": "quasar build",
-    "mobile:build:ios": "quasar build -m capacitor -T ios --skip-pkg",
+    "mobile:build:ios": "node scripts/patch-capacitor-keyboard.mjs && quasar build -m capacitor -T ios --skip-pkg",
     "mobile:build:android": "quasar build -m capacitor -T android --skip-pkg",
     "mobile:assets": "node scripts/generate-mobile-assets.mjs",
     "mobile:open:ios": "cd src-capacitor && npx cap open ios",

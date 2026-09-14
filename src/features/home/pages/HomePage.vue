@@ -1906,7 +1906,7 @@ const goSimpleRecord = (recordId) => {
   width: 100%;
   max-height: 86vh;
   overflow-y: auto;
-  padding: 10px 18px calc(18px + env(safe-area-inset-bottom));
+  padding: 10px 18px 0;
   border-radius: 20px 20px 0 0;
   background: #ffffff;
 }

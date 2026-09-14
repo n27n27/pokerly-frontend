@@ -222,7 +222,7 @@
     </section>
 
     <button
-      v-if="!isSummaryView && isCurrentLevel"
+      v-if="!isSummaryView && isCurrentLevel && !moveSheetOpen && !stackSheetOpen"
       class="hand-fab"
       type="button"
       @click="recordHand"
@@ -232,23 +232,27 @@
       </span>
       <span>핸드 기록</span>
     </button>
-    <q-dialog v-model="moveSheetOpen" position="bottom" persistent>
+    <q-dialog v-model="moveSheetOpen" position="bottom" persistent @show="resetMoveLevelScroll">
       <q-card class="move-level-sheet">
-        <div class="move-level-sheet__handle"></div>
-        <h2>레벨 선택</h2>
-        <p>선택한 핸드 {{ selectedHandIds.length }}개</p>
-        <button
-          v-for="level in movableLevels"
-          :key="level.id"
-          type="button"
-          :disabled="movingHands"
-          @click="moveSelectedHands(level.id, level.name)"
-        >
-          <strong>{{ level.name }}</strong>
-          <span>{{ movingTargetLevelId === level.id ? '이동 중…' : level.blinds }}</span>
-          <q-spinner v-if="movingTargetLevelId === level.id" size="18px" />
-          <q-icon v-else name="chevron_right" size="20px" />
-        </button>
+        <div class="move-level-sheet__header">
+          <div class="move-level-sheet__handle"></div>
+          <h2>레벨 선택</h2>
+          <p>선택한 핸드 {{ selectedHandIds.length }}개</p>
+        </div>
+        <div ref="moveLevelList" class="move-level-sheet__list">
+          <button
+            v-for="level in movableLevels"
+            :key="level.id"
+            type="button"
+            :disabled="movingHands"
+            @click="moveSelectedHands(level.id, level.name)"
+          >
+            <strong>{{ level.name }}</strong>
+            <span>{{ movingTargetLevelId === level.id ? '이동 중…' : level.blinds }}</span>
+            <q-spinner v-if="movingTargetLevelId === level.id" size="18px" />
+            <q-icon v-else name="chevron_right" size="20px" />
+          </button>
+        </div>
       </q-card>
     </q-dialog>
 
@@ -288,7 +292,7 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
@@ -321,6 +325,7 @@ const showHandListMenu = ref(false)
 const selectionMode = ref(false)
 const selectedHandIds = ref([])
 const moveSheetOpen = ref(false)
+const moveLevelList = ref(null)
 const movingHands = ref(false)
 const movingTargetLevelId = ref(null)
 const loadedEventId = ref(null)
@@ -882,44 +887,68 @@ const endLevel = async () => {
   }
 
   endingLevel.value = true
+  // The next level's displayStartStack is a server-derived snapshot. It can be
+  // stale until the whole event is fetched again, so the outgoing active level
+  // is the authoritative source for a forward transition.
   const nextStack =
-    nextLevel.endStack ?? nextLevel.displayStartStack ?? nextLevel.startStack ?? currentStack.value
+    parseStoredNumber(currentStack.value) ??
+    parseStoredNumber(nextLevel.endStack) ??
+    parseStoredNumber(nextLevel.displayStartStack) ??
+    parseStoredNumber(nextLevel.startStack)
   const nextAverageStack =
-    parseStoredNumber(nextLevel.averageStack) ?? parseStoredNumber(averageStack.value)
-  storedTournament.currentBlindLevelId = nextLevel.id
-  storedTournament.currentLevel = `L${nextLevel.levelNo}`
-  storedTournament.currentBlinds = {
+    parseStoredNumber(averageStack.value) ?? parseStoredNumber(nextLevel.averageStack)
+  const nextCurrentLevel = `L${nextLevel.levelNo}`
+  const nextCurrentBlinds = {
     smallBlind: formatNumber(nextLevel.smallBlind),
     bigBlind: formatNumber(nextLevel.bigBlind),
     ante: formatNumber(nextLevel.ante),
   }
-  storedTournament.blinds = [nextLevel.smallBlind, nextLevel.bigBlind, nextLevel.ante]
+  const nextBlinds = [nextLevel.smallBlind, nextLevel.bigBlind, nextLevel.ante]
     .map(formatNumber)
     .join(' / ')
-  storedTournament.currentStack =
+  const nextCurrentStack =
     nextStack === null || nextStack === undefined ? null : formatNumber(nextStack)
-  storedTournament.currentBb =
+  const nextCurrentBb =
     nextStack != null && Number(nextLevel.bigBlind) > 0
       ? Number((Number(nextStack) / Number(nextLevel.bigBlind)).toFixed(1))
       : null
-  storedTournament.averageStack =
+  const nextStoredAverageStack =
     nextAverageStack == null ? null : formatNumber(nextAverageStack)
-  storedTournament.averageBb =
+  const nextAverageBb =
     nextAverageStack != null && Number(nextLevel.bigBlind) > 0
       ? Number((Number(nextAverageStack) / Number(nextLevel.bigBlind)).toFixed(1))
       : null
-  localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
   try {
+    // Persist the outgoing level first so the backend's derived start stack for
+    // the next level is correct even after a PWA suspend/resume or fresh load.
+    await handLogStore.updateBlindLevelInfo(eventId.value, blindLevel.value.id, {
+      startStack: blindLevel.value.startStack ?? blindLevel.value.displayStartStack,
+      endStack: nextStack,
+      averageStack: nextAverageStack,
+      memo: blindLevel.value.memo,
+    })
     if (storedTournament.sessionId) {
       await updateGameSessionProgress(storedTournament.sessionId, {
-        currentLevel: storedTournament.currentLevel,
+        currentLevel: nextCurrentLevel,
         currentStack: nextStack,
         averageStack: nextAverageStack,
+        clearAverageStack: nextAverageStack == null,
         currentSmallBlind: nextLevel.smallBlind,
         currentBigBlind: nextLevel.bigBlind,
         currentAnte: nextLevel.ante,
       })
     }
+    Object.assign(storedTournament, {
+      currentBlindLevelId: nextLevel.id,
+      currentLevel: nextCurrentLevel,
+      currentBlinds: nextCurrentBlinds,
+      blinds: nextBlinds,
+      currentStack: nextCurrentStack,
+      currentBb: nextCurrentBb,
+      averageStack: nextStoredAverageStack,
+      averageBb: nextAverageBb,
+    })
+    localStorage.setItem('pokerly-running-tournament', JSON.stringify(storedTournament))
     await router.push({ name: 'tournament-running' })
   } catch {
     alert.show('레벨을 종료하지 못했습니다.', 'error')
@@ -946,6 +975,11 @@ const startHandSelection = () => {
   showHandListMenu.value = false
   selectionMode.value = true
   selectedHandIds.value = []
+}
+
+const resetMoveLevelScroll = async () => {
+  await nextTick()
+  moveLevelList.value?.scrollTo({ top: 0 })
 }
 
 const cancelHandSelection = () => {
@@ -1758,15 +1792,33 @@ const goBack = () => {
 
 .move-level-sheet {
   width: 100%;
-  padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+  max-height: 80dvh !important;
+  padding: 10px 20px max(12px, env(safe-area-inset-bottom));
+  overflow: hidden;
   border-radius: 18px 18px 0 0;
   background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.move-level-sheet__header {
+  flex: none;
+}
+
+.move-level-sheet__list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 }
 
 .stack-sheet {
   width: min(100%, 520px);
+  max-height: 100%;
+  overflow-y: auto;
   margin: 0 auto;
-  padding: 10px 24px calc(24px + env(safe-area-inset-bottom));
+  padding: 10px 24px 8px;
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   display: grid;

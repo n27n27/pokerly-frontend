@@ -132,7 +132,7 @@
       @open-hand="openSummaryHand"
     />
 
-    <section class="tournament-end-action">
+    <section v-if="pageReady" class="tournament-end-action">
       <button type="button" @click="openFinish">토너먼트 종료</button>
     </section>
 
@@ -228,6 +228,7 @@ const runningTournament = reactive(
 const totalBuyIns = computed(() => runningTournament.totalBuyIns ?? runningTournament.entries ?? 1)
 const event = computed(() => handLogStore.selectedEvent)
 const loading = computed(() => handLogStore.detailLoading)
+const pageReady = ref(false)
 // GameSession is the canonical tournament record. HandLogEvent keeps a copy of the
 // name for hand-log screens, so it can temporarily lag behind an edited session.
 const tournamentName = computed(() => runningTournament.name || event.value?.name || '-')
@@ -651,6 +652,7 @@ onMounted(async () => {
     alert.show('토너먼트 데이터를 불러오지 못했습니다.', 'error')
   } finally {
     await openRequestedLevelSheet()
+    pageReady.value = true
   }
 })
 
@@ -755,7 +757,6 @@ const goBack = () => {
 }
 
 .running-summary {
-  overflow: hidden;
   padding: 18px 20px;
   border: 1px solid var(--v2-border);
   border-radius: var(--v2-radius-lg);
@@ -1104,7 +1105,7 @@ const goBack = () => {
   max-height: 88vh;
   overflow-y: auto;
   margin: 0 auto;
-  padding: 12px 24px calc(24px + env(safe-area-inset-bottom));
+  padding: 12px 24px 0;
   border-radius: 24px 24px 0 0;
   background: #ffffff;
   display: grid;

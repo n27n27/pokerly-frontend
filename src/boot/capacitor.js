@@ -44,14 +44,57 @@ export default boot(async ({ router }) => {
   setConnectionState(initialNetwork.connected)
   await Network.addListener('networkStatusChange', ({ connected }) => setConnectionState(connected))
 
-  await Keyboard.addListener('keyboardWillShow', () =>
-    document.documentElement.classList.add('keyboard-visible'),
-  )
-  await Keyboard.addListener('keyboardWillHide', () =>
-    document.documentElement.classList.remove('keyboard-visible'),
-  )
+  const dismissKeyboardOutsideInput = (event) => {
+    const activeElement = document.activeElement
+    if (!activeElement?.matches?.('input, textarea, [contenteditable="true"]')) return
+    if (
+      event.target?.closest?.(
+        'input, textarea, select, button, a, [contenteditable="true"], [role="button"], [role="option"], [role="menuitem"]',
+      )
+    )
+      return
+    activeElement.blur()
+    Keyboard.hide().catch(() => {})
+  }
+  document.addEventListener('pointerdown', dismissKeyboardOutsideInput, true)
+
+  const syncKeyboardContext = () => {
+    const root = document.documentElement
+    const isBottomSheetField = Boolean(document.activeElement?.closest?.('.q-dialog__inner--bottom'))
+    root.classList.toggle('keyboard-in-bottom-sheet', isBottomSheetField)
+  }
+
+  await Keyboard.addListener('keyboardWillShow', () => {
+    const root = document.documentElement
+    root.classList.add('keyboard-visible')
+    syncKeyboardContext()
+    // iOS can emit keyboardWillShow before focus has left a just-closed sheet.
+    // Re-evaluate after the focus transaction completes.
+    window.requestAnimationFrame(() => {
+      syncKeyboardContext()
+    })
+  })
+  await Keyboard.addListener('keyboardWillHide', () => {
+    const root = document.documentElement
+    root.classList.remove('keyboard-visible')
+    root.classList.remove('keyboard-in-bottom-sheet')
+  })
+  document.addEventListener('focusin', () => {
+    if (!document.documentElement.classList.contains('keyboard-visible')) return
+    syncKeyboardContext()
+  })
+
+  const syncStatusBarStyle = (path) => {
+    const usesDarkBackground = !path.startsWith('/app')
+    document.documentElement.classList.toggle('status-bar-dark-bg', usesDarkBackground)
+    return StatusBar.setStyle({
+      // Capacitor's Dark style means light status-bar content for dark pages.
+      style: usesDarkBackground ? Style.Dark : Style.Light,
+    }).catch(() => {})
+  }
 
   await StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {})
-  await StatusBar.setStyle({ style: Style.Light }).catch(() => {})
+  await syncStatusBarStyle(router.currentRoute.value.path)
+  router.afterEach((to) => syncStatusBarStyle(to.path))
   await SplashScreen.hide().catch(() => {})
 })

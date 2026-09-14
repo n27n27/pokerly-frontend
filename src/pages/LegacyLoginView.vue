@@ -2,7 +2,7 @@
   <q-page class="auth-page">
     <main class="auth-shell">
       <div class="top-nav">
-        <button type="button" class="back-btn" aria-label="뒤로 가기" @click="router.replace('/login')">
+        <button type="button" class="back-btn" aria-label="뒤로 가기" @pointerdown.prevent="goBack">
           <q-icon name="chevron_left" size="29px" />
         </button>
       </div>
@@ -31,7 +31,6 @@
             <input
               v-model="nickname"
               autocomplete="username"
-              autofocus
               :disabled="loading"
               placeholder="아이디를 입력해주세요"
             />
@@ -81,6 +80,10 @@ const password = ref('')
 const loading = ref(false)
 const passwordVisible = ref(false)
 
+const goBack = () => {
+  router.replace('/login')
+}
+
 const onLogin = async () => {
   if (!nickname.value.trim() || !password.value) {
     alert.show('아이디와 비밀번호를 입력해주세요.', 'warning')
@@ -114,51 +117,59 @@ const onLogin = async () => {
     loading.value = false
   }
 }
+
 </script>
 
 <style scoped>
 .auth-page {
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: var(--visual-viewport-height, 100dvh);
   background:
     radial-gradient(circle at 50% 30%, rgba(94, 31, 200, .17), transparent 30%),
     linear-gradient(180deg, #090719 0%, #070515 55%, #050410 100%);
   display: flex;
   justify-content: center;
-  padding: 28px 24px;
+  padding: calc(18px + env(safe-area-inset-top, 0px)) 24px 24px;
   color: #fff;
 }
 
 .auth-shell {
   width: 100%;
   max-width: 420px;
-  min-height: calc(100dvh - 56px);
+  min-height: calc((var(--visual-viewport-height, 100dvh)) - 56px);
   display: flex;
   flex-direction: column;
 }
 
 .top-nav {
+  position: relative;
+  z-index: 10;
   display: grid;
   width: 100%;
-  min-height: 36px;
-  grid-template-columns: 40px;
+  min-height: 44px;
+  grid-template-columns: 44px;
   align-items: center;
 }
 
 .back-btn {
+  position: relative;
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 56px;
+  height: 56px;
   place-items: center;
   padding: 0;
   border: 0;
   background: transparent;
   color: #fff;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  cursor: pointer;
 }
 
 .login-block {
   width: 100%;
-  margin-top: clamp(56px, 10vh, 94px);
+  margin-top: 56px;
 }
 
 .auth-header {
@@ -298,7 +309,7 @@ const onLogin = async () => {
 
 @media (max-width: 420px) {
   .auth-page {
-    padding: 24px;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 24px 24px;
   }
 
   .auth-shell {
@@ -306,7 +317,7 @@ const onLogin = async () => {
   }
 
   .login-block {
-    margin-top: clamp(48px, 9vh, 76px);
+    margin-top: 48px;
   }
 
   .login-form {
@@ -321,7 +332,7 @@ const onLogin = async () => {
 
 @media (max-height: 700px) {
   .login-block {
-    margin-top: 28px;
+    margin-top: 24px;
   }
 
   .login-form {
@@ -332,4 +343,5 @@ const onLogin = async () => {
     margin-top: 26px;
   }
 }
+
 </style>

@@ -5,20 +5,20 @@
         <q-icon name="chevron_left" size="30px" />
       </button>
       <h1>핸드 상세</h1>
-      <button
-        v-if="hand"
-        class="icon-button"
-        type="button"
-        aria-label="핸드 메뉴"
-        @click.stop="menuOpen = !menuOpen"
-      >
-        <q-icon name="more_vert" size="22px" />
-      </button>
-      <span v-else></span>
-
-      <div v-if="menuOpen" class="overflow-menu" @click.stop>
-        <button type="button" @click="goHandEdit">핸드 수정</button>
-        <button class="danger" type="button" @click="openDeleteDialog">삭제</button>
+      <div class="hand-menu-anchor">
+        <button
+          v-if="hand"
+          class="icon-button"
+          type="button"
+          aria-label="핸드 메뉴"
+          @click.stop="menuOpen = !menuOpen"
+        >
+          <q-icon name="more_vert" size="22px" />
+        </button>
+        <div v-if="menuOpen" class="overflow-menu" @click.stop>
+          <button type="button" @click="goHandEdit">핸드 수정</button>
+          <button class="danger" type="button" @click="openDeleteDialog">삭제</button>
+        </div>
       </div>
     </header>
 
@@ -159,15 +159,18 @@
       <button class="review-action" type="button" @click="goHandDetailsEdit">상세 수정</button>
     </section>
 
-    <q-dialog v-model="deleteDialogOpen">
-      <div class="delete-dialog">
-        <h2>핸드를 삭제할까요?</h2>
-        <div>
-          <button type="button" @click="deleteDialogOpen = false">취소</button>
-          <button class="danger" type="button" @click="confirmDelete">삭제</button>
-        </div>
-      </div>
-    </q-dialog>
+    <ConfirmDialog
+      v-model="deleteDialogOpen"
+      title="핸드를 삭제할까요?"
+      description="이 핸드 기록을 삭제하며, 삭제 후에는 복구할 수 없습니다."
+      confirm-label="삭제"
+      loading-label="삭제 중..."
+      preferred-action="cancel"
+      :loading="deleting"
+      danger
+      persistent
+      @confirm="confirmDelete"
+    />
   </q-page>
 </template>
 
@@ -176,6 +179,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { useAlert } from 'src/composables/useAlert'
+import ConfirmDialog from 'src/shared/components/ConfirmDialog.vue'
 import { useHandLogStore } from 'src/stores/handLog'
 import {
   getHandActionLabel,
@@ -191,6 +195,7 @@ const handLogStore = useHandLogStore()
 
 const menuOpen = ref(false)
 const deleteDialogOpen = ref(false)
+const deleting = ref(false)
 const levelId = computed(() => String(route.params.levelName || ''))
 const levelName = computed(
   () =>
@@ -371,17 +376,21 @@ const openDeleteDialog = () => {
   deleteDialogOpen.value = true
 }
 const confirmDelete = async () => {
-  if (!eventId.value || !levelId.value || !handId.value) return
+  if (!eventId.value || !levelId.value || !handId.value || deleting.value) return
+  deleting.value = true
   try {
     await handLogStore.deleteHandFromBlindLevel(eventId.value, levelId.value, handId.value)
     deleteDialogOpen.value = false
-    router.replace({
+    alert.show('핸드를 삭제했습니다.', 'success')
+    await router.replace({
       name: 'tournament-level-detail',
       params: { levelName: levelId.value },
       query: { levelName: levelName.value },
     })
   } catch {
     alert.show('핸드를 삭제하지 못했습니다.', 'error')
+  } finally {
+    deleting.value = false
   }
 }
 
@@ -392,7 +401,7 @@ const goBack = () => {
   }
 
   if (route.query.tournamentId) {
-    router.push({
+    router.replace({
       name: 'tournament-summary',
       params: { tournamentId: route.query.tournamentId },
       query: {
@@ -403,7 +412,7 @@ const goBack = () => {
     return
   }
 
-  router.push({
+  router.replace({
     name: 'tournament-level-detail',
     params: { levelName: levelId.value },
     query: {
@@ -451,7 +460,12 @@ const goBack = () => {
   background: transparent;
   color: var(--v2-text-main);
 }
-.hand-detail-topbar .icon-button:last-of-type {
+.hand-menu-anchor {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
   justify-self: end;
 }
 .icon-button:active {
@@ -460,7 +474,7 @@ const goBack = () => {
 .overflow-menu {
   position: absolute;
   z-index: 5;
-  top: 54px;
+  top: calc(100% + 8px);
   right: 0;
   width: 156px;
   overflow: hidden;
@@ -899,36 +913,5 @@ const goBack = () => {
 }
 .review-summary .review-action {
   margin-top: 5px;
-}
-.delete-dialog {
-  width: min(calc(100vw - 40px), 360px);
-  padding: 24px;
-  border-radius: var(--v2-radius-lg);
-  background: #fff;
-}
-.delete-dialog h2 {
-  margin: 0 0 22px;
-  color: var(--v2-text-main);
-  font-size: 19px;
-  font-weight: 620;
-}
-.delete-dialog > div {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-.delete-dialog button {
-  height: 44px;
-  border: 1px solid var(--v2-border);
-  border-radius: var(--v2-radius-sm);
-  background: #fff;
-  color: var(--v2-text-main);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 560;
-}
-.delete-dialog button.danger {
-  border-color: var(--v2-danger);
-  color: var(--v2-danger);
 }
 </style>

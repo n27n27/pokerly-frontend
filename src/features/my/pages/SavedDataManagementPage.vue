@@ -521,7 +521,7 @@ const remove = async () => {
 .editor-sheet {
   width: min(100%, 430px);
   max-height: 88vh;
-  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  padding: 8px 16px max(12px, env(safe-area-inset-bottom));
   border-radius: 24px 24px 0 0;
 }
 .sheet-handle {

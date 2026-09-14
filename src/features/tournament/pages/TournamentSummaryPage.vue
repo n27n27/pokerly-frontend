@@ -5,39 +5,37 @@
         <q-icon name="chevron_left" size="30px" />
       </button>
       <h1>{{ eventId ? '대회 요약' : '기록 상세' }}</h1>
-      <button type="button" aria-label="대회 메뉴" @click.stop="menuOpen = !menuOpen">
-        <q-icon name="more_vert" size="22px" />
-      </button>
-      <div v-if="menuOpen" class="page-menu" @click.stop>
-        <template v-if="eventId">
-          <button
-            type="button"
-            :disabled="tournamentSeatsLoading"
-            @click="copyTournamentText"
-          >
-            {{ tournamentSeatsLoading ? '텍스트 준비 중' : '텍스트 복사' }}
-          </button>
-          <button v-if="!legacyEventId" type="button" @click="editTournament">
-            토너먼트 결과 수정
-          </button>
-          <button v-if="!legacyEventId && canResumeTournament" type="button" @click="resumeTournament">
-            토너먼트 재개
-          </button>
-          <button
-            v-if="!legacyEventId"
-            class="destructive"
-            type="button"
-            @click="deleteDialogOpen = true; menuOpen = false"
-          >
-            토너먼트 삭제
-          </button>
-        </template>
-        <template v-else>
-          <button type="button" @click="editBankRecord">기록 수정</button>
-          <button class="destructive" type="button" @click="deleteDialogOpen = true; menuOpen = false">
-            기록 삭제
-          </button>
-        </template>
+      <div class="topbar-menu-anchor">
+        <button type="button" aria-label="대회 메뉴" @click.stop="menuOpen = !menuOpen">
+          <q-icon name="more_vert" size="22px" />
+        </button>
+        <div v-if="menuOpen" class="page-menu" @click.stop>
+          <template v-if="eventId">
+            <button type="button" :disabled="tournamentSeatsLoading" @click="copyTournamentText">
+              {{ tournamentSeatsLoading ? '텍스트 준비 중' : '텍스트 복사' }}
+            </button>
+            <button v-if="!legacyEventId" type="button" @click="editTournament">
+              토너먼트 결과 수정
+            </button>
+            <button v-if="!legacyEventId && canResumeTournament" type="button" @click="resumeTournament">
+              토너먼트 재개
+            </button>
+            <button
+              v-if="!legacyEventId"
+              class="destructive"
+              type="button"
+              @click="deleteDialogOpen = true; menuOpen = false"
+            >
+              토너먼트 삭제
+            </button>
+          </template>
+          <template v-else>
+            <button type="button" @click="editBankRecord">기록 수정</button>
+            <button class="destructive" type="button" @click="deleteDialogOpen = true; menuOpen = false">
+              기록 삭제
+            </button>
+          </template>
+        </div>
       </div>
     </header>
 
@@ -768,7 +766,7 @@ const goBack = () => {
     return
   }
 
-  router.push({ name: 'home' })
+  router.replace({ name: 'home' })
 }
 </script>
 
@@ -808,9 +806,6 @@ const goBack = () => {
 .topbar > button:first-of-type {
   grid-column: 1;
 }
-.topbar > button:last-of-type {
-  grid-column: 3;
-}
 .topbar h1 {
   grid-column: 2;
   grid-row: 1;
@@ -819,10 +814,30 @@ const goBack = () => {
   font-weight: 650;
   text-align: center;
 }
+.topbar-menu-anchor {
+  position: relative;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  grid-column: 3;
+  grid-row: 1;
+  place-items: center;
+  justify-self: end;
+}
+.topbar-menu-anchor > button {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--v2-text-main);
+}
 .page-menu {
   position: absolute;
   z-index: 5;
-  top: 54px;
+  top: calc(100% + 8px);
   right: 0;
   width: 156px;
   overflow: hidden;
