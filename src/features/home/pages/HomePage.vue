@@ -439,6 +439,7 @@ const loadRunningTournament = async () => {
       eventId: session.handLogEventId,
       name: session.tournamentName,
       venueId: session.venueId,
+      date: session.playDate,
       startLevel: session.startLevel,
       currentLevel: session.currentLevel,
       // GameSession은 현재 레벨의 번호를 canonical 값으로 보관한다.

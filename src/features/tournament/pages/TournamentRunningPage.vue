@@ -609,6 +609,7 @@ onMounted(async () => {
         eventId: serverRunning.handLogEventId,
         name: serverRunning.tournamentName,
         venueId: serverRunning.venueId,
+        date: serverRunning.playDate,
         startLevel: serverRunning.startLevel,
         currentLevel: serverRunning.currentLevel,
         // 이 값은 서버 필드가 아니므로 이전 기기의 캐시를 신뢰하지 않는다.

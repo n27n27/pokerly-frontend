@@ -126,7 +126,7 @@
 
     <StickyPrimaryAction
       :label="isEdit ? '수정 완료' : '결과 확정'"
-      :disabled="!form.result"
+      :disabled="!form.result || !sourceSessionReady"
       :loading="submitting"
       loading-label="저장 중..."
       @click="confirmResult"
@@ -148,6 +148,7 @@ const router = useRouter()
 const alert = useAlert()
 const submitting = ref(false)
 const sourceSession = ref(null)
+const sourceSessionReady = ref(false)
 const isEdit = computed(() => route.query.mode === 'edit')
 const runningTournament = (() => {
   try {
@@ -189,10 +190,14 @@ const form = reactive({
 
 onMounted(async () => {
   const sessionId = route.query.tournamentId || runningTournament.sessionId
-  if (!sessionId) return
+  if (!sessionId) {
+    alert.show('대회 정보를 찾을 수 없습니다.', 'error')
+    return
+  }
   try {
     const session = await fetchGameSession(sessionId)
     sourceSession.value = session
+    sourceSessionReady.value = true
     Object.assign(form, {
       result: session.tournamentResult || '',
       rank: session.finalRank || '',
@@ -205,7 +210,7 @@ onMounted(async () => {
       satelliteName: session.satelliteName || '',
     })
   } catch {
-    if (isEdit.value) alert.show('대회 결과를 불러오지 못했습니다.', 'error')
+    alert.show('대회 결과를 불러오지 못했습니다.', 'error')
   }
 })
 
@@ -236,7 +241,7 @@ const updateMoneyField = (field, event) => {
 }
 
 const confirmResult = async () => {
-  if (!form.result || submitting.value) return
+  if (!form.result || !sourceSessionReady.value || submitting.value) return
   const tournamentId = route.query.tournamentId || runningTournament.sessionId
   if (!tournamentId) return
   const source = sourceSession.value || runningTournament
